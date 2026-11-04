@@ -209,7 +209,10 @@ def glyph_names(rows):
         modern = r["modern"]
         if modern.startswith("frame:"):
             names.add(modern[len("frame:") :])
-        elif not modern.startswith("battery:"):
+        elif modern.startswith("battery:"):
+            if modern.endswith(":charging"):
+                names.add(CHARGING_BOLT)
+        else:
             names.add(modern)
         if r["device"] != "ours":
             names.add(r["device"])
@@ -359,12 +362,16 @@ def modern_battery(spec, color, opacity):
     if level > 0:
         body += f"<rect x='6' y='13' width='{num(16 * level)}' height='6' rx='1' fill='{bar}'/>"
     if mode == "charging":
+        bolt = path_data(glyph(CHARGING_BOLT))[0]
         body += (
-            "<g transform='translate(9 9.5) scale(0.5)'><path d='M7,2V13H10V22L17,10H13L17,2H7Z' "
+            f"<g transform='translate(9 9.5) scale(0.5)'><path d='{bolt}' "
             f"fill='{GREEN}' stroke='#000000' stroke-opacity='0.6' stroke-width='2' stroke-linejoin='round'/></g>"
         )
     return f"<g opacity='{num(opacity)}'>{body}</g>" if opacity != 1 else body
 
+
+# The bolt a charging battery carries.
+CHARGING_BOLT = "mdi:flash"
 
 FRAME = "M6,2L26,2A4,4 0,0 1,30 6L30,26A4,4 0,0 1,26 30L6,30A4,4 0,0 1,2 26L2,6A4,4 0,0 1,6 2z"
 
@@ -401,7 +408,9 @@ def modern(row):
 
 def source_of(ref):
     """The glyph a picture is drawn from, as lib:name, or ours for our own drawing."""
-    if ref == "ours" or ref.startswith("battery:"):
+    if ref.startswith("battery:"):
+        return CHARGING_BOLT if ref.endswith(":charging") else "ours"
+    if ref == "ours":
         return "ours"
     return ref.removeprefix("frame:")
 
@@ -430,6 +439,40 @@ def device(row):
     return body
 
 
+def path_data(body):
+    """Every path's data in a picture, in order."""
+    return re.findall(r"""\sd=["']([^"']+)["']""", body)
+
+
+def vendored_paths():
+    """{path data: {lib:name}} for every vendored glyph, for telling their art from ours."""
+    found = {}
+    for lib in LIBRARIES:
+        for path in sorted((GLYPHS / lib).glob("*.svg")):
+            ref = f"{lib}:{path.stem}"
+            for d in path_data(svg_inner(path.read_text(), ref)[1]):
+                if len(d) >= 16:
+                    found.setdefault(d, set()).add(ref)
+    return found
+
+
+def check_source(icon, vendored):
+    """A picture recorded as ours holds no vendored glyph, and a named glyph is in the art."""
+    paths = set(path_data(icon["body"]))
+    if icon["source"] == "ours":
+        held = sorted({ref for d in paths for ref in vendored.get(d, ())})
+        if held:
+            sys.exit(
+                f"{icon['id']}: recorded as our own drawing but contains {', '.join(held)}"
+            )
+        return
+    named = {d for d in path_data(glyph(icon["source"])) if len(d) >= 16}
+    if named and not named & paths:
+        sys.exit(
+            f"{icon['id']}: records {icon['source']} but its path is not in the picture"
+        )
+
+
 def check_body(icon):
     if len(icon["body"].encode()) > MAX_BODY:
         sys.exit(
@@ -444,6 +487,7 @@ def check_body(icon):
 
 def render():
     rows = read_list()
+    vendored = vendored_paths()
     icons = []
     for pack, build, ref in (
         ("classic-device", device, "device"),
@@ -460,6 +504,7 @@ def render():
                 "body": build(r),
             }
             check_body(icon)
+            check_source(icon, vendored)
             icons.append(icon)
     parts = intern_parts(icons)
     return (

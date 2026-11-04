@@ -8,7 +8,7 @@ drivers/dynamic_button/www/html/index.html:
   Classic Tile and Modern pictures place the collections' symbols, kept in
   resources/icon-packs/glyphs with each collection's license file, on a tile or in a frame
   and color them. The Classic Device pictures in resources/icon-packs/classic-device are
-  Finite Labs' own drawings, some built around a Material Design Icons symbol; the list in
+  Finite Labs' own drawings, most built around a Material Design Icons symbol; the list in
   resources/icon-packs/subjects.tsv names the symbol each picture uses.
 
 The driver carries these four notices, with the texts of the Apache License 2.0, the ISC

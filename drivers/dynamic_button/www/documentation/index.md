@@ -432,7 +432,7 @@ The included icons and the icon packs are drawn from these collections:
 | [Lucide](https://github.com/lucide-icons/lucide)                      | [ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE) |
 | [Tabler Icons](https://github.com/tabler/tabler-icons)                | [MIT](https://github.com/tabler/tabler-icons/blob/main/LICENSE) |
 
-The Classic Device pictures are our own drawings, some built around a Material
+The Classic Device pictures are our own drawings, most built around a Material
 Design Icons symbol. The Classic Tile pictures use Material Design Icons
 symbols, and the Modern pictures use Lucide, Tabler Icons and Material Design
 Icons symbols. The driver includes these notices and the full license texts in

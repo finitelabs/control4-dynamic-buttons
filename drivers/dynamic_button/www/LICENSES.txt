@@ -4,7 +4,7 @@ The Button tab includes icons from four collections. The included icons are stor
 path data in www/html/index.html, unmodified apart from their color. The three icon packs
 (Classic Device, Classic Tile and Modern) are stored in the same file: the Classic Tile and
 Modern pictures place these collections' symbols on a tile or in a frame and color them, and
-the Classic Device pictures are Finite Labs' own drawings, some built around a Material
+the Classic Device pictures are Finite Labs' own drawings, most built around a Material
 Design Icons symbol.
 
 Material Design Icons

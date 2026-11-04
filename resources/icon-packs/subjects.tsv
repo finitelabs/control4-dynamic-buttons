@@ -15,7 +15,7 @@ battery-70	battery	Battery	Battery 70%	none	mdi:battery-70	battery:70	ours
 battery-80	battery	Battery	Battery 80%	none	mdi:battery-80	battery:80	ours
 battery-90	battery	Battery	Battery 90%	none	mdi:battery-90	battery:90	ours
 battery-100	battery	Battery	Battery 100%	none	mdi:battery	battery:100	ours
-battery-charging	battery-charging	Battery	Battery Charging	on	mdi:battery-charging-60	battery:60:charging	ours
+battery-charging	battery-charging	Battery	Battery Charging	on	mdi:battery-charging-60	battery:60:charging	mdi:flash
 battery-low	battery-low	Battery	Battery Low	alert	mdi:battery-alert-variant-outline	battery:10:low	ours
 power-on	power	Power and Plugs	Power On	on	mdi:power	mdi:power	mdi:power
 power-off	power	Power and Plugs	Power Off	off	mdi:power	lucide:power	mdi:power
@@ -35,13 +35,13 @@ home-battery-on	home-battery	Energy and Solar	Home Battery Charging	on	mdi:home-
 home-battery-off	home-battery	Energy and Solar	Home Battery Idle	off	mdi:home-battery-outline	tabler:home-bolt	mdi:home-battery
 savings	savings	Energy and Solar	Energy Savings	none	mdi:leaf	lucide:leaf	mdi:leaf
 energy-cost	energy-cost	Energy and Solar	Energy Cost	none	mdi:currency-usd	lucide:circle-dollar-sign	mdi:currency-usd
-ev-charger-on	ev-charger	EV Charging	EV Charging	on	mdi:ev-station	mdi:ev-station	ours
-ev-charger-off	ev-charger	EV Charging	EV Charger Idle	off	mdi:ev-station	tabler:charging-pile	ours
-ev-charger-alert	ev-charger	EV Charging	EV Charger Fault	alert	mdi:ev-station	tabler:charging-pile	ours
+ev-charger-on	ev-charger	EV Charging	EV Charging	on	mdi:ev-station	mdi:ev-station	mdi:flash
+ev-charger-off	ev-charger	EV Charging	EV Charger Idle	off	mdi:ev-station	tabler:charging-pile	mdi:flash
+ev-charger-alert	ev-charger	EV Charging	EV Charger Fault	alert	mdi:ev-station	tabler:charging-pile	mdi:flash
 electric-car	electric-car	EV Charging	Electric Car	none	mdi:car-electric	lucide:car	mdi:car-electric
 ev-plug	ev-plug	EV Charging	EV Plug	none	mdi:ev-plug-type1	lucide:plug-zap	mdi:ev-plug-type1
-leak-dry	leak-sensor	Water and Leaks	Leak Sensor Dry	off	mdi:water-outline	frame:lucide:droplet	ours
-leak-wet	leak-sensor	Water and Leaks	Leak Detected	alert	mdi:water-alert	frame:lucide:droplet	ours
+leak-dry	leak-sensor	Water and Leaks	Leak Sensor Dry	off	mdi:water-outline	frame:lucide:droplet	mdi:water
+leak-wet	leak-sensor	Water and Leaks	Leak Detected	alert	mdi:water-alert	frame:lucide:droplet	mdi:water
 water	water	Water and Leaks	Water	none	mdi:water	lucide:droplet	mdi:water
 water-valve-open	water-valve	Water and Leaks	Water Valve Open	on	mdi:valve-open	mdi:valve-open	mdi:valve-open
 water-valve-closed	water-valve	Water and Leaks	Water Valve Closed	off	mdi:valve-closed	mdi:valve-closed	mdi:valve-closed
