@@ -27,6 +27,9 @@ the programming you attach to it.
   - [Driver Installation](#driver-installation)
   - [Showing the Button in Navigator](#showing-the-button-in-navigator)
   - [The Button Tab](#the-button-tab)
+    - [Looks](#looks)
+    - [Look Editor](#look-editor)
+    - [Icon Search](#icon-search)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
       - [Cloud Settings](#cloud-settings)
@@ -89,20 +92,69 @@ Until the button has a look, it shows the driver's own icon.
 Select the driver in the "System Design" tab and open its "Button" tab to make
 the button's looks.
 
-- **Add Look** opens the editor. Name the look, pick its icon, its icon color,
-  its tile shape (`None`, `Circle`, `Rounded Square` or `Square`) and its tile
-  color. The preview shows the button as the Control4 app shows it.
-- **Included icons** work with no internet. **Search online** searches the free
-  icon packs listed under [Icon Licenses](#icon-licenses). If the computer
-  running Composer cannot reach the icon service, the search goes through the
-  controller.
-- **Save Look** draws the picture and sends it to the driver. The button's first
-  look shows as soon as it is saved.
-- **Show** shows a look now. **Edit**, the arrows and **Delete** change, move
-  and remove a look. Deleting the shown look shows the first remaining look.
+### Looks
 
-A look's name can be up to 40 characters, without commas, and each look on a
-button has its own name.
+<img alt="Button tab - Looks" src="./images/ui-looks.png" width="640"/>
+
+1. **Shown now** - the button as the Control4 app shows it, with the name of the
+   look it shows, or `Driver icon` until a look has a picture.
+1. **Looks** - each look with its picture, name, icon and tile shape. `Shown`
+   marks the look the button shows. `No picture yet` marks a look whose picture
+   has not reached the driver, and `Picture out of date` a look edited since its
+   picture was sent: Navigator shows the earlier picture until the look is saved
+   again.
+1. **Show** - shows the look now. It is off for the shown look and for a look
+   with no picture.
+1. **Edit** - opens the look in the editor.
+1. **↑ / ↓** - moves the look up or down. Programming lists the looks in this
+   order.
+1. **Delete** - deletes the look and its picture, after a second press on
+   `Confirm Delete`. Deleting the shown look shows the first remaining look with
+   a picture, or the driver's own icon when none has one.
+1. **Add Look** - opens the editor for a new look. A button has up to eight
+   looks.
+
+### Look Editor
+
+<img alt="Button tab - Look Editor" src="./images/ui-look-editor.png" width="640"/>
+
+1. **Name** - the look's name in programming: up to 40 characters, without
+   commas, and different from the button's other looks. Picking an icon fills it
+   in when it is empty.
+1. **Tile shape** - `None`, `Circle`, `Rounded Square` or `Square`. With `None`
+   the icon is drawn on its own, larger.
+1. **Icon color** - the color the icon is drawn in.
+1. **Tile color** - the color of the tile behind the icon.
+1. **Included icons / Search online** - picks from the icons included with the
+   driver, which work with no internet, or from the free icon packs online. See
+   [Icon Search](#icon-search).
+1. **All categories / Filter by name** - narrow the included icons by category
+   and by name.
+1. **Icons** - select one to use it for the look.
+1. **Icon** - the picked icon and its license.
+1. **Preview** - the look as the Control4 app shows it.
+1. **Picture** - the picture the driver keeps, at the 300 pixels the app loads.
+1. **Save Look / Cancel** - `Save Look` saves the look and sends its picture to
+   the driver. A look renamed without other changes keeps its picture. The
+   button's first look shows as soon as its picture arrives.
+
+### Icon Search
+
+<img alt="Button tab - Icon Search" src="./images/ui-icon-search.png" width="640"/>
+
+1. **Search** - searches the packs chosen under `Packs` for icons whose names
+   match. If the computer running Composer cannot reach the icon service, the
+   search goes through the controller.
+1. **Style** - `Any`, `Outline` or `Filled`. Shows only the outline or the
+   filled icons among those found, as each pack marks them in its icon names. An
+   icon whose name does not say shows under both. It filters the icons found
+   without searching again.
+1. **Packs** - the packs to search, all fourteen by default. `All` and `None`
+   set every pack at once, and a change searches again.
+1. **Icons** - the icons found that match the style. Select one to use it for
+   the look.
+1. **Icons found** - how many icons the search found, and how many of them the
+   style shows.
 
 ## Driver Setup
 
@@ -154,10 +206,14 @@ Button, regardless of the current version.
 
 #### Reset Driver
 
+> WARNING: Reset Driver deletes every look and its picture. They cannot be
+> brought back.
+
 Returns the driver to a fresh install: it deletes every look and its picture,
 shows the driver's own icon, and returns the properties to their defaults. The
-button keeps its place in Navigator and the programming that uses it, but
-programming that names a deleted look does nothing until it names a new one.
+button keeps its place in Navigator and the programming that uses it.
+Programming that names a deleted look does nothing, even after a new look takes
+the same name: choose the new look in that programming.
 
 **Parameters:**
 
@@ -195,10 +251,16 @@ by its number, so programming keeps working after the look is renamed.
 
 # <span style="color:#109EFF">Icon Licenses</span>
 
-The included icons come from
-[Material Design Icons](https://github.com/Templarian/MaterialDesign) and
-[Material Symbols](https://github.com/google/material-design-icons), both under
-the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+The included icons come from two collections, both under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0):
+
+- [Material Design Icons](https://github.com/Templarian/MaterialDesign),
+  copyright Pictogrammers
+- [Material Symbols](https://github.com/google/material-design-icons), copyright
+  Google LLC
+
+The driver includes these notices and the full license text in its
+`LICENSES.txt` file.
 
 **Search online** uses the free [Iconify](https://iconify.design) service and
 offers only these packs, whose licenses allow their icons to be used without
@@ -221,8 +283,7 @@ credit on each one:
 | Meteocons              | [MIT](https://github.com/basmilius/weather-icons)             |
 | Weather Icons          | [OFL 1.1](https://github.com/erikflowers/weather-icons)       |
 
-Each look keeps the name and license of the icon it was drawn from. The `NOTICE`
-file in the driver's source repository holds the license notices.
+Each look keeps the name and license of the icon it was drawn from.
 
 # <span style="color:#109EFF">Support</span>
 
@@ -261,6 +322,7 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   each drawn from an icon in the colors and tile shape you pick, made in its
   Button tab
 - Added about 280 included icons from Material Design Icons and Material
-  Symbols, and a search across fourteen free icon packs
+  Symbols, and a search across fourteen free icon packs that filters by pack and
+  by outline or filled style
 - Added a Show Look command, a `Look` variable, a Look Changed event and a Look
   Is conditional
