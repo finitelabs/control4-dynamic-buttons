@@ -26,6 +26,7 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   each drawn from an icon in the colors and tile shape you pick, made in its
   Button tab
 - Added about 280 included icons from Material Design Icons and Material
-  Symbols, and a search across fourteen free icon packs
+  Symbols, and a search across fourteen free icon packs that filters by pack and
+  by outline or filled style
 - Added a Show Look command, a `Look` variable, a Look Changed event and a Look
   Is conditional
