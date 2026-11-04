@@ -13,11 +13,6 @@ DC_FILENAME = "dynamic_button.c4z"
 DRIVER_GITHUB_REPO = "finitelabs/control4-dynamic-buttons"
 --#endif
 
--- On a controller the JIT ran tight Lua loops hundreds of times slower than the interpreter.
-if jit then
-  jit.off()
-end
-
 require("lib.utils")
 require("drivers-common-public.global.handlers")
 require("drivers-common-public.global.lib")
@@ -149,6 +144,7 @@ local function tabState()
       tileShape = look.tileShape,
       tileColor = look.tileColor,
       hasImage = look.image ~= nil,
+      stale = look.image ~= nil and look.image.stale == true,
     })
   end
   local shown = button:shown()
@@ -178,11 +174,21 @@ local function pushState()
   return uiRespond("STATE", { state = JSON:encode(tabState()) })
 end
 
+--- Answer the Button tab with the state included, so a reply that comes back without the socket
+--- still updates the page.
+--- @param command string
+--- @param data table<string, string>
+--- @return string json
+local function reply(command, data)
+  data.state = JSON:encode(tabState())
+  return uiRespond(command, data)
+end
+
 --- @param message string
 --- @return string json
 local function pushError(message)
   log:warn("Button tab: %s", message)
-  return uiRespond("ERROR", { message = message })
+  return reply("ERROR", { message = message })
 end
 
 --- @param tParams table
@@ -308,13 +314,24 @@ end
 OnDriverLateInit = diagnostics:wrapLateInit(OnDriverLateInit)
 --#endif
 
+function OnDriverRemovedFromProject()
+  log:trace("OnDriverRemovedFromProject()")
+  if button then
+    button:removed()
+  end
+end
+
+-- An update or a restart keeps the served picture: the next start serves it again anyway.
 function OnDriverDestroyed()
   log:trace("OnDriverDestroyed()")
-  if button then
-    button:destroy()
-  end
   KillAllTimers()
 end
+
+--#ifdef DRIVERCENTRAL
+-- Director calls these itself, so no dispatcher reports their errors.
+OnDriverRemovedFromProject = diagnostics:wrap(OnDriverRemovedFromProject, "OnDriverRemovedFromProject")
+OnDriverDestroyed = diagnostics:wrap(OnDriverDestroyed, "OnDriverDestroyed")
+--#endif
 
 --------------------------------------------------------------------------------
 -- Property handlers (OPC dispatch)
@@ -439,8 +456,8 @@ function UIR._SAVE_LOOK(tParams)
     announceShown(look.id)
   end
   registerLookIs(lookChoices())
-  uiRespond("SAVED", { look = tostring(look.id) })
-  return pushState()
+  pushState()
+  return reply("SAVED", { look = tostring(look.id) })
 end
 
 --- One chunk of a look's picture.
@@ -456,7 +473,7 @@ function UIR._PUT_IMAGE(tParams)
     return pushError(string.format("the picture for %s did not arrive: %s", look.name, err))
   end
   if not png then
-    return uiRespond("CHUNK", { look = tostring(look.id), index = tostring(params.index) })
+    return reply("CHUNK", { look = tostring(look.id), index = tostring(params.index) })
   end
   local before = button:shown()
   local ok = button:imageArrived(look.id, png)
@@ -465,8 +482,8 @@ function UIR._PUT_IMAGE(tParams)
   end
   log:info("Stored the picture for look %s (%d bytes)", look.name, #png)
   announceShown(before and before.id or nil)
-  uiRespond("IMAGE_STORED", { look = tostring(look.id) })
-  return pushState()
+  pushState()
+  return reply("IMAGE_STORED", { look = tostring(look.id) })
 end
 
 --- @param tParams table
@@ -512,12 +529,15 @@ function UIR._ICONIFY(tParams)
   log:trace("UIR._ICONIFY()")
   local params = tabParams(tParams)
   local request = tostring(params.request or "")
-  local url, err = Iconify.url(params.kind, params.value)
+  local url, err = Iconify.url(params.kind, params.value, params.prefixes)
   if not url then
     return uiRespond("ICONIFY", { request = request, error = err })
   end
   http:get(url):next(function(response)
-    C4:SendDataToUI("ICONIFY", { request = request, body = tostring(response.body or "") })
+    -- The HTTP library decodes a JSON reply, as Iconify's are: encode it again for the tab.
+    local body = response.body
+    body = type(body) == "table" and JSON:encode(body) or tostring(body or "")
+    C4:SendDataToUI("ICONIFY", { request = request, body = body })
   end, function(failure)
     C4:SendDataToUI("ICONIFY", { request = request, error = tostring(Select(failure, "error") or failure) })
   end)

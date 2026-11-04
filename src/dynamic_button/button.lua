@@ -52,11 +52,13 @@ function Button:_showDefault()
   self.sendIcon("", "")
 end
 
---- Show a look, under a new address so Navigator loads its picture again.
+--- Show a look, under a new address so Navigator loads its picture again. A look already shown
+--- is left as it is, unless its picture changed.
 --- @param id integer|string
+--- @param changed? boolean The look's picture is new (optional).
 --- @return boolean ok
 --- @return string|nil err Why it was not shown.
-function Button:show(id)
+function Button:show(id, changed)
   local look = self.looks:get(id)
   if not look then
     return false, "no such look"
@@ -64,11 +66,15 @@ function Button:show(id)
   if not look.image then
     return false, "the look's picture has not arrived"
   end
+  local previous = tonumber(self.store:get(SHOWN_PERSIST_KEY))
+  if previous == look.id and not changed then
+    return true
+  end
   local png = self.images:load(look.id)
   if not png then
+    self.looks:setImage(look.id, nil)
     return false, "the look's picture is missing"
   end
-  local previous = tonumber(self.store:get(SHOWN_PERSIST_KEY))
   if not self.images:serve(self.deviceId, look.id, png) then
     return false, "the look's picture could not be served"
   end
@@ -90,6 +96,7 @@ function Button:retell()
 end
 
 --- The first look with a picture, to show when the shown one goes.
+--- @private
 --- @param exceptId integer|nil
 --- @return Look|nil look
 function Button:_fallback(exceptId)
@@ -117,7 +124,7 @@ function Button:imageArrived(id, png)
   self.looks:setImage(look.id, #png)
   local shown = self:shown()
   if shown == nil or shown.id == look.id then
-    local ok, err = self:show(look.id)
+    local ok, err = self:show(look.id, true)
     if not ok then
       log:warn("Could not show look %s: %s", look.name, err)
     end
@@ -140,9 +147,9 @@ function Button:deleteLook(id)
   self.images:unserve(self.deviceId, look.id)
   self.looks:delete(look.id)
   if wasShown then
-    local next = self:_fallback(look.id)
-    if next then
-      self:show(next.id)
+    local replacement = self:_fallback(look.id)
+    if replacement then
+      self:show(replacement.id)
     else
       self:_showDefault()
     end
@@ -151,9 +158,20 @@ function Button:deleteLook(id)
 end
 
 --- At every start: serve the shown look again, since the driver's folder may have been replaced.
+--- A look whose stored picture is gone loses its mark, and the next ready look shows.
 function Button:restore()
   local look = self:shown()
   if not (look and look.image) then
+    look = self:_fallback()
+  end
+  local png
+  while look do
+    png = self.images:load(look.id)
+    if png then
+      break
+    end
+    log:warn("Look %s has no stored picture", look.name)
+    self.looks:setImage(look.id, nil)
     look = self:_fallback()
   end
   for _, other in ipairs(self.looks:list()) do
@@ -161,13 +179,7 @@ function Button:restore()
       self.images:unserve(self.deviceId, other.id)
     end
   end
-  if not look then
-    self:_showDefault()
-    return
-  end
-  local png = self.images:load(look.id)
-  if not png or not self.images:serve(self.deviceId, look.id, png) then
-    log:warn("Look %s has no picture to serve", look.name)
+  if not look or not self.images:serve(self.deviceId, look.id, png) then
     self:_showDefault()
     return
   end
@@ -175,23 +187,20 @@ function Button:restore()
   self:_tell(look)
 end
 
---- When the driver stops: remove the served picture; the next start serves it again.
-function Button:destroy()
-  local shown = tonumber(self.store:get(SHOWN_PERSIST_KEY))
-  if shown then
-    self.images:unserve(self.deviceId, shown)
-  end
-end
-
---- Forget every look and picture, as on a fresh install, and show the driver's own icon.
-function Button:reset()
+--- The button left the project: remove every stored and served picture.
+function Button:removed()
   for _, look in ipairs(self.looks:list()) do
     self.images:cancel(look.id)
     self.images:remove(look.id)
     self.images:unserve(self.deviceId, look.id)
   end
+end
+
+--- Forget every look and picture, as on a fresh install, and show the driver's own icon. The
+--- address version and look ids go on, so no app shows an old picture for a new look.
+function Button:reset()
+  self:removed()
   self.looks:clear()
-  self.store:set(VERSION_PERSIST_KEY, nil)
   self:_showDefault()
 end
 

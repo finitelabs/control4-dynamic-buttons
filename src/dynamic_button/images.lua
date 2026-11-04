@@ -8,6 +8,7 @@ local log = require("lib.logging")
 
 --- @class Upload
 --- @field token string The upload's id, chosen by the Button tab.
+--- @field at number When its last chunk arrived, in seconds.
 --- @field count integer How many chunks the upload has.
 --- @field nextIndex integer The chunk expected next, from 1.
 --- @field parts string[] The decoded chunks so far.
@@ -15,23 +16,42 @@ local log = require("lib.logging")
 
 --- @class Images
 --- @field _uploads table<integer, Upload> The upload in progress for each look.
+--- @field _now fun(): number The clock, in seconds.
 local Images = {}
 Images.__index = Images
 
---- The largest picture a look keeps, in bytes.
-Images.MAX_BYTES = 2 * 1024 * 1024
+--- The largest picture a look keeps, in bytes: well above a 300 px PNG.
+Images.MAX_BYTES = 512 * 1024
+
+--- An upload with no new chunk for this long is dropped, in seconds.
+Images.STALE_SECONDS = 60
 
 --- The largest chunk the Button tab sends, in base64 characters.
 Images.MAX_CHUNK = 48 * 1024
 
 local PNG_SIGNATURE = "\137PNG\r\n\26\n"
 local WWW_ROOT = "www/buttons"
+--- The stored pictures' folder in the button's own storage.
+local SOURCE_DIR = "looks"
 
+--- @param now? fun(): number The clock, in seconds (optional). Defaults to os.time.
 --- @return Images images
-function Images:new()
+function Images:new(now)
   local instance = setmetatable({}, self)
   instance._uploads = {}
+  instance._now = now or os.time
   return instance
+end
+
+--- Drop uploads that stopped arriving, so an abandoned one doesn't hold its chunks.
+--- @private
+function Images:_dropStale()
+  local now = self._now()
+  for lookId, upload in pairs(self._uploads) do
+    if now - upload.at >= Images.STALE_SECONDS then
+      self._uploads[lookId] = nil
+    end
+  end
 end
 
 --- Take one chunk of a look's picture.
@@ -43,6 +63,7 @@ end
 --- @return string|nil png The whole picture once its last chunk arrived, else nil.
 --- @return string|nil err Why the upload was dropped.
 function Images:accept(lookId, token, index, count, data)
+  self:_dropStale()
   lookId, index, count = tonumber(lookId), tonumber(index), tonumber(count)
   token, data = tostring(token or ""), tostring(data or "")
   local maxChunks = math.ceil(Images.MAX_BYTES * 4 / 3 / Images.MAX_CHUNK) + 1
@@ -59,7 +80,7 @@ function Images:accept(lookId, token, index, count, data)
   end
   local upload = self._uploads[lookId]
   if index == 1 then
-    upload = { token = token, count = count, nextIndex = 1, parts = {}, bytes = 0 }
+    upload = { token = token, count = count, nextIndex = 1, parts = {}, bytes = 0, at = self._now() }
     self._uploads[lookId] = upload
   elseif not upload or upload.token ~= token or upload.count ~= count or upload.nextIndex ~= index then
     self._uploads[lookId] = nil
@@ -73,10 +94,11 @@ function Images:accept(lookId, token, index, count, data)
   upload.bytes = upload.bytes + #decoded
   if upload.bytes > Images.MAX_BYTES then
     self._uploads[lookId] = nil
-    return nil, "picture is larger than 2 MB"
+    return nil, "picture is larger than 512 KB"
   end
   table.insert(upload.parts, decoded)
   upload.nextIndex = index + 1
+  upload.at = self._now()
   if index < count then
     return nil
   end
@@ -94,8 +116,8 @@ function Images:cancel(lookId)
   self._uploads[tonumber(lookId) or -1] = nil
 end
 
---- @param alias string
---- @param subdir string|nil
+--- @param alias string A documented path alias.
+--- @param subdir string The sub-folder of the alias.
 --- @param name string
 --- @param data string
 --- @return boolean ok
@@ -118,8 +140,8 @@ local function writeFile(alias, subdir, name, data)
   return true
 end
 
---- @param alias string
---- @param subdir string|nil
+--- @param alias string A documented path alias.
+--- @param subdir string The sub-folder of the alias.
 --- @param name string
 --- @return string|nil data
 local function readFile(alias, subdir, name)
@@ -137,8 +159,8 @@ local function readFile(alias, subdir, name)
   return data
 end
 
---- @param alias string
---- @param subdir string|nil
+--- @param alias string A documented path alias.
+--- @param subdir string The sub-folder of the alias.
 --- @param name string
 local function deleteFile(alias, subdir, name)
   C4:FileSetDir(alias, subdir)
@@ -158,18 +180,19 @@ end
 --- @param png string
 --- @return boolean ok
 function Images:save(lookId, png)
-  return writeFile("SANDBOX", nil, sourceName(lookId), png)
+  C4:FileCreateDir("SANDBOX", SOURCE_DIR)
+  return writeFile("SANDBOX", SOURCE_DIR, sourceName(lookId), png)
 end
 
 --- @param lookId integer
 --- @return string|nil png The look's stored picture.
 function Images:load(lookId)
-  return readFile("SANDBOX", nil, sourceName(lookId))
+  return readFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
 end
 
 --- @param lookId integer
 function Images:remove(lookId)
-  deleteFile("SANDBOX", nil, sourceName(lookId))
+  deleteFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
 end
 
 --- @param deviceId integer

@@ -30,6 +30,9 @@ Iconify.MAX_QUERY = 64
 --- The most icons of one pack fetched in one request.
 Iconify.MAX_ICONS = 48
 
+--- The most results a search asks for; the tab filters them by style.
+Iconify.SEARCH_LIMIT = 192
+
 local allowed = {}
 for _, prefix in ipairs(Iconify.PACKS) do
   allowed[prefix] = true
@@ -49,19 +52,48 @@ local function encode(s)
   end))
 end
 
+--- The packs a search names, all of them when it names none.
+--- @param prefixes string|nil Comma-separated pack prefixes.
+--- @return string|nil packs Comma-separated, or nil when one is not offered.
+local function searchPacks(prefixes)
+  prefixes = tostring(prefixes or "")
+  if prefixes == "" then
+    return table.concat(Iconify.PACKS, ",")
+  end
+  local list = {}
+  for prefix in prefixes:gmatch("[^,]+") do
+    if not Iconify.allowed(prefix) then
+      return nil
+    end
+    table.insert(list, prefix)
+  end
+  return #list > 0 and table.concat(list, ",") or nil
+end
+
 --- The Iconify address for one of the Button tab's requests, or nil for any other request.
 --- @param kind string "search", "icon" or "collections".
 --- @param value string|nil The search text, or the icons' `<pack>:<name>[,<name>...]`.
+--- @param prefixes? string|nil For a search, the packs to search, comma-separated (optional). All by default.
 --- @return string|nil url
 --- @return string|nil err
-function Iconify.url(kind, value)
+function Iconify.url(kind, value, prefixes)
   local packs = table.concat(Iconify.PACKS, ",")
   if kind == "search" then
     local query = tostring(value or ""):match("^%s*(.-)%s*$")
     if query == "" or #query > Iconify.MAX_QUERY or query:find("[%c]") then
       return nil, "search text is empty or too long"
     end
-    return string.format("%s/search?query=%s&prefixes=%s&limit=96", Iconify.API, encode(query), packs)
+    local searched = searchPacks(prefixes)
+    if not searched then
+      return nil, "not an offered icon pack"
+    end
+    return string.format(
+      "%s/search?query=%s&prefixes=%s&limit=%d",
+      Iconify.API,
+      encode(query),
+      searched,
+      Iconify.SEARCH_LIMIT
+    )
   elseif kind == "icon" then
     local prefix, names = tostring(value or ""):match("^([%w%-]+):([%w%-,]+)$")
     if not prefix or not Iconify.allowed(prefix) then

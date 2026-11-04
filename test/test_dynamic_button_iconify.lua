@@ -23,14 +23,23 @@ T.section("A search")
 T.eq(
   "searches only the offered packs",
   Iconify.url("search", "battery"),
-  "https://api.iconify.design/search?query=battery&prefixes=" .. PACKS .. "&limit=96"
+  "https://api.iconify.design/search?query=battery&prefixes=" .. PACKS .. "&limit=192"
 )
 T.eq(
   "encodes what it searches for",
   Iconify.url("search", "  light bulb & fan "),
-  "https://api.iconify.design/search?query=light%20bulb%20%26%20fan&prefixes=" .. PACKS .. "&limit=96"
+  "https://api.iconify.design/search?query=light%20bulb%20%26%20fan&prefixes=" .. PACKS .. "&limit=192"
 )
-local _, err = Iconify.url("search", "   ")
+T.eq(
+  "or only the packs it names",
+  Iconify.url("search", "battery", "tabler,lucide"),
+  "https://api.iconify.design/search?query=battery&prefixes=tabler,lucide&limit=192"
+)
+local _, err = Iconify.url("search", "battery", "mdi,simple-icons")
+T.eq("refuses a pack not offered among them", err, "not an offered icon pack")
+_, err = Iconify.url("search", "battery", ",")
+T.eq("and a list that names none", err, "not an offered icon pack")
+_, err = Iconify.url("search", "   ")
 T.eq("refuses an empty search", err, "search text is empty or too long")
 _, err = Iconify.url("search", string.rep("a", Iconify.MAX_QUERY + 1))
 T.eq("refuses one over 64 characters", err, "search text is empty or too long")

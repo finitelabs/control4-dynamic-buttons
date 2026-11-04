@@ -9,8 +9,10 @@
 local T = require("testlib")
 local H = require("dynamic_button_harness")
 local Looks = require("dynamic_button.looks")
+require("lib.utils")
 
---- A persist-like store that keeps values in a table, as lib.persist's cache does.
+--- A persist-like store that hands out copies, as lib.persist does, so a change that is not saved
+--- is lost here as it would be there.
 local function memoryStore()
   local data = {}
   return {
@@ -19,10 +21,10 @@ local function memoryStore()
       if v == nil then
         return default
       end
-      return v
+      return TableDeepCopy(v)
     end,
     set = function(_, key, value)
-      data[key] = value
+      data[key] = TableDeepCopy(value)
     end,
   }
 end
@@ -47,6 +49,11 @@ _, err = looks:add(H.lookFields("Red, White"))
 T.eq("a comma is refused, since programming lists are comma-separated", err, "a look's name can't contain a comma")
 _, err = looks:add(H.lookFields(string.rep("n", Looks.MAX_NAME + 1)))
 T.eq("a name over the limit is refused", err, "a look's name can be at most 40 characters")
+local accented = looks:add(H.lookFields("Éclairage extérieur à l'arrière"))
+T.eq("a name is counted in characters, not bytes", accented and accented.name, "Éclairage extérieur à l'arrière")
+_, err = looks:add(H.lookFields(string.rep("é", Looks.MAX_NAME + 1)))
+T.eq("and refused past 40 of them", err, "a look's name can be at most 40 characters")
+looks:delete(accented.id)
 local trimmed = looks:add(H.lookFields("  Full  "))
 T.eq("a name is trimmed", trimmed.name, "Full")
 looks:delete(trimmed.id)
@@ -97,8 +104,12 @@ local edited = looks:update(a.id, H.lookFields("Charged", { iconColor = "#000000
 T.eq("its fields change", { edited.iconColor, edited.tileShape }, { "#000000", "Circle" })
 T.eq("it keeps its id", edited.id, a.id)
 T.eq("it keeps its picture until a new one arrives", edited.image and edited.image.bytes, 1234)
-local renamed = looks:update(a.id, H.lookFields("Full"))
+T.truthy("marked out of date, since it was drawn from other fields", edited.image.stale)
+T.falsy("until a new picture arrives", looks:setImage(a.id, 2345).image.stale)
+local renamed = looks:update(a.id, H.lookFields("Full", { iconColor = "#000000", tileShape = "Circle" }))
 T.eq("it can be renamed", renamed.name, "Full")
+T.falsy("and a rename leaves the picture current", renamed.image.stale)
+T.eq("a look whose stored picture is gone loses its mark", looks:setImage(b.id, nil).image, nil)
 local _, clash = looks:update(a.id, H.lookFields("Low"))
 T.eq("but not to another look's name", clash, "another look is already named Low")
 T.eq("keeping its own name is no clash", looks:update(b.id, H.lookFields("Low")) ~= nil, true)
@@ -107,6 +118,9 @@ T.eq("a look that is gone can't be edited", gone, "no such look")
 
 T.section("Programming labels")
 T.eq("a look is listed by name and id", Looks.label(looks:get(a.id)), "Full (1)")
+local unsaved = looks:get(a.id)
+unsaved.name = "Changed without saving"
+T.eq("a listed look changed without saving changes nothing", looks:get(a.id).name, "Full")
 T.eq("a label finds its look by the id", looks:fromChoice("Charged (1)").name, "Full")
 T.eq("so a choice made before a rename still finds it", looks:fromChoice("Charged (1)").id, a.id)
 T.eq("a bare name finds a look too", looks:fromChoice("low").id, b.id)
@@ -139,8 +153,13 @@ local reloaded = Looks:new(getmetatable(persist):new())
 T.eq("a new persist instance reads the look back", reloaded:get(kept.id).name, "Kept")
 T.eq("with its picture's size", reloaded:get(kept.id).image.bytes, 99)
 T.eq("and the next id goes on from where it was", reloaded:add(H.lookFields("Next")).id, kept.id + 1)
+local nextId = kept.id + 2
 reloaded:clear()
 T.eq("clear forgets them", #reloaded:list(), 0)
-T.eq("and ids start again from 1", reloaded:add(H.lookFields("Fresh")).id, 1)
+T.eq(
+  "but ids go on, so an old programming choice never names a new look",
+  reloaded:add(H.lookFields("Fresh")).id,
+  nextId
+)
 
 T.finish()

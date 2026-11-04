@@ -1,6 +1,6 @@
 --- A look's picture on its way from the Button tab: base64 chunks taken in order, refused out of
---- order, short, oversized or not a PNG; kept in the button's storage; served from the driver's web
---- folder; and the address Navigator loads it from.
+--- order, short, oversized or not a PNG, and dropped when they stop arriving; kept in a folder of
+--- the button's storage; served from the driver's web folder; and the address Navigator loads it from.
 ---
 --- Run from the driver root:
 ---   make test
@@ -56,6 +56,21 @@ T.eq("chunk 1 of a new upload starts over", images:accept(4, "second", 1, 1, chu
 _, err = images:accept(4, "first", 3, 3, parts[3])
 T.eq("and the old upload's last chunk is refused", err, "chunk out of order")
 
+T.section("An upload that stops arriving")
+local clock = 1000
+local timed = Images:new(function()
+  return clock
+end)
+timed:accept(11, "s", 1, 3, parts[1])
+clock = clock + Images.STALE_SECONDS - 1
+timed:accept(11, "s", 2, 3, parts[2])
+T.eq("waits while its chunks keep coming", timed._uploads[11] ~= nil, true)
+clock = clock + Images.STALE_SECONDS
+timed:accept(12, "t", 1, 1, chunks(single, 49152)[1])
+T.eq("is dropped a minute after its last chunk", timed._uploads[11], nil)
+_, err = timed:accept(11, "s", 3, 3, parts[3])
+T.eq("so its last chunk is refused", err, "chunk out of order")
+
 T.section("A missing last chunk")
 local waiting = Images:new()
 waiting:accept(5, "d", 1, 3, parts[1])
@@ -83,7 +98,7 @@ T.eq("a chunk numbered 0", err, "chunk out of range")
 _, err = images:accept(8, "g", 2, 1, parts[1])
 T.eq("a chunk past the count", err, "chunk out of range")
 _, err = images:accept(8, "g", 1, 500, parts[1])
-T.eq("a count more than a 2 MB picture needs", err, "chunk out of range")
+T.eq("a count more than the largest picture needs", err, "chunk out of range")
 _, err = images:accept(nil, "g", 1, 1, parts[1])
 T.eq("a chunk with no look", err, "chunk without its look, upload, place or count")
 _, err = images:accept(8, "", 1, 1, parts[1])
@@ -91,7 +106,7 @@ T.eq("a chunk with no upload", err, "chunk without its look, upload, place or co
 _, err = images:accept(8, "g", 1, 1, C4:Base64Encode("not a png at all"))
 T.eq("a picture that is not a PNG", err, "picture is not a PNG")
 
-T.section("A picture over 2 MB")
+T.section("A picture over 512 KB")
 local big = H.PNG_SIGNATURE .. string.rep("z", Images.MAX_BYTES)
 local bigParts = chunks(big, Images.MAX_CHUNK)
 local bigErr
@@ -102,18 +117,23 @@ for i, part in ipairs(bigParts) do
     break
   end
 end
-T.eq("is refused once its size passes the limit", bigErr, "picture is larger than 2 MB")
+T.eq("is refused once its size passes the limit", bigErr, "picture is larger than 512 KB")
 local exact = H.PNG_SIGNATURE .. string.rep("z", Images.MAX_BYTES - #H.PNG_SIGNATURE)
 local exactParts, whole = chunks(exact, Images.MAX_CHUNK), nil
 for i, part in ipairs(exactParts) do
   whole = images:accept(10, "i", i, #exactParts, part)
 end
-T.eq("a picture of exactly 2 MB is taken", whole and #whole, Images.MAX_BYTES)
+T.eq("a picture of exactly 512 KB is taken", whole and #whole, Images.MAX_BYTES)
 
 T.section("Keeping and serving a picture")
+T.raises("the harness refuses a folder call with an explicit nil folder", function()
+  C4:FileSetDir("SANDBOX", nil)
+end)
 local store = Images:new()
 T.truthy("a picture is kept", store:save(3, png))
-T.eq("in the button's storage", H.stored()["look-3.png"], png)
+T.truthy("in a folder made in the button's storage", H.dirs["SANDBOX/looks"])
+T.eq("under the look's number", H.stored()["look-3.png"], png)
+T.eq("and nothing at the storage's top", ShimFiles("SANDBOX")["look-3.png"], nil)
 T.eq("and read back", store:load(3), png)
 T.truthy("a new picture replaces it", store:save(3, single))
 T.eq("whole, not appended", store:load(3), single)

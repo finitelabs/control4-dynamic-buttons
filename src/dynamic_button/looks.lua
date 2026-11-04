@@ -18,7 +18,8 @@ local log = require("lib.logging")
 --- @field iconColor string The icon's color, `#RRGGBB`.
 --- @field tileShape string The shape behind the icon, one of `Looks.SHAPES`.
 --- @field tileColor string The tile's color, `#RRGGBB`.
---- @field image? { bytes: integer } The drawn picture, once the Button tab has sent it.
+--- @field image? { bytes: integer, stale?: boolean } The drawn picture, once the Button tab has sent it;
+--- stale while the look's fields have changed since it was drawn.
 
 --- @class Looks
 --- @field _store table The persist store the looks are kept in.
@@ -30,6 +31,9 @@ Looks.MAX = 8
 
 --- The longest look name, in characters.
 Looks.MAX_NAME = 40
+
+--- The fields a look's picture is drawn from.
+local DRAWN_FIELDS = { "iconColor", "tileShape", "tileColor" }
 
 --- The shapes a look's tile can take.
 Looks.SHAPES = { "None", "Circle", "Rounded Square", "Square" }
@@ -142,7 +146,8 @@ function Looks:_check(fields, exceptId)
   if name == "" then
     return nil, "a look needs a name"
   end
-  if #name > Looks.MAX_NAME then
+  -- Characters, as the tab counts them: UTF-8 continuation bytes don't count.
+  if #name:gsub("[\128-\191]", "") > Looks.MAX_NAME then
     return nil, string.format("a look's name can be at most %d characters", Looks.MAX_NAME)
   end
   if name:find(",", 1, true) then
@@ -233,6 +238,9 @@ function Looks:update(id, fields)
       end
       look.id = id
       look.image = old.image
+      if look.image and Looks._drawnDiffers(old, look) then
+        look.image.stale = true
+      end
       data.list[i] = look
       self:_save(data)
       return look
@@ -241,16 +249,32 @@ function Looks:update(id, fields)
   return nil, "no such look"
 end
 
---- Record that a look's picture arrived.
+--- Whether two versions of a look draw different pictures.
+--- @param a Look
+--- @param b Look
+--- @return boolean
+function Looks._drawnDiffers(a, b)
+  if a.icon.id ~= b.icon.id or a.icon.body ~= b.icon.body then
+    return true
+  end
+  for _, field in ipairs(DRAWN_FIELDS) do
+    if a[field] ~= b[field] then
+      return true
+    end
+  end
+  return false
+end
+
+--- Record that a look's picture arrived, or with nil that it is gone.
 --- @param id integer
---- @param bytes integer
+--- @param bytes integer|nil
 --- @return Look|nil look
 function Looks:setImage(id, bytes)
   id = tonumber(id)
   local data = self:_load()
   for _, look in ipairs(data.list) do
     if look.id == id then
-      look.image = { bytes = bytes }
+      look.image = bytes and { bytes = bytes } or nil
       self:_save(data)
       return look
     end
@@ -299,9 +323,11 @@ function Looks:reorder(ids)
   return true
 end
 
---- Forget every look; ids start again from 1, as on a fresh install.
+--- Forget every look. Ids go on from where they were, so a programming choice naming an old
+--- look never finds a new one.
 function Looks:clear()
-  self._store:set(LOOKS_PERSIST_KEY, nil)
+  local data = self:_load()
+  self:_save({ nextId = data.nextId, list = {} })
 end
 
 return Looks

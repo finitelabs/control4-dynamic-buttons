@@ -61,8 +61,39 @@ function C4:FireEvent(name)
   table.insert(H.fired, name)
 end
 function C4:FileCreateDir(alias, dir)
+  assert(type(alias) == "string" and type(dir) == "string", "FileCreateDir takes an alias and a folder")
   H.dirs[alias .. "/" .. dir] = true
   return true
+end
+
+-- Only the documented forms: an alias, or an alias and a folder. An explicit nil folder is refused,
+-- since a controller's API methods check their arguments strictly.
+local fileSetDir = C4.FileSetDir
+function C4:FileSetDir(...)
+  local count, dir, subdir = select("#", ...), ...
+  if count >= 2 and subdir == nil then
+    error("FileSetDir: an explicit nil folder", 2)
+  end
+  return fileSetDir(self, dir, subdir)
+end
+
+-- What the driver fetched, and Iconify's answer: a JSON body with Iconify's own content type, so the
+-- vendored url.lua decodes it as it does on a controller.
+USER_AGENT = "test"
+H.fetched = {}
+H.iconifyBody = '{"icons":["mdi:battery"],"total":1}'
+C4.url = function()
+  local transfer = {}
+  function transfer:SetOptions() end
+  function transfer:OnDone(callback)
+    self.onDone = callback
+  end
+  function transfer:Get(url)
+    table.insert(H.fetched, url)
+    local headers = { ["Content-Type"] = "application/json; charset=utf-8" }
+    pcall(self.onDone, self, { { code = 200, headers = headers, body = H.iconifyBody } }, 0, nil)
+  end
+  return transfer
 end
 local configInfo = C4.GetDriverConfigInfo
 function C4:GetDriverConfigInfo(section)
@@ -80,12 +111,20 @@ function H.start()
   Properties = Properties and next(Properties) and Properties or H.defaultProperties()
   dofile(H.DRIVER)
   OnDriverInit()
-  OnDriverLateInit()
+  ShimLateInit()
 end
 
---- Stop and load the driver again, as an update or a Director restart does. Stored data survives.
+--- A Director restart: the driver stops, its variables, conditional tests and cached state are gone,
+--- and only what it stored comes back.
 function H.restart()
   OnDriverDestroyed()
+  ShimRestartDirector()
+  require("lib.persist")._persist = {}
+  for name in pairs(TC) do
+    if type(name) == "string" and name:match("^CONDITIONAL_%d+$") then
+      TC[name] = nil
+    end
+  end
   H.start()
 end
 
@@ -197,7 +236,7 @@ end
 
 --- @return table<string, string> files The button's stored pictures, by file name.
 function H.stored()
-  return ShimFiles("SANDBOX")
+  return ShimFiles("SANDBOX/looks")
 end
 
 return H
