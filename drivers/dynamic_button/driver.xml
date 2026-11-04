@@ -127,6 +127,16 @@
         <default>Button Settings</default>
       </property>
       <property>
+        <name>Look Control</name>
+        <type>LIST</type>
+        <items>
+          <item>On Select</item>
+          <item>Manual</item>
+        </items>
+        <default>Manual</default>
+        <description>On Select shows the next look on each press. Manual leaves it to programming.</description>
+      </property>
+      <property>
         <name>Shown Look</name>
         <type>STRING</type>
         <default/>
@@ -175,6 +185,14 @@
             <type>DYNAMIC_LIST</type>
           </param>
         </params>
+      </command>
+      <command>
+        <name>Next Look</name>
+        <description>Show the next look in the cycle on NAME</description>
+      </command>
+      <command>
+        <name>Previous Look</name>
+        <description>Show the previous look in the cycle on NAME</description>
       </command>
     </commands>
   </config>
