@@ -171,9 +171,10 @@ the button's looks.
 1. **Edit** - opens the look in the editor.
 1. **↑ / ↓** - moves the look up or down. The button cycles through the looks in
    this order, and programming lists them in it.
-1. **Delete** - deletes the look and its picture, after a second press on
-   `Confirm Delete`. Deleting the shown look shows the first remaining look with
-   a picture, or the driver's own icon when none has one.
+1. **Delete** - deletes the look, its picture, and its `Shown` event with the
+   programming on it, after a second press on `Confirm Delete`. Deleting the
+   shown look shows the first remaining look with a picture, or the driver's own
+   icon when none has one.
 1. **Add Look** - opens the editor for a new look. A button has up to eight
    looks.
 
@@ -225,9 +226,9 @@ the button's looks.
 
 Set the [Look Control](#look-control--on-select--manual-) property to
 `On Select` to make each press of the button show the next look. The button
-steps through the looks in the order the Button tab lists them, from the last
-look back to the first, and passes over a look with **In cycle** off or with no
-picture yet. With `Manual`, a press leaves the look as it is and only
+steps through the looks in the order the Button tab lists them, wrapping from
+the last look back to the first, and passes over a look with **In cycle** off or
+with no picture yet. With `Manual`, a press leaves the look as it is and only
 programming changes it. Show Look, Next Look and Previous Look work in both
 modes.
 
@@ -365,11 +366,11 @@ Monitoring is Enabled.
 
 ### Commands
 
-| Command       | Parameters | Description                                         |
-| ------------- | ---------- | --------------------------------------------------- |
-| Show Look     | Look       | Shows the look on the button, in the cycle or not   |
-| Next Look     |            | Shows the next look in the cycle, as a press does   |
-| Previous Look |            | Shows the previous look in the cycle, wrapping back |
+| Command       | Parameters | Description                                                |
+| ------------- | ---------- | ---------------------------------------------------------- |
+| Show Look     | Look       | Shows the look on the button, in the cycle or not          |
+| Next Look     |            | Shows the next look in the cycle, wrapping to the first    |
+| Previous Look |            | Shows the previous look in the cycle, wrapping to the last |
 
 Looks show in programming as their name and number. Show Look finds the look by
 its number, so programming keeps working after the look is renamed. Next Look
