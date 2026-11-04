@@ -1,0 +1,213 @@
+<devicedata>
+  <name>Dynamic Button</name>
+  <version/>
+  <manufacturer>Finite Labs</manufacturer>
+  <model>Dynamic Button</model>
+  <creator>Finite Labs</creator>
+  <small image_source="c4z">icons/device_sm.png</small>
+  <large image_source="c4z">icons/device_lg.png</large>
+  <control>lua_gen</control>
+  <driver>DriverWorks</driver>
+  <copyright>Copyright 2026 Finite Labs, LLC. All rights reserved.</copyright>
+  <created>11/04/2026 12:00:00 PM</created>
+  <modified/>
+  <minimum_os_version>3.3.1</minimum_os_version>
+  <composer_categories>
+    <category>Other</category>
+  </composer_categories>
+  <conditionals/>
+  <events>
+    <event>
+      <id>1</id>
+      <name>Look Changed</name>
+      <description>When the look NAME shows changes</description>
+    </event>
+  </events>
+  <config>
+    <script file="driver.lua" jit="1"/>
+    <documentation file="www/documentation/index.html"/>
+    <properties>
+      <property>
+        <name>Cloud</name>
+        <type>LABEL</type>
+        <default>Cloud Settings</default>
+      </property>
+      <!-- #ifdef DRIVERCENTRAL -->
+      <property>
+        <name>Cloud Status</name>
+        <default/>
+        <type>STRING</type>
+        <readonly>true</readonly>
+      </property>
+      <!-- #endif -->
+      <property>
+        <name>Automatic Updates</name>
+        <type>LIST</type>
+        <items>
+          <item>Off</item>
+          <item>On</item>
+        </items>
+        <default>On</default>
+      </property>
+      <!-- #ifndef DRIVERCENTRAL -->
+      <property>
+        <name>Update Channel</name>
+        <type>LIST</type>
+        <default>Production</default>
+        <items>
+          <item>Production</item>
+          <item>Prerelease</item>
+        </items>
+      </property>
+      <!-- #endif -->
+      <property>
+        <name>Driver</name>
+        <type>LABEL</type>
+        <default>Driver Settings</default>
+      </property>
+      <property>
+        <name>Driver Status</name>
+        <type>STRING</type>
+        <default/>
+        <readonly>true</readonly>
+      </property>
+      <property>
+        <name>Driver Version</name>
+        <type>STRING</type>
+        <default/>
+        <readonly>true</readonly>
+      </property>
+      <property>
+        <name>Log Level</name>
+        <type>LIST</type>
+        <default>3 - Info</default>
+        <items>
+          <item>0 - Fatal</item>
+          <item>1 - Error</item>
+          <item>2 - Warning</item>
+          <item>3 - Info</item>
+          <item>4 - Debug</item>
+          <item>5 - Trace</item>
+          <item>6 - Ultra</item>
+        </items>
+      </property>
+      <property>
+        <name>Log Mode</name>
+        <type>LIST</type>
+        <default>Off</default>
+        <items>
+          <item>Off</item>
+          <item>Print</item>
+          <item>Log</item>
+          <item>Print and Log</item>
+        </items>
+      </property>
+      <!-- #ifdef DRIVERCENTRAL -->
+      <property>
+        <name>Support Code</name>
+        <type>STRING</type>
+        <default/>
+        <description>Enter only a code from Finite Labs support. It opens the Lua window for an hour.</description>
+        <password>true</password>
+      </property>
+      <property>
+        <name>Cloud Monitoring</name>
+        <type>LIST</type>
+        <default>Enabled</default>
+        <items>
+          <item>Disabled</item>
+          <item>Enabled</item>
+        </items>
+        <description>Sends memory and error reports to Finite Labs so we can fix driver problems.</description>
+      </property>
+      <!-- #endif -->
+      <property>
+        <name>Button Settings</name>
+        <type>LABEL</type>
+        <default>Button Settings</default>
+      </property>
+      <property>
+        <name>Shown Look</name>
+        <type>STRING</type>
+        <default/>
+        <readonly>true</readonly>
+        <description>The look the Navigator button shows. Looks are made in the Button tab.</description>
+      </property>
+    </properties>
+    <tabs>
+      <tab name="Button" file="html/index.html"/>
+    </tabs>
+    <actions>
+      <!-- #ifndef DRIVERCENTRAL -->
+      <action>
+        <name>Update Drivers</name>
+        <command>Update_Drivers</command>
+      </action>
+      <!-- #endif -->
+      <action>
+        <name>Reset Driver</name>
+        <command>Reset_Driver</command>
+        <params>
+          <param>
+            <name>Are You Sure?</name>
+            <type>LIST</type>
+            <items>
+              <item>No</item>
+              <item>Yes</item>
+            </items>
+          </param>
+        </params>
+      </action>
+      <!-- #ifdef DRIVERCENTRAL -->
+      <action>
+        <name>Diagnostics Snapshot</name>
+        <command>DiagnosticsSnapshot</command>
+      </action>
+      <!-- #endif -->
+    </actions>
+    <commands>
+      <command>
+        <name>Show Look</name>
+        <description>Show PARAM1 on NAME</description>
+        <params>
+          <param>
+            <name>Look</name>
+            <type>DYNAMIC_LIST</type>
+          </param>
+        </params>
+      </command>
+    </commands>
+  </config>
+  <capabilities>
+    <navigator_display_option proxybindingid="5001">
+      <display_icons>
+          <Icon width="70" height="70">controller://driver/dynamic_button/icons/experience_70.png</Icon>
+          <Icon width="90" height="90">controller://driver/dynamic_button/icons/experience_90.png</Icon>
+          <Icon width="300" height="300">controller://driver/dynamic_button/icons/experience_300.png</Icon>
+          <Icon width="512" height="512">controller://driver/dynamic_button/icons/experience_512.png</Icon>
+          <Icon width="1024" height="1024">controller://driver/dynamic_button/icons/experience_1024.png</Icon>
+      </display_icons>
+    </navigator_display_option>
+  </capabilities>
+  <proxies qty="1">
+    <proxy proxybindingid="5001" primary="True" name="Dynamic Button" image_source="c4z" large_image="icons/device_lg.png" small_image="icons/device_sm.png">uibutton</proxy>
+  </proxies>
+  <connections>
+    <connection>
+      <id>5001</id>
+      <facing>6</facing>
+      <connectionname>UIBUTTON</connectionname>
+      <type>2</type>
+      <consumer>False</consumer>
+      <audiosource>False</audiosource>
+      <videosource>False</videosource>
+      <linelevel>False</linelevel>
+      <hidden>True</hidden>
+      <classes>
+        <class>
+          <classname>UIBUTTON</classname>
+        </class>
+      </classes>
+    </connection>
+  </connections>
+</devicedata>
