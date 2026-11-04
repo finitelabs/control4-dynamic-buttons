@@ -1,5 +1,6 @@
 -- A button's looks: each one picture the Navigator button can show, with the icon it was drawn
--- from and how it was drawn. The list order is the order the Button tab shows them in.
+-- from and how it was drawn. The list order is the order the Button tab shows them in, and the
+-- order the button cycles through them.
 
 local log = require("lib.logging")
 
@@ -18,6 +19,7 @@ local log = require("lib.logging")
 --- @field iconColor string The icon's color, `#RRGGBB`.
 --- @field tileShape string The shape behind the icon, one of `Looks.SHAPES`.
 --- @field tileColor string The tile's color, `#RRGGBB`.
+--- @field inCycle? boolean False for a look the cycle skips; a look without the field is in it.
 --- @field image? { bytes: integer, stale?: boolean } The drawn picture, once the Button tab has sent it;
 --- stale while the look's fields have changed since it was drawn.
 
@@ -198,7 +200,15 @@ function Looks:_check(fields, exceptId)
     iconColor = iconColor,
     tileShape = fields.tileShape,
     tileColor = tileColor,
+    inCycle = fields.inCycle ~= false,
   }
+end
+
+--- Whether stepping through the cycle can land on a look.
+--- @param look Look
+--- @return boolean
+function Looks.inCycle(look)
+  return look.inCycle ~= false
 end
 
 --- Add a look at the end of the list.

@@ -69,6 +69,12 @@ end
 function C4:FireEvent(name)
   table.insert(H.fired, name)
 end
+-- A dynamic event is recorded by its declared name, so a test reads "Low Shown" rather than an id;
+-- an id nothing declares is recorded as such, and fires nothing on a controller.
+function C4:FireEventByID(id)
+  local declared = ShimEvents()[id]
+  table.insert(H.fired, declared and declared.name or ("undeclared event " .. tostring(id)))
+end
 function C4:FileCreateDir(alias, dir)
   assert(type(alias) == "string" and type(dir) == "string", "FileCreateDir takes an alias and a folder")
   H.dirs[alias .. "/" .. dir] = true
@@ -78,12 +84,24 @@ end
 -- Only the documented forms: an alias, or an alias and a folder. An explicit nil folder is refused,
 -- since a controller's API methods check their arguments strictly.
 local fileSetDir = C4.FileSetDir
+local fileDir = "SANDBOX"
 function C4:FileSetDir(...)
   local count, dir, subdir = select("#", ...), ...
   if count >= 2 and subdir == nil then
     error("FileSetDir: an explicit nil folder", 2)
   end
+  fileDir = subdir and (dir .. "/" .. subdir) or dir
   return fileSetDir(self, dir, subdir)
+end
+
+--- Files the driver can't open, by "<alias>/<folder>/<name>": a storage failure.
+H.unopenable = {}
+local fileOpen = C4.FileOpen
+function C4:FileOpen(name)
+  if H.unopenable[fileDir .. "/" .. name] then
+    return -1
+  end
+  return fileOpen(self, name)
 end
 
 -- What the driver fetched, and Iconify's answer: a JSON body with Iconify's own content type, so the
@@ -128,6 +146,7 @@ end
 function H.restart()
   OnDriverDestroyed()
   ShimRestartDirector()
+  ShimResetEvents()
   require("lib.persist")._persist = {}
   for name in pairs(TC) do
     if type(name) == "string" and name:match("^CONDITIONAL_%d+$") then
@@ -135,6 +154,34 @@ function H.restart()
     end
   end
   H.start()
+end
+
+--- A driver update: a new driver file loads into a fresh VM, while Director keeps the driver's
+--- variables and the events it declared.
+function H.update()
+  OnDriverDestroyed()
+  ShimUpdateDriver()
+  require("lib.persist")._persist = {}
+  for name in pairs(TC) do
+    if type(name) == "string" and name:match("^CONDITIONAL_%d+$") then
+      TC[name] = nil
+    end
+  end
+  H.start()
+end
+
+--- A press of the button in Navigator, as the UI Button proxy sends it.
+function H.press()
+  ReceivedFromProxy(5001, "SELECT", { Menu = "comfort", Room = "19", deviceId = "-1" })
+end
+
+--- @return table<string, integer> ids Each declared event's id, by its name.
+function H.eventIds()
+  local ids = {}
+  for id, event in pairs(ShimEvents()) do
+    ids[event.name] = id
+  end
+  return ids
 end
 
 --- Forget what was recorded.

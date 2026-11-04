@@ -116,6 +116,17 @@ T.eq("keeping its own name is no clash", looks:update(b.id, H.lookFields("Low"))
 local _, gone = looks:update(99, H.lookFields("Nothing"))
 T.eq("a look that is gone can't be edited", gone, "no such look")
 
+T.section("The cycle")
+T.truthy("a look is in the cycle unless the tab says otherwise", Looks.inCycle(looks:get(a.id)))
+local left = looks:update(a.id, H.lookFields("Full", { iconColor = "#000000", tileShape = "Circle", inCycle = false }))
+T.falsy("it can be left out", Looks.inCycle(left))
+T.falsy("which is no change to its picture", left.image.stale)
+T.truthy(
+  "and back in",
+  Looks.inCycle(looks:update(a.id, H.lookFields("Full", { iconColor = "#000000", tileShape = "Circle" })))
+)
+T.truthy("a look stored without the field is in it", Looks.inCycle({ id = 9, name = "Old" }))
+
 T.section("Programming labels")
 T.eq("a look is listed by name and id", Looks.label(looks:get(a.id)), "Full (1)")
 local unsaved = looks:get(a.id)

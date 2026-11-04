@@ -24,6 +24,7 @@ local log = require("lib.logging")
 local persist = require("lib.persist")
 local values = require("lib.values")
 local conditionals = require("lib.conditionals")
+local events = require("lib.events")
 local http = require("lib.http")
 local updateSettings = require("lib.update-settings")
 --#ifdef DRIVERCENTRAL
@@ -50,6 +51,13 @@ local LOOK_VARIABLE = "Look"
 
 --- The static event fired when the shown look changes.
 local LOOK_CHANGED_EVENT = "Look Changed"
+
+--- Namespace of the dynamic events, one per look, keyed by look id.
+local LOOK_EVENTS = "Looks"
+
+--- What a press of the button does, by Look Control mode. A value not listed acts as Manual.
+--- @type table<string, fun()>
+local PRESS_ACTIONS = {}
 
 gInitialized = false
 
@@ -90,7 +98,36 @@ local function announceShown(before)
   local now = shown and shown.id or nil
   if gInitialized and now ~= before then
     C4:FireEvent(LOOK_CHANGED_EVENT)
+    if now then
+      events:fire(LOOK_EVENTS, tostring(now))
+    end
   end
+end
+
+--- Give each look its "<name> Shown" event, renamed with the look, and delete the events of looks
+--- that are gone. An event keeps its id for the life of its look.
+local function syncLookEvents()
+  local kept = {}
+  for _, look in ipairs(looks:list()) do
+    local key = tostring(look.id)
+    kept[key] = true
+    events:getOrAddEvent(LOOK_EVENTS, key, look.name .. " Shown", "When NAME shows " .. look.name)
+  end
+  local gone = {}
+  for key in pairs(Select(events:getEvents(), LOOK_EVENTS) or {}) do
+    if not kept[key] then
+      table.insert(gone, key)
+    end
+  end
+  for _, key in ipairs(gone) do
+    events:deleteEvent(LOOK_EVENTS, key)
+  end
+end
+
+--- @return string mode The Look Control property, Manual when it has no known value.
+local function lookControl()
+  local mode = Properties["Look Control"]
+  return PRESS_ACTIONS[mode] and mode or "Manual"
 end
 
 --- @return string items The looks as the Look Is conditional lists them.
@@ -146,12 +183,14 @@ local function tabState()
       tileColor = look.tileColor,
       hasImage = look.image ~= nil,
       stale = look.image ~= nil and look.image.stale == true,
+      inCycle = Looks.inCycle(look),
     })
   end
   local shown = button:shown()
   return {
     looks = list,
     shown = shown and shown.id or nil,
+    lookControl = lookControl(),
     max = Looks.MAX,
     maxChunk = Images.MAX_CHUNK,
     maxBytes = Images.MAX_BYTES,
@@ -299,6 +338,8 @@ function OnDriverLateInit()
     sendIcon = sendIcon,
   })
   button:restore()
+  events:restoreEvents()
+  syncLookEvents()
   announceShown(nil)
   -- Test functions live in memory: Look Is answers from its saved list until the looks change.
   local saved = Select(conditionals:getConditionals(), PROGRAMMING, "look_is", "list_items")
@@ -385,6 +426,13 @@ function OPC.Log_Level(propertyValue)
   end
 end
 
+function OPC.Look_Control(propertyValue)
+  log:trace("OPC.Look_Control(%s)", propertyValue)
+  if button then
+    pushState()
+  end
+end
+
 function OPC.Automatic_Updates(propertyValue)
   log:trace("OPC.Automatic_Updates(%s)", propertyValue)
   if gInitialized then
@@ -457,6 +505,7 @@ function UIR._SAVE_LOOK(tParams)
     announceShown(look.id)
   end
   registerLookIs(lookChoices())
+  syncLookEvents()
   return reply("SAVED", { look = tostring(look.id) })
 end
 
@@ -496,6 +545,7 @@ function UIR._DELETE_LOOK(tParams)
   log:info("Deleted look %s", removed.name)
   announceShown(before and before.id or nil)
   registerLookIs(lookChoices())
+  syncLookEvents()
   return pushState()
 end
 
@@ -561,6 +611,56 @@ function EC.Show_Look(params)
     return
   end
   announceShown(before and before.id or nil)
+  pushState()
+end
+
+--- Show the next (1) or previous (-1) look in the cycle. A look whose picture can't be shown is
+--- passed over, and the tab is told when none could be.
+--- @param step integer
+local function stepLook(step)
+  local before = button:shown()
+  local tried = {}
+  for _ = 1, #looks:list() do
+    local look = button:cycled(step, tried)
+    if not look then
+      break
+    end
+    local ok, err = button:show(look.id)
+    if ok then
+      announceShown(before and before.id or nil)
+      pushState()
+      return
+    end
+    log:warn("Could not show look %s: %s", look.name, err)
+    tried[look.id] = true
+  end
+  if next(tried) then
+    pushState()
+  end
+end
+
+function EC.Next_Look()
+  log:trace("EC.Next_Look()")
+  stepLook(1)
+end
+
+function EC.Previous_Look()
+  log:trace("EC.Previous_Look()")
+  stepLook(-1)
+end
+
+PRESS_ACTIONS["On Select"] = function()
+  stepLook(1)
+end
+PRESS_ACTIONS["Manual"] = function() end
+
+--- A press of the button in Navigator. The proxy fires its own Selected event in every mode.
+--- @param idBinding integer
+function RFP.SELECT(idBinding)
+  log:trace("RFP.SELECT(%s)", idBinding)
+  if idBinding == PROXY_BINDING then
+    PRESS_ACTIONS[lookControl()]()
+  end
 end
 
 --- @param paramName string
@@ -595,6 +695,7 @@ local RESET_PROPERTY_VALUES = {
   ["Log Level"] = "3 - Info",
   ["Log Mode"] = "Off",
   ["Automatic Updates"] = "On",
+  ["Look Control"] = "Manual",
   --#ifndef DRIVERCENTRAL
   ["Update Channel"] = "Production",
   --#endif
@@ -614,6 +715,7 @@ function EC.Reset_Driver(params)
   button:reset()
   values:reset()
   conditionals:reset()
+  events:reset()
   gLookIsItems = nil
   -- As a fresh install: the variable comes back empty, and no Look Changed fires.
   announceShown(nil)

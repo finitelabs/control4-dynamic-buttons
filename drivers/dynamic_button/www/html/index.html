@@ -72,6 +72,8 @@
   input[type="color"] { width: 44px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
   .colorrow { display: flex; align-items: center; gap: 8px; }
   .colorrow code { font-size: 12px; color: var(--text-muted); }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
+  .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .editgrid { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; }
   @media (max-width: 680px) { .editgrid { grid-template-columns: minmax(0, 1fr); } }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
@@ -130,10 +132,13 @@
       <h3>Shown now <span id="shown-pill"></span></h3>
       <div class="navtile" id="shown-tile"></div>
       <div class="note">As the Control4 app shows the button. A list remote shows the look's name instead.</div>
+      <div class="control" id="control"><span class="flabel">Look Control</span><span class="pill info" id="control-mode"></span></div>
+      <div class="note" id="control-note"></div>
     </div>
     <div class="card" id="looks-card">
       <h3>Looks <span class="count" id="look-count"></span></h3>
       <div class="looks" id="look-list"></div>
+      <div class="note" id="delete-note" hidden></div>
       <div class="actions"><button class="btn btn-primary" id="add-look" type="button">Add Look</button></div>
     </div>
   </div>
@@ -158,6 +163,10 @@
           <div class="field">
             <label for="f-tile-color">Tile color</label>
             <div class="colorrow"><input type="color" id="f-tile-color" value="#109eff"><code id="f-tile-color-v"></code></div>
+          </div>
+          <div class="field">
+            <label for="f-in-cycle">Cycle</label>
+            <label class="check"><input type="checkbox" id="f-in-cycle" checked> In cycle</label>
           </div>
         </div>
         <div class="picker">
@@ -510,7 +519,7 @@ function sameDrawing(a, b) {
 // ============================================================
 // State and the look list
 // ============================================================
-var gState = { looks: [], shown: null, max: 8, maxChunk: 49152, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
+var gState = { looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 49152, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
 
 function onState(state) {
   var packs = gState.packs.join(',');
@@ -523,6 +532,21 @@ function shownLook() {
   return gState.looks.find(function(l) { return l.id === gState.shown; }) || null;
 }
 
+// What a press of the button does, by Look Control.
+var CONTROL_NOTES = {
+  'On Select': 'Each press shows the next look in the cycle.',
+  'Manual': 'A press leaves the look as it is: programming changes it.'
+};
+function renderControl() {
+  var mode = CONTROL_NOTES[gState.lookControl] ? gState.lookControl : 'Manual';
+  $('control-mode').textContent = mode;
+  $('control-note').textContent = CONTROL_NOTES[mode] + ' Set it in the driver’s properties.';
+}
+
+function deleteWarning(name) {
+  return 'Deletes ' + name + ', its picture, and its ' + name + ' Shown event with the programming on it.';
+}
+
 var STALE_PILL = '<span class="pill pending" title="Navigator still shows the picture from before the last edit. Save the look again to send the new one.">Picture out of date</span>';
 
 async function renderList() {
@@ -532,6 +556,7 @@ async function renderList() {
   var shown = shownLook();
   $('shown-pill').innerHTML = shown ? '<span class="pill online">' + esc(shown.name) + '</span>' + (shown.stale ? ' ' + STALE_PILL : '') : '<span class="pill info">Driver icon</span>';
   navTile($('shown-tile'), shown);
+  renderControl();
   var el = $('look-list');
   if (!list.length) {
     el.innerHTML = '<div class="empty">No looks yet. Add one to give the button a picture.</div>';
@@ -540,7 +565,8 @@ async function renderList() {
   el.innerHTML = list.map(function(l, i) {
     var id = Number(l.id);
     var badges = (id === gState.shown ? ' <span class="pill online">Shown</span>' : '') +
-      (!l.hasImage ? ' <span class="pill pending">No picture yet</span>' : (l.stale ? ' ' + STALE_PILL : ''));
+      (!l.hasImage ? ' <span class="pill pending">No picture yet</span>' : (l.stale ? ' ' + STALE_PILL : '')) +
+      (l.inCycle === false ? ' <span class="pill info" title="Presses, Next Look and Previous Look pass over this look.">Not in cycle</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
       '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div></div>' +
@@ -549,7 +575,7 @@ async function renderList() {
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="up" data-id="' + id + '"' + (i === 0 ? ' disabled' : '') + ' aria-label="Move up">&uarr;</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="down" data-id="' + id + '"' + (i === list.length - 1 ? ' disabled' : '') + ' aria-label="Move down">&darr;</button>' +
-        '<button class="btn danger sm" type="button" data-act="delete" data-id="' + id + '">Delete</button>' +
+        '<button class="btn danger sm" type="button" data-act="delete" data-id="' + id + '" title="' + esc(deleteWarning(l.name)) + '">Delete</button>' +
       '</div></div>';
   }).join('');
   list.forEach(function(l) {
@@ -569,14 +595,21 @@ $('look-list').addEventListener('click', function(e) {
   else if (act === 'up' || act === 'down') move(id, act === 'up' ? -1 : 1);
   else if (act === 'delete') {
     if (b.dataset.confirm) {
+      $('delete-note').hidden = true;
       command('_DELETE_LOOK', { id: id }, function() {
         gState.looks = gState.looks.filter(function(l) { return l.id !== id; });
         if (gState.shown === id) gState.shown = (gState.looks.find(function(l) { return l.hasImage; }) || {}).id || null;
       });
     } else {
+      var look = gState.looks.find(function(l) { return l.id === id; });
       b.dataset.confirm = '1';
       b.textContent = 'Confirm Delete';
-      setTimeout(function() { if (b.isConnected) { delete b.dataset.confirm; b.textContent = 'Delete'; } }, 4000);
+      $('delete-note').textContent = deleteWarning(look ? look.name : '') + ' It can’t be brought back.';
+      $('delete-note').hidden = false;
+      setTimeout(function() {
+        if (b.isConnected) { delete b.dataset.confirm; b.textContent = 'Delete'; }
+        $('delete-note').hidden = true;
+      }, 4000);
     }
   }
 });
@@ -941,12 +974,13 @@ function preview() {
 function openEditor(look) {
   gEditor.look = look
     ? JSON.parse(JSON.stringify(look))
-    : { id: null, name: '', icon: null, iconColor: '#FFFFFF', tileShape: 'Rounded Square', tileColor: '#109EFF' };
+    : { id: null, name: '', icon: null, iconColor: '#FFFFFF', tileShape: 'Rounded Square', tileColor: '#109EFF', inCycle: true };
   gEditor.icon = gEditor.look.icon;
   $('editor-title').textContent = look ? 'Edit ' + look.name : 'New look';
   $('f-name').value = gEditor.look.name;
   $('f-icon-color').value = gEditor.look.iconColor.toLowerCase();
   $('f-tile-color').value = gEditor.look.tileColor.toLowerCase();
+  $('f-in-cycle').checked = gEditor.look.inCycle !== false;
   renderShapes();
   renderBundled();
   markPicked();
@@ -988,7 +1022,7 @@ async function saveLook() {
       b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
       if (b64.length * 3 / 4 > gState.maxBytes) { setStatus('The picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB.', true); return; }
     }
-    var fields = { id: l.id, name: l.name, icon: l.icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor };
+    var fields = { id: l.id, name: l.name, icon: l.icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked };
     if (!gApiHost) {
       demoSave(fields);
       setStatus('Saved here only: this page is not open in Composer.');
@@ -1018,7 +1052,8 @@ async function savedAnyway(fields) {
   await refresh();
   var name = fields.name.toLowerCase();
   var found = gState.looks.find(function(o) {
-    return (fields.id == null || o.id === fields.id) && o.name.toLowerCase() === name && sameDrawing(o, fields);
+    return (fields.id == null || o.id === fields.id) && o.name.toLowerCase() === name && sameDrawing(o, fields) &&
+      (o.inCycle !== false) === (fields.inCycle !== false);
   });
   return found ? found.id : null;
 }
@@ -1074,9 +1109,10 @@ function demoSave(fields) {
       ['Charging', 'mdi:battery-charging', 'Circle', '#109EFF']
     ];
     gState.looks = demo.map(function(d, i) {
-      return { id: i + 1, name: d[0], icon: bundledIcon(d[1]), iconColor: '#FFFFFF', tileShape: d[2], tileColor: d[3], hasImage: true, stale: false };
+      return { id: i + 1, name: d[0], icon: bundledIcon(d[1]), iconColor: '#FFFFFF', tileShape: d[2], tileColor: d[3], hasImage: true, stale: false, inCycle: true };
     }).filter(function(l) { return l.icon; });
     gState.shown = gState.looks.length ? 1 : null;
+    gState.lookControl = 'On Select';
     renderList();
     return;
   }

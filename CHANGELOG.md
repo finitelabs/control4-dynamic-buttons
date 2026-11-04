@@ -30,3 +30,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   by outline or filled style
 - Added a Show Look command, a `Look` variable, a Look Changed event and a Look
   Is conditional
+- Added the Look Control property: `On Select` shows the next look on each press
+  of the button, and `Manual` leaves the look to programming
+- Added Next Look and Previous Look commands, and an In cycle setting for each
+  look that presses and both commands pass over when it is off
+- Added an event for each look, named for the look, that fires when it becomes
+  the shown look
