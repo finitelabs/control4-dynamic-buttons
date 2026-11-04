@@ -120,7 +120,11 @@ local ids = H.eventIds()
 T.truthy("each look has one", ids["Red Shown"] and ids["Green Shown"] and ids["Blue Shown"] and ids["Off Shown"])
 T.truthy("so does a look with no picture yet", ids["Spare Shown"])
 T.truthy("in the range kept for dynamic events", ids["Red Shown"] >= 10 and ids["Red Shown"] <= 999)
-T.eq("described for programming", ShimEvents()[ids["Off Shown"]].description, "When the button shows Off")
+T.eq(
+  "described with the button's name, as Composer titles it",
+  ShimEvents()[ids["Off Shown"]].description,
+  "When NAME shows Off"
+)
 H.tab("_SAVE_LOOK", H.lookFields("Lime", { id = green }))
 local renamed = H.eventIds()
 T.eq("a rename keeps the event's id", renamed["Lime Shown"], ids["Green Shown"])
@@ -139,6 +143,7 @@ EC.Show_Look({ Look = "Lime (" .. green .. ")" })
 T.eq("but not when the look shown is shown again", H.fired, {})
 
 T.section("A Director restart")
+setLookControl("On Select")
 local before = H.eventIds()
 H.mark()
 H.restart()
@@ -147,7 +152,7 @@ T.eq("and shown", H.lastIcon().params.icon_description, "Lime")
 T.eq("each look's event is declared again under its id", H.eventIds(), before)
 T.eq("and nothing fires at start", H.fired, {})
 H.tab("_GET_STATE")
-T.eq("Look Control is kept", H.state().lookControl, "Manual")
+T.eq("Look Control is kept", H.state().lookControl, "On Select")
 H.mark()
 EC.Next_Look()
 T.eq("the cycle goes on after the restart, still passing over Blue", shown(), "Off")
@@ -163,6 +168,41 @@ T.eq("each look's event keeps its id", H.eventIds(), before)
 T.eq("and nothing fires at start", H.fired, {})
 H.press()
 T.eq("presses still step the cycle", shown(), "Red")
+
+T.section("Looks from a build without events")
+require("lib.events"):reset()
+H.mark()
+H.restart()
+local started = H.eventIds()
+T.truthy("get their events at start", started["Red Shown"] and started["Off Shown"])
+T.eq("and nothing fires", H.fired, {})
+
+T.section("A press the driver doesn't act on")
+H.mark()
+ReceivedFromProxy(6001, "SELECT", {})
+T.eq("a SELECT on another binding changes nothing", shown(), "Red")
+setLookControl("By Value")
+H.press()
+T.eq("nor does a press under a Look Control this build doesn't know", shown(), "Red")
+T.eq("which the tab shows as Manual", H.state().lookControl, "Manual")
+T.eq("and nothing fires", H.fired, {})
+setLookControl("On Select")
+
+T.section("A look whose picture can't be served")
+H.unopenable["C4Z/www/buttons/" .. H.DEVICE_ID .. "/" .. lookId("Lime") .. ".png"] = true
+H.mark()
+H.press()
+T.eq("a press passes over it to the next look", shown(), "Off")
+EC.Show_Look({ Look = "Blue (" .. blue .. ")" })
+for _, name in ipairs({ "Red", "Off" }) do
+  H.unopenable["C4Z/www/buttons/" .. H.DEVICE_ID .. "/" .. lookId(name) .. ".png"] = true
+end
+H.mark()
+EC.Previous_Look()
+T.eq("when no look in the cycle can be served, the shown look stays", shown(), "Blue")
+T.eq("and nothing fires", H.fired, {})
+T.truthy("but the tab is told", H.lastUi("STATE"))
+H.unopenable = {}
 
 T.section("A look added after a delete")
 local newest = H.addLook("Amber")

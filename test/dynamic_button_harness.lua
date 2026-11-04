@@ -84,12 +84,24 @@ end
 -- Only the documented forms: an alias, or an alias and a folder. An explicit nil folder is refused,
 -- since a controller's API methods check their arguments strictly.
 local fileSetDir = C4.FileSetDir
+local fileDir = "SANDBOX"
 function C4:FileSetDir(...)
   local count, dir, subdir = select("#", ...), ...
   if count >= 2 and subdir == nil then
     error("FileSetDir: an explicit nil folder", 2)
   end
+  fileDir = subdir and (dir .. "/" .. subdir) or dir
   return fileSetDir(self, dir, subdir)
+end
+
+--- Files the driver can't open, by "<alias>/<folder>/<name>": a storage failure.
+H.unopenable = {}
+local fileOpen = C4.FileOpen
+function C4:FileOpen(name)
+  if H.unopenable[fileDir .. "/" .. name] then
+    return -1
+  end
+  return fileOpen(self, name)
 end
 
 -- What the driver fetched, and Iconify's answer: a JSON body with Iconify's own content type, so the

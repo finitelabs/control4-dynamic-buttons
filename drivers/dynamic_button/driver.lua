@@ -111,7 +111,7 @@ local function syncLookEvents()
   for _, look in ipairs(looks:list()) do
     local key = tostring(look.id)
     kept[key] = true
-    events:getOrAddEvent(LOOK_EVENTS, key, look.name .. " Shown", "When the button shows " .. look.name)
+    events:getOrAddEvent(LOOK_EVENTS, key, look.name .. " Shown", "When NAME shows " .. look.name)
   end
   local gone = {}
   for key in pairs(Select(events:getEvents(), LOOK_EVENTS) or {}) do
@@ -615,14 +615,15 @@ function EC.Show_Look(params)
 end
 
 --- Show the next (1) or previous (-1) look in the cycle. A look whose picture can't be shown is
---- passed over.
+--- passed over, and the tab is told when none could be.
 --- @param step integer
 local function stepLook(step)
   local before = button:shown()
+  local tried = {}
   for _ = 1, #looks:list() do
-    local look = button:cycled(step)
+    local look = button:cycled(step, tried)
     if not look then
-      return
+      break
     end
     local ok, err = button:show(look.id)
     if ok then
@@ -631,6 +632,10 @@ local function stepLook(step)
       return
     end
     log:warn("Could not show look %s: %s", look.name, err)
+    tried[look.id] = true
+  end
+  if next(tried) then
+    pushState()
   end
 end
 

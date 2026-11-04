@@ -113,8 +113,9 @@ end
 --- that is in the cycle and has a picture, wrapping, counted from the shown look's place. With
 --- nothing shown, the first such look (or the last, stepping back).
 --- @param step integer 1 or -1.
+--- @param skip? table<integer, boolean> Look ids to pass over as well (optional).
 --- @return Look|nil look Nil when no look can show; the shown look when it is the only one.
-function Button:cycled(step)
+function Button:cycled(step, skip)
   local list = self.looks:list()
   local count = #list
   local shown = self:shown()
@@ -126,7 +127,7 @@ function Button:cycled(step)
   end
   for k = 1, count do
     local look = list[(from - 1 + step * k) % count + 1]
-    if look.image and Looks.inCycle(look) then
+    if look.image and Looks.inCycle(look) and not (skip and skip[look.id]) then
       return look
     end
   end
