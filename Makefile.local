@@ -1,0 +1,14 @@
+# Kept out of Makefile so `copier update` cannot clobber these.
+
+# ─── Icon packs (tools/icon_packs.py) ─────────────────────────────────────────
+
+.PHONY: icon-packs check-icon-packs
+
+icon-packs: $(VENV_STAMP) ## Rebuild the Button tab's icon packs from resources/icon-packs
+	$(VENV_PY) tools/icon_packs.py
+
+# Offline: compares the tab's pack block with resources/icon-packs.
+check-icon-packs: $(VENV_STAMP)
+	$(VENV_PY) tools/icon_packs.py --check
+
+check: check-icon-packs
