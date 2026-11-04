@@ -318,7 +318,10 @@ def tile_color(row):
 
 
 def classic_tile(row):
-    """A white glyph on a colored rounded-square tile, lit from the top (1024 units)."""
+    """A white glyph on a colored rounded-square tile, lit from the top (1024 units).
+
+    The tile is centered with a 100-unit margin, room for the drop shadow the tab adds below.
+    """
     color = tile_color(row)
     top, bottom, edge = (
         mix(color, "#FFFFFF", 0.22),
@@ -330,11 +333,11 @@ def classic_tile(row):
     return (
         "<defs><linearGradient id='t' x1='0' y1='0' x2='0' y2='1'>"
         f"<stop offset='0' stop-color='{top}'/><stop offset='1' stop-color='{bottom}'/></linearGradient>"
-        f"<g id='s' transform='translate(262 226) scale({num(500 / 24)})'>{body}</g></defs>"
-        "<rect x='70' y='34' width='884' height='884' rx='133' fill='url(#t)'/>"
-        f"<rect x='73' y='37' width='878' height='878' rx='130' fill='none' stroke='{edge}' stroke-opacity='0.5' stroke-width='6'/>"
-        "<path d='M210 48H814' stroke='#FFFFFF' stroke-opacity='0.55' stroke-width='10' stroke-linecap='round'/>"
-        "<use href='#s' transform='translate(0 14)' fill='#000000' opacity='0.28'/>"
+        f"<g id='s' transform='translate(279 279) scale({num(466 / 24)})'>{body}</g></defs>"
+        "<rect x='100' y='100' width='824' height='824' rx='124' fill='url(#t)'/>"
+        f"<rect x='103' y='103' width='818' height='818' rx='121' fill='none' stroke='{edge}' stroke-opacity='0.5' stroke-width='6'/>"
+        "<path d='M230 113H794' stroke='#FFFFFF' stroke-opacity='0.55' stroke-width='10' stroke-linecap='round'/>"
+        "<use href='#s' transform='translate(0 13)' fill='#000000' opacity='0.28'/>"
         "<use href='#s' fill='#FFFFFF'/>"
     )
 
@@ -356,15 +359,15 @@ def modern_battery(spec, color, opacity):
     mode = parts[2] if len(parts) > 2 else ""
     bar = {"charging": GREEN, "low": RED}.get(mode, color)
     body = (
-        f"<rect x='3' y='10' width='22' height='12' rx='2.5' fill='none' stroke='{WHITE}' stroke-width='2'/>"
-        f"<rect x='25.5' y='14' width='2.5' height='4' rx='1' fill='{WHITE}'/>"
+        f"<rect x='4' y='10' width='22' height='12' rx='2.5' fill='none' stroke='{WHITE}' stroke-width='2'/>"
+        f"<rect x='26.5' y='14' width='2.5' height='4' rx='1' fill='{WHITE}'/>"
     )
     if level > 0:
-        body += f"<rect x='6' y='13' width='{num(16 * level)}' height='6' rx='1' fill='{bar}'/>"
+        body += f"<rect x='7' y='13' width='{num(16 * level)}' height='6' rx='1' fill='{bar}'/>"
     if mode == "charging":
         bolt = path_data(glyph(CHARGING_BOLT))[0]
         body += (
-            f"<g transform='translate(9 9.5) scale(0.5)'><path d='{bolt}' "
+            f"<g transform='translate(10 9.5) scale(0.5)'><path d='{bolt}' "
             f"fill='{GREEN}' stroke='#000000' stroke-opacity='0.6' stroke-width='2' stroke-linejoin='round'/></g>"
         )
     return f"<g opacity='{num(opacity)}'>{body}</g>" if opacity != 1 else body
