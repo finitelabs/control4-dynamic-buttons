@@ -213,21 +213,22 @@ The driver includes three icon packs with the same 100 subjects in each: battery
 levels every 10%, power and plugs, energy and solar, EV charging, water and
 leaks, air quality, network, generators, pumps and irrigation, pool and spa,
 temperature and humidity, devices, appliances, status, home modes, holidays and
-weather. A subject with states has a picture for each: on, off, and alert where
+weather. A subject with states has a picture for each: on, off and alert where
 one applies. They work with no internet.
 
 1. **Icon packs** - shows the packs instead of the included icons.
-1. **Pack** - `Classic Device` is shaded device pictures and `Classic Tile` is a
-   white symbol on a colored tile, both matching the OS 3 look. `Modern` is line
-   icons that light up in color when on, matching the X4 look.
-1. **Category** - narrows the pictures to one subject group.
+1. **Classic Device / Classic Tile / Modern** - the pack to show.
+   `Classic Device` is shaded device pictures and `Classic Tile` is a white
+   symbol on a colored tile, both matching the OS 3 look. `Modern` is outline
+   icons when off and filled, colored icons when on, matching the X4 look.
+1. **All categories** - narrows the pictures to one subject group.
 1. **Filter by name** - narrows the pictures by name.
 1. **Pictures** - select one to use it for the look. The look is named after it
    when the name is empty.
 1. **Pack note** - what the chosen pack looks like.
 1. **Picture** - a pack picture keeps its own colors, so `Tile shape`,
-   `Icon color` and `Tile color` do not apply to it. The Classic packs add the
-   soft shadow the OS 3 look has.
+   `Icon color` and `Tile color` do not apply to it, and the picture shows on a
+   dark background. The Classic packs add the soft shadow the OS 3 look has.
 
 ### Icon Search
 

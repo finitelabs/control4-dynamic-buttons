@@ -81,7 +81,7 @@ PACKS = [
     {
         "id": "modern",
         "name": "Modern",
-        "note": "Line icons, colored when on, that match the X4 look.",
+        "note": "Outline icons when off and filled, colored icons when on, that match the X4 look.",
         "size": 32,
         "shadow": False,
     },
@@ -473,6 +473,15 @@ def check_source(icon, vendored):
         )
 
 
+# The attributes the tab keeps (SVG_ATTRS in index.html); it drops any other.
+SVG_ATTRS = re.compile(
+    r"^(d|fill|fill-rule|fill-opacity|clip-rule|clip-path|mask|stroke|stroke-[a-z]+|opacity|transform"
+    r"|cx|cy|r|rx|ry|fx|fy|x|y|x1|y1|x2|y2|width|height|points|id|offset|stop-color|stop-opacity"
+    r"|gradientUnits|gradientTransform|spreadMethod|maskUnits|maskContentUnits|clipPathUnits|viewBox"
+    r"|preserveAspectRatio|color|vector-effect|pathLength|href)$"
+)
+
+
 def check_body(icon):
     if len(icon["body"].encode()) > MAX_BODY:
         sys.exit(
@@ -483,6 +492,15 @@ def check_body(icon):
         sys.exit(
             f"{icon['id']}: elements the tab drops: {', '.join(sorted(tags - SVG_TAGS))}"
         )
+    for name, _, value in re.findall(
+        r"""\s([A-Za-z:-]+)=(["'])(.*?)\2""", icon["body"]
+    ):
+        if not SVG_ATTRS.match(name):
+            sys.exit(f"{icon['id']}: attribute the tab drops: {name}")
+        if name == "href" and not re.fullmatch(r"#[\w.-]+", value):
+            sys.exit(f"{icon['id']}: href outside the picture: {value}")
+        if re.search(r"url\(\s*['\"]?(?!#)", value):
+            sys.exit(f"{icon['id']}: url( outside the picture in {name}")
 
 
 def render():

@@ -159,21 +159,22 @@ The driver includes three icon packs with the same 100 subjects in each: battery
 levels every 10%, power and plugs, energy and solar, EV charging, water and
 leaks, air quality, network, generators, pumps and irrigation, pool and spa,
 temperature and humidity, devices, appliances, status, home modes, holidays and
-weather. A subject with states has a picture for each: on, off, and alert where
+weather. A subject with states has a picture for each: on, off and alert where
 one applies. They work with no internet.
 
 1. **Icon packs** - shows the packs instead of the included icons.
-1. **Pack** - `Classic Device` is shaded device pictures and `Classic Tile` is a
-   white symbol on a colored tile, both matching the OS 3 look. `Modern` is line
-   icons that light up in color when on, matching the X4 look.
-1. **Category** - narrows the pictures to one subject group.
+1. **Classic Device / Classic Tile / Modern** - the pack to show.
+   `Classic Device` is shaded device pictures and `Classic Tile` is a white
+   symbol on a colored tile, both matching the OS 3 look. `Modern` is outline
+   icons when off and filled, colored icons when on, matching the X4 look.
+1. **All categories** - narrows the pictures to one subject group.
 1. **Filter by name** - narrows the pictures by name.
 1. **Pictures** - select one to use it for the look. The look is named after it
    when the name is empty.
 1. **Pack note** - what the chosen pack looks like.
 1. **Picture** - a pack picture keeps its own colors, so `Tile shape`,
-   `Icon color` and `Tile color` do not apply to it. The Classic packs add the
-   soft shadow the OS 3 look has.
+   `Icon color` and `Tile color` do not apply to it, and the picture shows on a
+   dark background. The Classic packs add the soft shadow the OS 3 look has.
 
 ### Icon Search
 
@@ -324,14 +325,14 @@ and Previous Look work whatever Look Control is set to.
 
 The included icons and the icon packs are drawn from these collections:
 
-| Collection                                                            | License                                                         |
-| --------------------------------------------------------------------- | --------------------------------------------------------------- |
-| [Material Design Icons](https://github.com/Templarian/MaterialDesign) | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)       |
-| [Material Symbols](https://github.com/google/material-design-icons)   | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)       |
-| [Lucide](https://github.com/lucide-icons/lucide)                      | [ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE) |
-| [Tabler Icons](https://github.com/tabler/tabler-icons)                | [MIT](https://github.com/tabler/tabler-icons/blob/main/LICENSE) |
+| Collection                                                            | License                                                                                                                                                                    |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Material Design Icons](https://github.com/Templarian/MaterialDesign) | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)                                                                                                                  |
+| [Material Symbols](https://github.com/google/material-design-icons)   | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)                                                                                                                  |
+| [Lucide](https://github.com/lucide-icons/lucide)                      | [ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE), and [MIT](https://github.com/feathericons/feather/blob/main/LICENSE) for its icons that come from Feather |
+| [Tabler Icons](https://github.com/tabler/tabler-icons)                | [MIT](https://github.com/tabler/tabler-icons/blob/main/LICENSE)                                                                                                            |
 
-The Classic Device pictures are our own drawings, some built around a Material
+The Classic Device pictures are our own drawings, most built around a Material
 Design Icons symbol. The Classic Tile pictures use Material Design Icons
 symbols, and the Modern pictures use Lucide, Tabler Icons and Material Design
 Icons symbols. The driver includes these notices and the full license texts in
