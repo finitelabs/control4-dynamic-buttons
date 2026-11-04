@@ -30,6 +30,7 @@ the programming you attach to it.
     - [Looks](#looks)
     - [Look Editor](#look-editor)
     - [Icon Search](#icon-search)
+  - [Cycling Through Looks](#cycling-through-looks)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
       - [Cloud Settings](#cloud-settings)
@@ -57,8 +58,10 @@ the programming you attach to it.
   colors and tile shape you pick
 - About 280 included icons that work with no internet, and a search across
   fourteen free icon packs
-- A Show Look programming command, a Look variable, a Look Changed event and a
-  Look Is conditional
+- Look Control: each press shows the next look in the cycle, or the look changes
+  only from programming
+- Show Look, Next Look and Previous Look programming commands, a Look variable,
+  a Look Changed event, an event for each look and a Look Is conditional
 - The button's picture updates in Navigator as soon as programming changes it
 
 # <span style="color:#109EFF">Installer Setup</span>
@@ -98,16 +101,18 @@ the button's looks.
 
 1. **Shown now** - the button as the Control4 app shows it, with the name of the
    look it shows, or `Driver icon` until a look has a picture.
+1. **Look Control** - what a press of the button does, as the
+   [Look Control](#look-control--on-select--manual-) property sets it.
 1. **Looks** - each look with its picture, name, icon and tile shape. `Shown`
    marks the look the button shows. `No picture yet` marks a look whose picture
    has not reached the driver, and `Picture out of date` a look edited since its
    picture was sent: Navigator shows the earlier picture until the look is saved
-   again.
+   again. `Not in cycle` marks a look left out of the cycle.
 1. **Show** - shows the look now. It is off for the shown look and for a look
    with no picture.
 1. **Edit** - opens the look in the editor.
-1. **↑ / ↓** - moves the look up or down. Programming lists the looks in this
-   order.
+1. **↑ / ↓** - moves the look up or down. The button cycles through the looks in
+   this order, and programming lists them in it.
 1. **Delete** - deletes the look and its picture, after a second press on
    `Confirm Delete`. Deleting the shown look shows the first remaining look with
    a picture, or the driver's own icon when none has one.
@@ -125,6 +130,8 @@ the button's looks.
    the icon is drawn on its own, larger.
 1. **Icon color** - the color the icon is drawn in.
 1. **Tile color** - the color of the tile behind the icon.
+1. **In cycle** - when off, presses, Next Look and Previous Look pass over the
+   look. Show Look can still show it.
 1. **Included icons / Search online** - picks from the icons included with the
    driver, which work with no internet, or from the free icon packs online. See
    [Icon Search](#icon-search).
@@ -155,6 +162,29 @@ the button's looks.
    the look.
 1. **Icons found** - how many icons the search found, and how many of them the
    style shows.
+
+## Cycling Through Looks
+
+Set the [Look Control](#look-control--on-select--manual-) property to
+`On Select` to make each press of the button show the next look. The button
+steps through the looks in the order the Button tab lists them, from the last
+look back to the first, and passes over a look with **In cycle** off or with no
+picture yet. With `Manual`, a press leaves the look as it is and only
+programming changes it. Show Look, Next Look and Previous Look work in both
+modes.
+
+Each look has its own event: the look's name followed by `Shown`. It fires when
+that look becomes the shown look, from a press, from programming or from the
+Button tab. To run something different for each look:
+
+1. Set **Look Control** to `On Select`.
+1. In the "Programming" view, select the button under "Device Events".
+1. Select a look's `Shown` event and add the commands it should run.
+1. Repeat for each look.
+
+Renaming a look renames its event and keeps its programming. Deleting a look
+deletes its event and the programming on it. The shown look stays through a
+Director restart and a driver update, and no event fires when the driver starts.
 
 ## Driver Setup
 
@@ -192,6 +222,12 @@ Sets the logging mode. Default is `Off`. It turns itself off after three hours.
 
 #### Button Settings
 
+##### Look Control \[ On Select | **_Manual_** \]
+
+Sets what a press of the button does. `On Select` shows the next look in the
+cycle, and `Manual` leaves the look as it is for programming to change. The
+button's own Selected event fires on every press in both modes.
+
 ##### Shown Look (read-only)
 
 Displays the name of the look the button shows, or nothing while it shows the
@@ -206,12 +242,13 @@ Button, regardless of the current version.
 
 #### Reset Driver
 
-> WARNING: Reset Driver deletes every look and its picture. They cannot be
-> brought back.
+> WARNING: Reset Driver deletes every look, its picture, and its `Shown` event
+> with the programming on it. They cannot be brought back.
 
-Returns the driver to a fresh install: it deletes every look and its picture,
-shows the driver's own icon, and returns the properties to their defaults. The
-button keeps its place in Navigator and the programming that uses it.
+Returns the driver to a fresh install: it deletes every look with its picture
+and its `Shown` event, shows the driver's own icon, and returns the properties
+to their defaults, with Look Control back to `Manual`. The button keeps its
+place in Navigator and the programming on its other events and commands.
 Programming that names a deleted look does nothing, even after a new look takes
 the same name: choose the new look in that programming.
 
@@ -223,12 +260,15 @@ the same name: choose the new look in that programming.
 
 ### Commands
 
-| Command   | Parameters | Description                  |
-| --------- | ---------- | ---------------------------- |
-| Show Look | Look       | Shows the look on the button |
+| Command       | Parameters | Description                                         |
+| ------------- | ---------- | --------------------------------------------------- |
+| Show Look     | Look       | Shows the look on the button, in the cycle or not   |
+| Next Look     |            | Shows the next look in the cycle, as a press does   |
+| Previous Look |            | Shows the previous look in the cycle, wrapping back |
 
-Looks show in programming as their name and number. The command finds the look
-by its number, so programming keeps working after the look is renamed.
+Looks show in programming as their name and number. Show Look finds the look by
+its number, so programming keeps working after the look is renamed. Next Look
+and Previous Look work whatever Look Control is set to.
 
 ### Variables
 
@@ -238,10 +278,11 @@ by its number, so programming keeps working after the look is renamed.
 
 ### Events
 
-| Event        | Description                                                        |
-| ------------ | ------------------------------------------------------------------ |
-| Look Changed | Fires when the button shows a different look                       |
-| Selected     | The button's own event in Navigator: fires when someone presses it |
+| Event           | Description                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| Look Changed    | Fires when the button shows a different look                       |
+| _\<look>_ Shown | One for each look: fires when that look becomes the shown look     |
+| Selected        | The button's own event in Navigator: fires when someone presses it |
 
 ### Conditionals
 
@@ -326,3 +367,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   by outline or filled style
 - Added a Show Look command, a `Look` variable, a Look Changed event and a Look
   Is conditional
+- Added the Look Control property: `On Select` shows the next look on each press
+  of the button, and `Manual` leaves the look to programming
+- Added Next Look and Previous Look commands, and an In cycle setting for each
+  look that presses and both commands pass over when it is off
+- Added an event for each look, named for the look, that fires when it becomes
+  the shown look
