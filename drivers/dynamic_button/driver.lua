@@ -456,7 +456,6 @@ function UIR._SAVE_LOOK(tParams)
     announceShown(look.id)
   end
   registerLookIs(lookChoices())
-  pushState()
   return reply("SAVED", { look = tostring(look.id) })
 end
 
@@ -482,7 +481,6 @@ function UIR._PUT_IMAGE(tParams)
   end
   log:info("Stored the picture for look %s (%d bytes)", look.name, #png)
   announceShown(before and before.id or nil)
-  pushState()
   return reply("IMAGE_STORED", { look = tostring(look.id) })
 end
 

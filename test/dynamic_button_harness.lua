@@ -154,9 +154,14 @@ function H.lastUi(command)
   return nil
 end
 
---- @return table state The Button tab's last STATE.
+--- @return table|nil state The state in the Button tab's last message that carries one.
 function H.state()
-  return JSON:decode(H.lastUi("STATE").state)
+  for i = #H.ui, 1, -1 do
+    if H.ui[i].params.state then
+      return JSON:decode(H.ui[i].params.state)
+    end
+  end
+  return nil
 end
 
 --- Call a Button tab request with its parameters as the tab sends them, base64 JSON in DATA.

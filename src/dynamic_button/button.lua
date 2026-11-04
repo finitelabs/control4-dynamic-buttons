@@ -133,7 +133,8 @@ function Button:imageArrived(id, png)
   return true, false
 end
 
---- Delete a look and its pictures. If it was shown, the first other ready look shows.
+--- Delete a look and its pictures. If it was shown, the first other ready look shows, or the
+--- driver's own icon when that look can't be shown.
 --- @param id integer
 --- @return Look|nil removed
 function Button:deleteLook(id)
@@ -148,9 +149,7 @@ function Button:deleteLook(id)
   self.looks:delete(look.id)
   if wasShown then
     local replacement = self:_fallback(look.id)
-    if replacement then
-      self:show(replacement.id)
-    else
+    if not (replacement and self:show(replacement.id)) then
       self:_showDefault()
     end
   end

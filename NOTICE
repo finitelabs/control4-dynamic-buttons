@@ -36,5 +36,5 @@ Icons (MIT), Phosphor (MIT), Tabler Icons (MIT), MingCute (Apache-2.0), Carbon
 (Apache-2.0), Bootstrap Icons (MIT), Lucide (ISC), Iconoir (MIT), Ionicons (MIT),
 Heroicons (MIT), Meteocons (MIT), Weather Icons (OFL-1.1).
 
-No icon from these packs is shipped with the driver; an icon is fetched only when an
-installer picks it.
+Apart from the two collections above, no icon from these packs ships with the driver;
+an icon is fetched only when an installer picks it.

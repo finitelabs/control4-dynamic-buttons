@@ -63,6 +63,19 @@ local b64 = C4:Base64Encode(H.png("Spare"))
 local stored = JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "r", index = 1, count = 1, data = b64 }))
 T.eq("the last chunk answers IMAGE_STORED", stored._command, "IMAGE_STORED")
 T.eq("with the state showing the picture", JSON:decode(stored.state).looks[2].hasImage, true)
+local function statePushes()
+  local n = 0
+  for _, sent in ipairs(H.ui) do
+    n = n + (sent.params.state and 1 or 0)
+  end
+  return n
+end
+H.mark()
+H.tab("_SAVE_LOOK", H.lookFields("Spare", { id = 2, iconColor = "#000000" }))
+T.eq("a save sends the state over the socket once", statePushes(), 1)
+H.mark()
+H.sendImage(2, H.png("Spare black"))
+T.eq("and so does its picture", statePushes(), 1)
 local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("spare")))
 T.eq(
   "a refusal answers ERROR",
@@ -252,6 +265,17 @@ T.eq(
   H.lastUi("ICONIFY"),
   { request = "10", error = "not an offered icon pack" }
 )
+
+T.section("Deleting the shown look when the next look's picture is gone")
+local first = H.addLook("First")
+local second = H.addLook("Second")
+H.stored()["look-" .. second .. ".png"] = nil
+H.mark()
+H.tab("_DELETE_LOOK", { id = first })
+T.eq("the driver's own icon shows", H.lastIcon().params, { icon = "", icon_description = "" })
+T.eq("the Look variable is empty", Variables["Look"], "")
+T.falsy("and the look left is marked as having no picture", H.state().looks[1].hasImage)
+H.tab("_DELETE_LOOK", { id = second })
 
 T.section("Reset Driver")
 H.addLook("Full")
