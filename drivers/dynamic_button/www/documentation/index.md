@@ -19,11 +19,7 @@ ______________________________________________________________________
 
 # <span style="color:#109EFF">Overview</span>
 
-<!-- #ifndef DRIVERCENTRAL -->
-
 > DISCLAIMER: This software is neither affiliated with nor endorsed by Control4.
-
-<!-- #endif -->
 
 Add buttons to Navigator whose picture you design. Each **Dynamic Button** is
 one button in a room's Navigator menus. It shows one of its looks: an icon from
