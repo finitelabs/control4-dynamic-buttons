@@ -3,6 +3,9 @@ below with their licenses. They are stored as SVG path data in
 drivers/dynamic_button/www/html/index.html, written by tools/bundle_icons.py from the
 names in tools/bundled-icons.txt, unmodified apart from their color.
 
+The driver carries these two notices, with the text of the Apache License 2.0, in
+drivers/dynamic_button/www/LICENSES.txt.
+
 -------------------------------------------------------------------------------
 
 Material Design Icons
