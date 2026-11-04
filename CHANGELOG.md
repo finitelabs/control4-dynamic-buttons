@@ -19,3 +19,13 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 -->
 
 ## Unreleased
+
+### Added
+
+- Added the Dynamic Button driver: a Navigator button with up to eight looks,
+  each drawn from an icon in the colors and tile shape you pick, made in its
+  Button tab
+- Added about 280 included icons from Material Design Icons and Material
+  Symbols, and a search across fourteen free icon packs
+- Added a Show Look command, a `Look` variable, a Look Changed event and a Look
+  Is conditional
