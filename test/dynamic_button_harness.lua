@@ -38,6 +38,8 @@ H.proxy = {}
 H.ui = {}
 H.fired = {}
 H.dirs = {}
+--- Every "<command> <message type>" sent to the proxy in the run, kept across H.mark().
+H.sentTypes = {}
 
 function C4:GetDeviceID()
   return H.DEVICE_ID
@@ -52,7 +54,14 @@ function C4:UpdateProperty(name, value)
   Properties[name] = value
 end
 function C4:SendToProxy(idBinding, strCommand, tParams, strMessage, allowEmpty)
-  table.insert(H.proxy, { binding = idBinding, command = strCommand, params = tParams, allowEmpty = allowEmpty })
+  table.insert(H.proxy, {
+    binding = idBinding,
+    command = strCommand,
+    params = tParams,
+    message = strMessage,
+    allowEmpty = allowEmpty,
+  })
+  H.sentTypes[strCommand .. " " .. tostring(strMessage)] = true
 end
 function C4:SendDataToUI(strCommand, tParams)
   table.insert(H.ui, { command = strCommand, params = tParams })

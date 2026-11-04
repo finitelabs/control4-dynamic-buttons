@@ -75,8 +75,9 @@ end
 --- @param icon string
 --- @param description string The text list Navigators show in place of the picture.
 local function sendIcon(icon, description)
-  -- Empty values allowed: an empty icon is the proxy's own icon.
-  SendToProxy(PROXY_BINDING, "ICON_CHANGED", { icon = icon, icon_description = description }, "COMMAND", true)
+  -- A notification: the proxy ignores ICON_CHANGED sent as a command. Empty values allowed: an
+  -- empty icon is the proxy's own icon.
+  SendToProxy(PROXY_BINDING, "ICON_CHANGED", { icon = icon, icon_description = description }, "NOTIFY", true)
 end
 
 --- Programming's view of the shown look: its variable and property, and the event on a change.
