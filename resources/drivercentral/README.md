@@ -10,12 +10,12 @@ Marketing images for the driver's DriverCentral listing. Each banner and photo i
 | `product-card-300x300.png` | 300x300 | The listing's product card, written by `make icons` from `resources/Driver Icons.sketch` |
 | `photos/1-...` onward | 2000x2000 | Listing photos, uploaded in number order |
 
-`assets/` holds what the pages share: the Finite Labs logo, `scene.js`, which draws the banners' art, and the brand's logo as `brand-mark.png`.
+`assets/` holds what the pages share: the Finite Labs logo, `scene.js`, Dynamic Buttons' own mark as `brand-mark.png`, exported from this repo's `resources/Driver Icons.sketch`, and the banners' art, `looks.png` and `looks-wide.png`: pictures the driver drew for a demo project's buttons, from its included icon packs.
 
 ## Making the set
 
 1. Put the brand's logo in `assets/brand-mark.png`: the version its official kit makes for dark backgrounds, unedited, and note the kit's URL and usage terms in this README. Trim only its transparent margin. Never trace, redraw, recolor or crop the art, and never cut a mark out of a lockup the brand only supplies whole. A kit with no dark-background logo, or only one too small to stay sharp, gets a light hub (Banner art, below).
-2. In each page under `banners/`, replace "Driver Name", the chips and the line under them with what the driver does, from its docs and CHANGELOG. No tag lines, and no counts that change between releases (say "thousands of devices", not a number). The facts strip holds facts that stay true between releases: the Control4 OS it needs, the trial, local or cloud, what it controls.
+2. In each page under `banners/`, replace "Driver Name", the chips and the line under them with what the driver does, from its docs and CHANGELOG. No tag lines, except the launch post's "The last button driver you will ever need", and no counts that change between releases (say "thousands of devices", not a number). The facts strip holds facts that stay true between releases: the Control4 OS it needs, the trial, local or cloud, what it controls.
 3. Pick the banners' art on the `<svg class="scene">` element (Banner art, below). Both banners use the same attributes.
 4. In `photos/frame.html`, replace "Driver Name" beside the logo.
 5. Fill in the trademark notice at the bottom of the spotlight, the launch post and the photo frame: the brand's names and Control4, with any symbol or wording the brand's own guidelines require.
