@@ -16,6 +16,7 @@
     --tile: #1c1c1e; --tile-text: #ffffff;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
 
   .panel { padding: 16px; width: 100%; }
@@ -98,14 +99,13 @@
   .seg button.on { background: var(--accent); color: #fff; }
 
   .picker { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
-  .pickbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-  .pickbar select { width: 180px; flex: none; }
-  .pickbar input { flex: 1 1 180px; width: auto; }
-  .filters { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 8px; }
-  .filters .grp { display: flex; align-items: center; gap: 8px; }
-  .filters .flabel { width: 40px; flex: none; }
-  .filters .grp.packs-grp { align-items: flex-start; }
-  .packs-grp .flabel { padding-top: 5px; }
+  .pickbar { flex-wrap: wrap; }
+  .pickbar select { width: 160px; flex: none; }
+  .pickbar input { flex: 1 1 160px; width: auto; }
+  .pickarea { min-width: 0; }
+  .picknote { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; }
+  .linkbtn:hover { text-decoration: underline; }
   .packs { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
   .packs summary { cursor: pointer; padding: 4px 10px; font-size: 12px; list-style: none; }
   .packs summary::-webkit-details-marker { display: none; }
@@ -113,6 +113,13 @@
   .packlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px 12px; padding: 6px 10px 8px; border-top: 1px solid var(--border); }
   .packlist label { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
   .packlist .all { grid-column: 1 / -1; display: flex; gap: 8px; margin-bottom: 4px; }
+  .customize { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .customize > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text); }
+  .custom-head { display: flex; justify-content: flex-end; margin: -18px 0 8px; }
+  .lookform .fnote { font-size: 11px; color: var(--text-muted); }
+  #c-badge { width: 110px; }
+  #fld-c-size .rangerow { width: 280px; max-width: 100%; }
+  #c-pos code { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
   .icongrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; max-height: 300px; overflow-y: auto; padding: 2px; }
   .icon { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); height: 56px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
   .icon:hover { background: var(--surface-hover); }
@@ -178,55 +185,109 @@
             <label for="f-tile-color">Tile color</label>
             <div class="fctl colorrow"><input type="color" id="f-tile-color" value="#109eff"><code id="f-tile-color-v"></code></div>
           </div>
-          <div class="frow" id="fld-glow">
-            <label for="f-glow">Glow</label>
-            <div class="fctl rangerow" title="100% is the picture's own glow."><input type="range" id="f-glow" min="0" max="200" step="10" value="100"><code id="f-glow-v">100%</code></div>
-          </div>
-          <div class="frow" id="fld-grayscale">
-            <label for="f-grayscale">Grayscale</label>
-            <div class="fctl"><label class="check" title="Draws the picture in grays with no glow, as for an off look."><input type="checkbox" id="f-grayscale"> Gray version</label></div>
-          </div>
           <div class="frow" id="fld-cycle">
             <label for="f-in-cycle">Cycle</label>
             <div class="fctl"><label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label></div>
           </div>
         </div>
-        <div class="picker">
-          <div class="seg" id="pick-src">
-            <button type="button" data-src="bundled" class="on">Included icons</button>
-            <button type="button" data-src="packs">Icon packs</button>
-            <button type="button" data-src="online">Search online</button>
-          </div>
-          <div id="pick-bundled">
-            <div class="pickbar">
-              <select id="b-cat" aria-label="Category"></select>
-              <input type="search" id="b-filter" placeholder="Filter by name" aria-label="Filter icons">
+        <div class="lookform picker" id="pick-form">
+          <div class="frow" id="fld-pick">
+            <label for="pk-src">Picture</label>
+            <div class="fctl pickbar">
+              <select id="pk-src" aria-label="Source"></select>
+              <select id="pk-cat" aria-label="Category"></select>
+              <input type="search" id="pk-q" placeholder="Search pictures" aria-label="Search pictures">
+              <button class="btn btn-secondary" id="o-go" type="button" hidden>Search</button>
             </div>
-            <div class="icongrid" id="b-grid"></div>
           </div>
-          <div id="pick-packs" hidden>
-            <div class="pickbar">
-              <select id="p-pack" aria-label="Icon pack"></select>
-              <select id="p-cat" aria-label="Category"></select>
-              <input type="search" id="p-filter" placeholder="Filter by name" aria-label="Filter pack icons">
-            </div>
-            <div class="icongrid" id="p-grid"></div>
-            <div class="packnote" id="p-note"></div>
+          <div class="frow" id="fld-style" hidden>
+            <label>Style</label>
+            <div class="fctl"><div class="seg" id="o-style"></div></div>
           </div>
-          <div id="pick-online" hidden>
-            <div class="pickbar">
-              <input type="search" id="o-query" placeholder="Search free icon packs" aria-label="Search icons">
-              <button class="btn btn-secondary" id="o-go" type="button">Search</button>
-            </div>
-            <div class="filters">
-              <div class="grp"><span class="flabel">Style</span><div class="seg" id="o-style"></div></div>
-              <div class="grp packs-grp"><span class="flabel">Packs</span><details class="packs" id="o-packs"><summary id="o-packs-sum">All packs</summary><div class="packlist" id="o-packlist"></div></details></div>
-            </div>
-            <div class="icongrid" id="o-grid"></div>
-            <div class="note" id="o-note">Searches only packs that need no credit on each icon.</div>
+          <div class="frow" id="fld-packs" hidden>
+            <label>Packs</label>
+            <div class="fctl"><details class="packs" id="o-packs"><summary id="o-packs-sum">All packs</summary><div class="packlist" id="o-packlist"></div></details></div>
           </div>
-          <div class="picked" id="picked">No icon picked.</div>
+          <div class="frow" id="fld-grid">
+            <span></span>
+            <div class="pickarea">
+              <div id="pick-local">
+                <div class="icongrid" id="pk-grid"></div>
+                <div class="picknote"><span id="pk-note"></span><button type="button" class="linkbtn" id="pk-online" hidden></button></div>
+              </div>
+              <div id="pick-online" hidden>
+                <div class="icongrid" id="o-grid"></div>
+                <div class="note" id="o-note">Searches only packs that need no credit on each icon.</div>
+              </div>
+            </div>
+          </div>
         </div>
+        <div class="picked" id="picked">No icon picked.</div>
+        <details class="customize" id="customize">
+          <summary>Customize</summary>
+          <div class="custom-head"><button type="button" class="linkbtn" id="c-reset">Reset to the pack’s look</button></div>
+          <div class="lookform" id="custom-form">
+            <div class="frow" id="fld-c-color">
+              <label for="c-color">Color</label>
+              <div class="fctl colorrow"><input type="color" id="c-color"><code id="c-color-v"></code><span class="fnote">Its shading stays.</span></div>
+            </div>
+            <div class="frow" id="fld-c-body">
+              <label for="c-body">Body</label>
+              <div class="fctl colorrow"><input type="color" id="c-body"><code id="c-body-v"></code><span class="fnote">Tints the metal or plastic.</span></div>
+            </div>
+            <div class="frow" id="fld-c-tile">
+              <label for="c-tile">Tile</label>
+              <div class="fctl colorrow"><input type="color" id="c-tile"><code id="c-tile-v"></code></div>
+            </div>
+            <div class="frow" id="fld-c-symbol">
+              <label for="c-symbol">Symbol</label>
+              <div class="fctl colorrow"><input type="color" id="c-symbol"><code id="c-symbol-v"></code></div>
+            </div>
+            <div class="frow" id="fld-glow">
+              <label for="f-glow">Glow</label>
+              <div class="fctl rangerow" title="100% is the picture's own glow."><input type="range" id="f-glow" min="0" max="200" step="10" value="100"><code id="f-glow-v">100%</code></div>
+            </div>
+            <div class="frow" id="fld-c-glowcolor">
+              <label for="c-glowColor">Glow color</label>
+              <div class="fctl colorrow"><input type="color" id="c-glowColor"><code id="c-glowColor-v"></code><span class="fnote" id="c-glow-note">Follows Color unless set.</span></div>
+            </div>
+            <div class="frow" id="fld-grayscale">
+              <label for="f-grayscale">Grayscale</label>
+              <div class="fctl"><label class="check" title="Draws the picture in grays with no glow, as for an off look."><input type="checkbox" id="f-grayscale"> Gray version</label></div>
+            </div>
+            <div class="frow" id="fld-c-size">
+              <label for="c-size">Size</label>
+              <div class="fctl rangerow"><input type="range" id="c-size" min="50" max="100" step="2" value="100"><code id="c-size-v">100%</code></div>
+            </div>
+            <div class="frow" id="fld-c-pos">
+              <label>Position</label>
+              <div class="fctl" id="c-pos">
+                <button class="btn btn-secondary sm" type="button" data-move="left" aria-label="Left">&larr;</button>
+                <button class="btn btn-secondary sm" type="button" data-move="up" aria-label="Up">&uarr;</button>
+                <button class="btn btn-secondary sm" type="button" data-move="down" aria-label="Down">&darr;</button>
+                <button class="btn btn-secondary sm" type="button" data-move="right" aria-label="Right">&rarr;</button>
+                <button class="btn btn-secondary sm" type="button" data-move="center">Center</button>
+                <code id="c-pos-v"></code>
+              </div>
+            </div>
+            <div class="frow" id="fld-c-badge">
+              <label for="c-badge">Badge</label>
+              <div class="fctl"><input type="text" id="c-badge" placeholder="None" autocomplete="off"><span class="fnote">Up to 5 characters.</span></div>
+            </div>
+            <div class="frow" id="fld-c-place">
+              <label>Place</label>
+              <div class="fctl"><div class="seg" id="c-place"></div></div>
+            </div>
+            <div class="frow" id="fld-c-textcolor">
+              <label for="c-badge-color">Text color</label>
+              <div class="fctl colorrow"><input type="color" id="c-badge-color" value="#ffffff"><code id="c-badge-color-v"></code></div>
+            </div>
+            <div class="frow" id="fld-c-bg">
+              <label for="c-badge-bg">Background</label>
+              <div class="fctl colorrow"><input type="color" id="c-badge-bg" value="#dc2626"><code id="c-badge-bg-v"></code><div class="seg"><button type="button" id="c-badge-none">None</button></div></div>
+            </div>
+          </div>
+        </details>
       </div>
       <div>
         <div class="navtile" id="edit-tile"></div>
@@ -256,6 +317,7 @@
       <li>Lucide, ISC License, and the MIT License for its icons that come from Feather (github.com/lucide-icons/lucide)</li>
       <li>Tabler Icons, MIT License (github.com/tabler/tabler-icons)</li>
     </ul>
+    <div class="lic-copy">A badge’s text is drawn in Roboto, copyright Google Inc., Apache License 2.0 (github.com/googlefonts/roboto).</div>
     <div class="lic-copy">The Classic Device pictures are our own drawings, most built around a Material Design Icons symbol.</div>
     <div class="lic-copy">The driver includes the full license text in LICENSES.txt. Searched icons come from packs whose licenses allow use without credit on each icon. Each look keeps the name and license of the icon it was drawn from.</div>
     <ul class="lic-list" id="lic-list"></ul>
@@ -510,6 +572,260 @@ function cellSrc(icon) {
   return gCell[icon.id] || (gCell[icon.id] = svgUrl(icon, '#1A1A1A', 28));
 }
 
+// ============================================================
+// Customization: what a look changes in its picture
+// ============================================================
+// The badge's text face: Roboto Bold 2.137 (Apache License 2.0), cut to printable ASCII and
+// the degree sign. A character outside it falls back to the system's bold sans.
+var BADGE_FONT = 'data:font/woff2;base64,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';
+var gBadgeFont = null;
+function badgeFont() {
+  if (!gBadgeFont) {
+    gBadgeFont = (window.FontFace
+      ? new FontFace('DynamicButtonBadge', 'url(' + BADGE_FONT + ')', { weight: '700' }).load().then(function(f) { document.fonts.add(f); return 'DynamicButtonBadge'; })
+      : Promise.reject(new Error('no FontFace'))).catch(function() { return ''; });
+  }
+  return gBadgeFont;
+}
+
+var HEX6 = /^#[0-9a-f]{6}$/i;
+function rgbOf(h) { return [1, 3, 5].map(function(i) { return parseInt(h.slice(i, i + 2), 16); }); }
+function hexOf(c) { return '#' + c.map(function(v) { return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'); }).join('').toUpperCase(); }
+function mixColor(a, b, t) { var x = rgbOf(a), y = rgbOf(b); return hexOf(x.map(function(v, i) { return v + (y[i] - v) * t; })); }
+function hslOf(h) {
+  var c = rgbOf(h).map(function(v) { return v / 255; }), mx = Math.max.apply(0, c), mn = Math.min.apply(0, c);
+  var l = (mx + mn) / 2, d = mx - mn, s = 0, hue = 0;
+  if (d) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    hue = mx === c[0] ? ((c[1] - c[2]) / d) % 6 : mx === c[1] ? (c[2] - c[0]) / d + 2 : (c[0] - c[1]) / d + 4;
+    hue *= 60;
+    if (hue < 0) hue += 360;
+  }
+  return { h: hue, s: Math.min(1, s), l: l };
+}
+function hexFromHsl(o) {
+  var c = (1 - Math.abs(2 * o.l - 1)) * o.s, x = c * (1 - Math.abs((o.h / 60) % 2 - 1)), m = o.l - c / 2;
+  var r = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(o.h / 60) % 6];
+  return hexOf(r.map(function(v) { return (v + m) * 255; }));
+}
+function chromaOf(h) { var c = rgbOf(h); return Math.max.apply(0, c) - Math.min.apply(0, c); }
+// The picked hue and saturation with the old paint's own lightness, so the shading stays.
+function recolor(old, pick, satScale) {
+  var a = hslOf(old), b = hslOf(pick);
+  return hexFromHsl({ h: b.h, s: Math.min(1, b.s * (satScale == null ? 1 : satScale)), l: a.l });
+}
+// A tile's color back from its gradient's top, which the packs draw 22% toward white.
+function tileFromTop(top) { return hexOf(rgbOf(top).map(function(v) { return (v - 255 * 0.22) / 0.78; })); }
+
+// The charging bolt and the warning mark carry meaning, the highlight is the light itself, and the
+// sun and its rays are sunlight, not the device's paint.
+var FIXED_PAINTS = { b: 1, w: 1, hl: 1, s: 1, sr: 1 };
+function parseBody(body) {
+  var doc = new DOMParser().parseFromString('<svg xmlns="' + SVG_NS + '" xmlns:xlink="http://www.w3.org/1999/xlink">' + String(body || '') + '</svg>', 'image/svg+xml');
+  return doc.getElementsByTagName('parsererror').length ? null : doc.documentElement;
+}
+function bodyOf(root) {
+  var ser = new XMLSerializer();
+  return Array.prototype.map.call(root.childNodes, function(n) { return n.nodeType === 1 ? ser.serializeToString(n) : ''; }).join('');
+}
+function stopsOf(root, gid) {
+  var g = root.querySelector('[id="' + gid + '"]');
+  return g ? Array.prototype.slice.call(g.querySelectorAll('stop')) : [];
+}
+// A shape filled with a fixed paint keeps its outline too.
+function fixedShape(el) {
+  var m = /^url\(#([\w-]+)\)$/.exec(el.getAttribute('fill') || '');
+  return !!(m && FIXED_PAINTS[m[1]]);
+}
+function hueGap(a, b) { var d = Math.abs(hslOf(a).h - hslOf(b).h) % 360; return d > 180 ? 360 - d : d; }
+function forEachPaint(root, fn) {
+  Array.prototype.forEach.call(root.querySelectorAll('*'), function(el) {
+    var grad = el.localName === 'stop' ? el.parentNode.getAttribute('id') : null;
+    if (fixedShape(el)) grad = el.getAttribute('fill').slice(5, -1);
+    ['fill', 'stroke', 'stop-color'].forEach(function(a) {
+      var v = el.getAttribute(a);
+      if (v && HEX6.test(v)) fn(el, a, v.toUpperCase(), grad);
+    });
+  });
+}
+function mostUsed(counts) { return Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; })[0] || null; }
+// The most saturated of a picture's colors, which reads as its color: a gradient's light top doesn't.
+function mostColorful(counts) { return Object.keys(counts).sort(function(a, b) { return chromaOf(b) - chromaOf(a) || counts[b] - counts[a]; })[0] || null; }
+
+// What a picture's customization can change, and the colors it starts from, read from its SVG.
+var gKinds = {};
+function pictureKind(icon) {
+  if (!icon) return { kind: 'none' };
+  var pack = packOf(icon);
+  if (!pack) return { kind: 'icon' };
+  if (gKinds[icon.id]) return gKinds[icon.id];
+  var root = parseBody(icon.body), k = { kind: 'none', pack: pack.id };
+  if (root) {
+    var glow = stopsOf(root, 'h')[0];
+    k.glow = hasGlow(icon);
+    k.glowColor = glow ? (glow.getAttribute('stop-color') || '').toUpperCase() : null;
+    if (pack.id === 'classic-tile') {
+      var top = stopsOf(root, 't')[0];
+      k.kind = 'tile';
+      k.tile = top ? tileFromTop(top.getAttribute('stop-color')) : '#109EFF';
+      k.symbol = '#FFFFFF';
+    } else if (pack.id === 'modern') {
+      var counts = {};
+      forEachPaint(root, function(el, a, v) { if (a !== 'stop-color' && v !== '#000000') counts[v] = (counts[v] || 0) + 1; });
+      k.kind = 'modern';
+      k.color = mostUsed(counts);
+    } else if (root.querySelector('[fill="url(#g)"]')) {
+      var g = stopsOf(root, 'g').map(function(s) { return s.getAttribute('stop-color').toUpperCase(); });
+      k.kind = 'device-symbol';
+      k.glowFollows = !!k.glow;
+      k.color = g.sort(function(a, b) { return chromaOf(b) - chromaOf(a); })[0] || null;
+    } else {
+      var colored = {}, neutral = {};
+      forEachPaint(root, function(el, a, v, grad) {
+        if (grad && FIXED_PAINTS[grad] || grad === 'h') return;
+        if (chromaOf(v) > 40) colored[v] = (colored[v] || 0) + 1;
+        else { var l = hslOf(v).l; if (l > 0.35 && l < 0.99) neutral[v] = (neutral[v] || 0) + 1; }
+      });
+      k.kind = 'device-drawing';
+      k.color = mostColorful(colored);
+      k.body = mostUsed(neutral);
+      // A drawing's glow follows Color when it is the glow of its colored part, not of a light beside it.
+      k.glowFollows = !!(k.glow && k.color && k.glowColor && hueGap(k.glowColor, k.color) < 25);
+    }
+  }
+  gKinds[icon.id] = k;
+  return k;
+}
+// The customization fields a picture can use, so a look keeps only those.
+function customKeysFor(icon) {
+  var k = pictureKind(icon), keys = [];
+  if (k.kind === 'none') return keys;
+  if (k.color) keys.push('color');
+  if (k.body) keys.push('body');
+  if (k.kind === 'tile') keys.push('tile', 'symbol');
+  if (k.glow) keys.push('glowColor');
+  return keys.concat(['size', 'x', 'y', 'badge']);
+}
+// The look's customization as the driver keeps it: what it changes, and nothing for the picture's own.
+function cleanCustom(icon, raw) {
+  var c = {}, keys = customKeysFor(icon);
+  raw = raw || {};
+  ['color', 'body', 'tile', 'symbol', 'glowColor'].forEach(function(key) {
+    if (keys.indexOf(key) >= 0 && HEX6.test(raw[key] || '')) c[key] = raw[key].toUpperCase();
+  });
+  if (raw.size != null && Number(raw.size) !== 100) c.size = Number(raw.size);
+  if (raw.x) c.x = Number(raw.x);
+  if (raw.y) c.y = Number(raw.y);
+  var b = raw.badge, text = b ? String(b.text || '').trim() : '';
+  if (text) c.badge = { text: text, place: b.place || 'Top Right', color: (b.color || '#FFFFFF').toUpperCase(), background: b.background === 'None' ? 'None' : (b.background || '#DC2626').toUpperCase() };
+  return Object.keys(c).length ? c : null;
+}
+function customKey(look) {
+  var c = look.custom || {}, b = c.badge || {};
+  return [c.color, c.body, c.tile, c.symbol, c.glowColor, c.size || 100, c.x || 0, c.y || 0, b.text, b.place, b.color, b.background].join('|');
+}
+
+// The pack picture's SVG with its customization: colors, then the glow's strength.
+function customBody(icon, look) {
+  var c = look.custom || {}, k = pictureKind(icon), body = icon.body;
+  if (c.color || c.body || c.tile || c.symbol || c.glowColor) {
+    var root = parseBody(body);
+    if (root) {
+      if (k.kind === 'device-symbol' && c.color) {
+        stopsOf(root, 'g').concat(stopsOf(root, 'h')).forEach(function(s) { s.setAttribute('stop-color', recolor(s.getAttribute('stop-color'), c.color)); });
+        Array.prototype.forEach.call(root.querySelectorAll('use[stroke]'), function(u) { if (HEX6.test(u.getAttribute('stroke'))) u.setAttribute('stroke', recolor(u.getAttribute('stroke'), c.color)); });
+      } else if (k.kind === 'device-drawing') {
+        forEachPaint(root, function(el, a, v, grad) {
+          if (grad && FIXED_PAINTS[grad]) return;
+          if (grad === 'h' && !k.glowFollows) return;
+          if (chromaOf(v) > 40) { if (c.color) el.setAttribute(a, recolor(v, c.color)); return; }
+          var l = hslOf(v).l;
+          if (c.body && l > 0.35 && l < 0.99) el.setAttribute(a, recolor(v, c.body, 0.45));
+        });
+      } else if (k.kind === 'tile') {
+        var t = stopsOf(root, 't');
+        if (c.tile && t.length >= 2) {
+          // The generator's own mixes: the top 22% toward white, the bottom 28% and the edge 40% toward black.
+          t[0].setAttribute('stop-color', mixColor(c.tile, '#FFFFFF', 0.22));
+          t[t.length - 1].setAttribute('stop-color', mixColor(c.tile, '#000000', 0.28));
+          Array.prototype.forEach.call(root.querySelectorAll('rect[stroke]'), function(r) { r.setAttribute('stroke', mixColor(c.tile, '#000000', 0.4)); });
+        }
+        if (c.symbol) Array.prototype.forEach.call(root.querySelectorAll('use[fill="#FFFFFF"]'), function(u) { u.setAttribute('fill', c.symbol); });
+      } else if (k.kind === 'modern' && c.color && k.color) {
+        forEachPaint(root, function(el, a, v) { if (a !== 'stop-color' && v === k.color) el.setAttribute(a, c.color); });
+      }
+      if (c.glowColor && k.glow) stopsOf(root, 'h').forEach(function(s) { s.setAttribute('stop-color', c.glowColor); });
+      body = bodyOf(root);
+    }
+  }
+  return withGlow(body, lookGlow(look));
+}
+
+// The margins a picture keeps, in parts of the canvas: the Classic packs' shadow needs 58 of
+// 1024 at the sides, 48 at the top and 100 at the bottom; anything else may reach the edge.
+function marginsFor(icon) {
+  var pack = packOf(icon);
+  return pack && pack.shadow ? { l: 58 / 1024, t: 48 / 1024, r: 58 / 1024, b: 100 / 1024 } : { l: 0, t: 0, r: 0, b: 0 };
+}
+// Where the picture's own drawing sits on the canvas, without its glow, in parts of the canvas.
+var gBounds = {};
+function pictureBounds(look) {
+  var icon = look.icon;
+  if (!icon) return Promise.resolve(null);
+  if (!packOf(icon)) {
+    var tiled = look.tileShape && look.tileShape !== 'None', half = (tiled ? 0.58 : 0.88) / 2;
+    return Promise.resolve({ l: 0.5 - half, t: 0.5 - half, r: 0.5 + half, b: 0.5 + half });
+  }
+  if (gBounds[icon.id]) return Promise.resolve(gBounds[icon.id]);
+  var n = 128;
+  return loadImage(svgUrl(Object.assign({}, icon, { body: withGlow(icon.body, 0) }), '#FFFFFF', n)).then(function(img) {
+    var c = document.createElement('canvas');
+    c.width = c.height = n;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, n, n);
+    var d = ctx.getImageData(0, 0, n, n).data, l = n, t = n, r = -1, b = -1;
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (d[(y * n + x) * 4 + 3] > 16) { if (x < l) l = x; if (x > r) r = x; if (y < t) t = y; if (y > b) b = y; }
+    return (gBounds[icon.id] = r < 0 ? { l: 0, t: 0, r: 1, b: 1 } : { l: l / n, t: t / n, r: (r + 1) / n, b: (b + 1) / n });
+  }).catch(function() { return null; });
+}
+// How far the picture may move each way, in whole percent, at a size: never past its margins,
+// never more than 10, and always as far as centered.
+function shiftRange(bounds, margins, size) {
+  var s = size / 100, out = {};
+  [['x', 'l', 'r'], ['y', 't', 'b']].forEach(function(a) {
+    var lo = 0.5 + (bounds[a[1]] - 0.5) * s, hi = 0.5 + (bounds[a[2]] - 0.5) * s;
+    out[a[0]] = [Math.min(0, Math.max(-10, Math.ceil((margins[a[1]] - lo) * 100))), Math.max(0, Math.min(10, Math.floor((1 - margins[a[2]] - hi) * 100)))];
+  });
+  return out;
+}
+// The pack picture's size and position as one transform of its SVG.
+function placedBody(body, look, viewSize) {
+  var c = look.custom || {}, s = (c.size || 100) / 100, half = viewSize / 2;
+  var dx = (c.x || 0) / 100 * viewSize, dy = (c.y || 0) / 100 * viewSize;
+  if (s === 1 && !dx && !dy) return body;
+  return '<g transform="translate(' + (half + dx) + ' ' + (half + dy) + ') scale(' + s + ') translate(' + (-half) + ' ' + (-half) + ')">' + body + '</g>';
+}
+function drawBadge(ctx, size, b, face) {
+  var under = b.place === 'Under', h = Math.round(size * (under ? 0.2 : 0.24));
+  ctx.save();
+  ctx.font = '700 ' + Math.round(h * 0.68) + 'px ' + (face ? face + ', ' : '') + '"Segoe UI", Roboto, Arial, sans-serif';
+  var w = Math.min(size * 0.94, Math.max(h, ctx.measureText(b.text).width + h * 0.7)), x, y;
+  if (b.place === 'Top Right') { x = size - w - size * 0.03; y = size * 0.03; }
+  else if (b.place === 'Bottom Right') { x = size - w - size * 0.03; y = size - h - size * 0.03; }
+  else { x = (size - w) / 2; y = size - h - size * 0.02; }
+  if (b.background !== 'None') {
+    ctx.fillStyle = b.background;
+    ctx.beginPath();
+    roundRect(ctx, x, y, w, h, h / 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = b.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(b.text, x + w / 2, y + h / 2 + h * 0.03, w - h * 0.3);
+  ctx.restore();
+}
+
 function loadImage(src) {
   return new Promise(function(resolve, reject) {
     var img = new Image();
@@ -521,36 +837,41 @@ function loadImage(src) {
 // The look's picture: the icon in its color, over its tile, drawn at the canvas's size.
 // The image loads first and only the canvas's latest call draws, so an earlier call that
 // finishes late can't paint over it.
+// Customized, the picture is drawn, its shadows go under it, the gray pass follows, and the badge
+// goes on top so it keeps its colors.
 async function drawLook(canvas, look) {
   var size = canvas.width, ctx = canvas.getContext('2d');
   var turn = canvas.drawTurn = (canvas.drawTurn || 0) + 1;
   if (!look.icon) { ctx.clearRect(0, 0, size, size); return; }
+  var c = look.custom || {}, badge = c.badge && c.badge.text ? c.badge : null;
+  var face = badge ? await badgeFont() : '';
+  if (turn !== canvas.drawTurn) return;
   var pack = packOf(look.icon);
   if (pack) {
-    var icon = Object.assign({}, look.icon, { body: withGlow(look.icon.body, lookGlow(look)) });
+    var icon = Object.assign({}, look.icon, { body: placedBody(customBody(look.icon, look), look, pack.size) });
     var pic = await loadImage(svgUrl(icon, '#FFFFFF', size));
     if (turn !== canvas.drawTurn) return;
     ctx.clearRect(0, 0, size, size);
     if (pack.shadow) drawShadows(ctx, pic, size);
     ctx.drawImage(pic, 0, 0, size, size);
-    if (look.grayscale) grayOut(ctx, size);
-    return;
+  } else {
+    var tiled = look.tileShape && look.tileShape !== 'None';
+    var art = Math.round(size * (tiled ? 0.58 : 0.88) * (c.size || 100) / 100);
+    var img = await loadImage(svgUrl(look.icon, look.iconColor, art));
+    if (turn !== canvas.drawTurn) return;
+    ctx.clearRect(0, 0, size, size);
+    if (tiled) {
+      ctx.fillStyle = look.tileColor;
+      ctx.beginPath();
+      if (look.tileShape === 'Circle') ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      else if (look.tileShape === 'Rounded Square') roundRect(ctx, 0, 0, size, size, size * 0.22);
+      else ctx.rect(0, 0, size, size);
+      ctx.fill();
+    }
+    ctx.drawImage(img, (size - art) / 2 + (c.x || 0) / 100 * size, (size - art) / 2 + (c.y || 0) / 100 * size, art, art);
   }
-  var tiled = look.tileShape && look.tileShape !== 'None';
-  var art = Math.round(size * (tiled ? 0.58 : 0.88));
-  var img = await loadImage(svgUrl(look.icon, look.iconColor, art));
-  if (turn !== canvas.drawTurn) return;
-  ctx.clearRect(0, 0, size, size);
-  if (tiled) {
-    ctx.fillStyle = look.tileColor;
-    ctx.beginPath();
-    if (look.tileShape === 'Circle') ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-    else if (look.tileShape === 'Rounded Square') roundRect(ctx, 0, 0, size, size, size * 0.22);
-    else ctx.rect(0, 0, size, size);
-    ctx.fill();
-  }
-  ctx.drawImage(img, (size - art) / 2, (size - art) / 2, art, art);
   if (look.grayscale) grayOut(ctx, size);
+  if (badge) drawBadge(ctx, size, badge, face);
 }
 
 // A pack picture's glow is its radial gradient 'h', however the picture draws it: the slider
@@ -641,7 +962,7 @@ async function navTile(el, look) {
 function sameDrawing(a, b) {
   var ia = a.icon || {}, ib = b.icon || {};
   return ia.id === ib.id && ia.body === ib.body && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor &&
-    savedGlow(a) === savedGlow(b) && !!a.grayscale === !!b.grayscale;
+    savedGlow(a) === savedGlow(b) && !!a.grayscale === !!b.grayscale && customKey(a) === customKey(b);
 }
 
 // ============================================================
@@ -874,26 +1195,6 @@ function bundledIcon(id) {
   return { id: i.id, body: cleanIcon(i.id, i.body), width: Number(i.width) || 24, height: Number(i.height) || 24, license: lic.title || '', licenseUrl: lic.url || '' };
 }
 
-function renderCategories() {
-  var cats = [];
-  BUNDLED_ICONS.forEach(function(i) { if (cats.indexOf(i.category) < 0) cats.push(i.category); });
-  $('b-cat').innerHTML = '<option value="">All categories</option>' + cats.map(function(c) { return '<option>' + esc(c) + '</option>'; }).join('');
-}
-
-function renderBundled() {
-  var cat = $('b-cat').value, q = $('b-filter').value.trim().toLowerCase();
-  var shown = BUNDLED_ICONS.filter(function(i) {
-    return (!cat || i.category === cat) && (!q || i.id.toLowerCase().indexOf(q) >= 0);
-  });
-  fillGrid($('b-grid'), shown.map(function(i) { return iconCell(i.id, bundledIcon(i.id)); }), 'No included icon matches.');
-}
-
-$('b-cat').addEventListener('change', renderBundled);
-$('b-filter').addEventListener('input', renderBundled);
-$('b-grid').addEventListener('click', function(e) {
-  var b = e.target.closest('button[data-id]');
-  if (b) pickIcon(bundledIcon(b.dataset.id));
-});
 
 // ============================================================
 // Icons: the packs
@@ -915,49 +1216,78 @@ var gPackCell = {};
 function packCellSrc(icon) {
   return gPackCell[icon.id] || (gPackCell[icon.id] = svgUrl(icon, '#FFFFFF', 40));
 }
-function renderPackOptions() {
-  $('p-pack').innerHTML = ICON_PACKS.map(function(p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('');
-  var cats = [];
-  PACK_ICONS.forEach(function(i) { if (cats.indexOf(i.category) < 0) cats.push(i.category); });
-  $('p-cat').innerHTML = '<option value="">All categories</option>' + cats.map(function(c) { return '<option>' + esc(c) + '</option>'; }).join('');
+// ============================================================
+// The picker: one source list, one category list and one search box
+// ============================================================
+var SOURCE_ALL = 'all', SOURCE_BASIC = 'basic', SOURCE_ONLINE = 'online';
+function pickerSource() { return $('pk-src').value || SOURCE_ALL; }
+function renderSources() {
+  $('pk-src').innerHTML = '<option value="' + SOURCE_ALL + '">All included</option>' +
+    ICON_PACKS.map(function(p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('') +
+    '<option value="' + SOURCE_BASIC + '">Basic icons</option>' +
+    '<option value="' + SOURCE_ONLINE + '">Free icon libraries</option>';
 }
-function renderPackGrid() {
-  var pack = $('p-pack').value, cat = $('p-cat').value, q = $('p-filter').value.trim().toLowerCase();
-  var shown = PACK_ICONS.filter(function(i) {
-    return i.id.split(':')[0] === pack && (!cat || i.category === cat) &&
-      (!q || i.label.toLowerCase().indexOf(q) >= 0 || i.id.split(':')[1].indexOf(q) >= 0);
+// The included pictures a source holds: a pack's own, the basic icons, or all of them.
+function sourceItems(src) {
+  var packs = PACK_ICONS.filter(function(i) { return src === SOURCE_ALL || i.id.split(':')[0] === src; })
+    .map(function(i) { return { id: i.id, category: i.category, words: (i.label + ' ' + i.id.split(':')[1]).toLowerCase(), pack: true, label: i.label }; });
+  var basic = src === SOURCE_ALL || src === SOURCE_BASIC ? BUNDLED_ICONS.map(function(i) {
+    return { id: i.id, category: i.category, words: i.id.toLowerCase().replace(/[-:]/g, ' '), pack: false, label: titleCase(i.id.split(':')[1]) };
+  }) : [];
+  return packs.concat(basic);
+}
+function renderCategories() {
+  var src = pickerSource(), was = $('pk-cat').value, cats = [];
+  sourceItems(src).forEach(function(i) { if (cats.indexOf(i.category) < 0) cats.push(i.category); });
+  $('pk-cat').innerHTML = '<option value="">All categories</option>' + cats.map(function(c) { return '<option>' + esc(c) + '</option>'; }).join('');
+  if (cats.indexOf(was) >= 0) $('pk-cat').value = was;
+}
+function packCell(id, label) {
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'icon dark' + (gEditor.icon && gEditor.icon.id === id ? ' on' : '');
+  b.dataset.id = id;
+  b.title = label;
+  var img = document.createElement('img');
+  img.alt = '';
+  img.src = packCellSrc(packIcon(id));
+  b.appendChild(img);
+  return b;
+}
+function renderPicker() {
+  var src = pickerSource(), online = src === SOURCE_ONLINE, q = $('pk-q').value.trim();
+  $('pk-cat').hidden = online;
+  $('o-go').hidden = !online;
+  $('fld-style').hidden = !online;
+  $('fld-packs').hidden = !online;
+  $('pick-local').hidden = online;
+  $('pick-online').hidden = !online;
+  $('pk-q').placeholder = online ? 'Search free icon libraries' : 'Search pictures';
+  if (online) return;
+  var cat = $('pk-cat').value, words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  var shown = sourceItems(src).filter(function(i) {
+    return (!cat || i.category === cat) && words.every(function(w) { return i.words.indexOf(w) >= 0; });
   });
-  fillGrid($('p-grid'), shown.map(function(i) {
-    var icon = packIcon(i.id), b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'icon dark' + (gEditor.icon && gEditor.icon.id === i.id ? ' on' : '');
-    b.dataset.id = i.id;
-    b.title = i.label;
-    var img = document.createElement('img');
-    img.alt = '';
-    img.src = packCellSrc(icon);
-    b.appendChild(img);
-    return b;
-  }), 'No pack icon matches.');
-  $('p-note').textContent = (gPacks[pack] || {}).note || '';
+  fillGrid($('pk-grid'), shown.map(function(i) { return i.pack ? packCell(i.id, i.label) : iconCell(i.id, bundledIcon(i.id)); }),
+    q ? 'No included picture matches.' : 'No pictures here.');
+  var note = (gPacks[src] || {}).note || (src === SOURCE_BASIC ? 'One-color icons that take an icon color and a tile.' : '');
+  $('pk-note').textContent = (shown.length === 1 ? '1 picture.' : shown.length + ' pictures.') + (note ? ' ' + note : '');
+  $('pk-online').hidden = !q;
+  $('pk-online').textContent = 'Search free icon libraries for \u201c' + q + '\u201d';
 }
-$('p-pack').addEventListener('change', renderPackGrid);
-$('p-cat').addEventListener('change', renderPackGrid);
-$('p-filter').addEventListener('input', renderPackGrid);
-$('p-grid').addEventListener('click', function(e) {
-  var b = e.target.closest('button[data-id]');
-  if (b) pickIcon(packIcon(b.dataset.id));
+$('pk-src').addEventListener('change', function() { renderCategories(); renderPicker(); if (pickerSource() === SOURCE_ONLINE && $('pk-q').value.trim()) search(); });
+$('pk-cat').addEventListener('change', renderPicker);
+$('pk-q').addEventListener('input', renderPicker);
+$('pk-q').addEventListener('keydown', function(e) { if (e.key === 'Enter' && pickerSource() === SOURCE_ONLINE) search(); });
+$('pk-online').addEventListener('click', function() {
+  $('pk-src').value = SOURCE_ONLINE;
+  renderPicker();
+  search();
 });
-
-$('pick-src').addEventListener('click', function(e) {
-  var b = e.target.closest('button[data-src]');
+$('pk-grid').addEventListener('click', function(e) {
+  var b = e.target.closest('button[data-id]');
   if (!b) return;
-  Array.prototype.forEach.call($('pick-src').children, function(x) { x.classList.toggle('on', x === b); });
-  $('pick-bundled').hidden = b.dataset.src !== 'bundled';
-  $('pick-packs').hidden = b.dataset.src !== 'packs';
-  $('pick-online').hidden = b.dataset.src !== 'online';
-  if (b.dataset.src === 'packs') renderPackGrid();
-  if (b.dataset.src === 'online') $('o-query').focus();
+  pickIcon(gPackIcons[b.dataset.id] ? packIcon(b.dataset.id) : bundledIcon(b.dataset.id));
 });
 
 // ============================================================
@@ -1089,7 +1419,7 @@ function fetchIcons(prefix, names) {
 var gSearch = { query: '', ids: [] }, gOnline = {}, gFetching = {}, gSearchSeq = 0;
 function onlineNote(text) { $('o-note').textContent = text; }
 function search() {
-  var q = $('o-query').value.trim();
+  var q = $('pk-q').value.trim();
   if (!q) return;
   var chosen = chosenPacks(), mine = ++gSearchSeq;
   gSearch = { query: q, ids: [] };
@@ -1144,7 +1474,6 @@ function fetchMissing(ids) {
   });
 }
 $('o-go').addEventListener('click', search);
-$('o-query').addEventListener('keydown', function(e) { if (e.key === 'Enter') search(); });
 $('o-grid').addEventListener('click', function(e) {
   var b = e.target.closest('button[data-id]');
   if (!b) return;
@@ -1172,6 +1501,8 @@ $('f-shape').addEventListener('click', function(e) {
   if (!b) return;
   gEditor.look.tileShape = b.dataset.shape;
   renderShapes();
+  // An icon on no tile draws larger, so how far it may move changes.
+  measureBounds();
   preview();
 });
 ['f-icon-color', 'f-tile-color'].forEach(function(id) {
@@ -1182,7 +1513,137 @@ $('f-shape').addEventListener('click', function(e) {
 });
 $('f-name').addEventListener('input', function() { gEditor.look.name = $('f-name').value; preview(); });
 $('f-glow').addEventListener('input', function() { gEditor.look.glow = Number($('f-glow').value); preview(); });
-$('f-grayscale').addEventListener('change', function() { gEditor.look.grayscale = $('f-grayscale').checked; preview(); });
+$('f-grayscale').addEventListener('change', function() { gEditor.look.grayscale = $('f-grayscale').checked; syncCustom(); preview(); });
+
+// ============================================================
+// The look editor: Customize
+// ============================================================
+var CUSTOM_COLORS = ['color', 'body', 'tile', 'symbol', 'glowColor'];
+var BADGE_PLACES = ['Top Right', 'Bottom Right', 'Under'];
+var BADGE_MAX = 5;
+function customOf(l) { return l.custom || (l.custom = {}); }
+// The colors the pickers show: the look's own, else the picture's, with a glow that follows Color.
+function shownColors(l) {
+  var k = pictureKind(l.icon), c = customOf(l);
+  var glow = c.glowColor || (k.glowFollows && c.color ? recolor(k.glowColor, c.color) : k.glowColor);
+  return { color: c.color || k.color, body: c.body || k.body, tile: c.tile || k.tile, symbol: c.symbol || k.symbol, glowColor: glow };
+}
+function badgeOf(l) {
+  var c = customOf(l);
+  return c.badge || (c.badge = { text: '', place: 'Top Right', color: '#FFFFFF', background: '#DC2626' });
+}
+function positionText(c) {
+  var x = c.x || 0, y = c.y || 0, parts = [];
+  if (x) parts.push(Math.abs(x) + '% ' + (x < 0 ? 'left' : 'right'));
+  if (y) parts.push(Math.abs(y) + '% ' + (y < 0 ? 'up' : 'down'));
+  return parts.length ? parts.join(', ') : 'Centered';
+}
+// The controls from the look, after it opens, its picture changes or Reset.
+function syncCustom() {
+  var l = gEditor.look, c = customOf(l), colors = shownColors(l), b = badgeOf(l);
+  CUSTOM_COLORS.forEach(function(key) {
+    var v = colors[key] || '#000000';
+    $('c-' + key).value = v.toLowerCase();
+    $('c-' + key + '-v').textContent = v.toUpperCase();
+  });
+  $('c-size').value = c.size || 100;
+  $('c-size-v').textContent = (c.size || 100) + '%';
+  $('c-pos-v').textContent = positionText(c);
+  $('c-badge').value = b.text;
+  $('c-place').innerHTML = BADGE_PLACES.map(function(p) { return '<button type="button" data-place="' + p + '"' + (p === b.place ? ' class="on"' : '') + '>' + p + '</button>'; }).join('');
+  $('c-badge-color').value = b.color.toLowerCase();
+  $('c-badge-color-v').textContent = b.color.toUpperCase();
+  var none = b.background === 'None';
+  if (!none) $('c-badge-bg').value = b.background.toLowerCase();
+  $('c-badge-bg-v').textContent = none ? 'None' : b.background.toUpperCase();
+  $('c-badge-none').classList.toggle('on', none);
+}
+// Keep the picture inside its margins at its size, once its drawing's bounds are known.
+function clampShift() {
+  var l = gEditor.look, c = customOf(l);
+  if (!gEditor.bounds) return;
+  var range = shiftRange(gEditor.bounds, marginsFor(l.icon), c.size || 100);
+  c.x = Math.max(range.x[0], Math.min(range.x[1], c.x || 0));
+  c.y = Math.max(range.y[0], Math.min(range.y[1], c.y || 0));
+}
+function measureBounds() {
+  var l = gEditor.look, icon = l.icon;
+  gEditor.bounds = null;
+  pictureBounds(l).then(function(b) {
+    if (!gEditor.look || gEditor.look.icon !== icon) return;
+    gEditor.bounds = b;
+    clampShift();
+    syncCustom();
+    preview();
+  });
+}
+CUSTOM_COLORS.forEach(function(key) {
+  $('c-' + key).addEventListener('input', function() {
+    customOf(gEditor.look)[key] = $('c-' + key).value.toUpperCase();
+    syncCustom();
+    preview();
+  });
+});
+$('c-size').addEventListener('input', function() {
+  customOf(gEditor.look).size = Number($('c-size').value);
+  clampShift();
+  syncCustom();
+  preview();
+});
+$('c-pos').addEventListener('click', function(e) {
+  var btn = e.target.closest('button[data-move]');
+  if (!btn) return;
+  var c = customOf(gEditor.look), move = btn.dataset.move;
+  if (move === 'center') { c.x = 0; c.y = 0; }
+  else {
+    var axis = move === 'left' || move === 'right' ? 'x' : 'y', step = move === 'left' || move === 'up' ? -2 : 2;
+    c[axis] = (c[axis] || 0) + step;
+    // Without the bounds yet, the margins can't be checked, so the picture stays where it was.
+    if (!gEditor.bounds) c[axis] -= step;
+    clampShift();
+  }
+  syncCustom();
+  preview();
+});
+$('c-badge').addEventListener('input', function() {
+  var text = Array.from($('c-badge').value).slice(0, BADGE_MAX).join('');
+  if (text !== $('c-badge').value) $('c-badge').value = text;
+  badgeOf(gEditor.look).text = text;
+  preview();
+});
+$('c-place').addEventListener('click', function(e) {
+  var btn = e.target.closest('button[data-place]');
+  if (!btn) return;
+  badgeOf(gEditor.look).place = btn.dataset.place;
+  syncCustom();
+  preview();
+});
+$('c-badge-color').addEventListener('input', function() {
+  badgeOf(gEditor.look).color = $('c-badge-color').value.toUpperCase();
+  syncCustom();
+  preview();
+});
+$('c-badge-bg').addEventListener('input', function() {
+  badgeOf(gEditor.look).background = $('c-badge-bg').value.toUpperCase();
+  syncCustom();
+  preview();
+});
+$('c-badge-none').addEventListener('click', function() {
+  var b = badgeOf(gEditor.look);
+  b.background = b.background === 'None' ? $('c-badge-bg').value.toUpperCase() : 'None';
+  syncCustom();
+  preview();
+});
+$('c-reset').addEventListener('click', function() {
+  var l = gEditor.look;
+  l.custom = {};
+  l.glow = 100;
+  l.grayscale = false;
+  $('f-glow').value = 100;
+  $('f-grayscale').checked = false;
+  syncCustom();
+  preview();
+});
 
 function pickIcon(icon) {
   if (!icon) return;
@@ -1196,6 +1657,8 @@ function pickIcon(icon) {
   }
   gEditor.icon = icon;
   gEditor.look.icon = icon;
+  measureBounds();
+  syncCustom();
   if (!$('f-name').value.trim()) {
     $('f-name').value = Array.from(icon.label || titleCase(icon.id.split(':')[1])).slice(0, 40).join('');
     gEditor.look.name = $('f-name').value;
@@ -1217,14 +1680,23 @@ function preview() {
   $('fld-tile-color').hidden = whole || !tiled;
   $('edit-big').classList.toggle('dark', whole);
   $('fld-glow').hidden = !hasGlow(l.icon) || !!l.grayscale;
+  var keys = customKeysFor(l.icon), badgeOn = !!String(badgeOf(l).text || '').trim();
+  $('customize').hidden = !l.icon;
+  ['color', 'body', 'tile', 'symbol'].forEach(function(key) { $('fld-c-' + key).hidden = keys.indexOf(key) < 0; });
+  $('fld-c-glowcolor').hidden = keys.indexOf('glowColor') < 0 || !!l.grayscale;
+  $('c-glow-note').hidden = !pictureKind(l.icon).glowFollows;
+  ['fld-c-place', 'fld-c-textcolor', 'fld-c-bg'].forEach(function(id) { $(id).hidden = !badgeOn; });
+  $('c-reset').textContent = whole ? 'Reset to the pack\u2019s look' : 'Reset to the icon\u2019s look';
   $('f-glow-v').textContent = $('f-glow').value + '%';
   $('f-icon-color-v').textContent = l.iconColor;
   $('f-tile-color-v').textContent = l.tileColor;
   $('picked').innerHTML = gEditor.icon
     ? 'Icon: <b>' + esc(gEditor.icon.id) + '</b> <span class="lic">(' + esc(gEditor.icon.license || 'license unknown') + ')</span>'
     : 'No icon picked.';
-  navTile($('edit-tile'), l);
-  drawLook($('edit-big'), l).catch(function() {});
+  // Drawn as it will be saved: only what the picture can use, and nothing for its own look.
+  var drawn = Object.assign({}, l, { custom: cleanCustom(l.icon, l.custom) });
+  navTile($('edit-tile'), drawn);
+  drawLook($('edit-big'), drawn).catch(function() {});
 }
 
 function openEditor(look) {
@@ -1233,6 +1705,7 @@ function openEditor(look) {
     : { id: null, name: '', icon: null, iconColor: '#FFFFFF', tileShape: 'Rounded Square', tileColor: '#109EFF', inCycle: true, glow: 100, grayscale: false };
   if (gEditor.look.glow == null) gEditor.look.glow = 100;
   gEditor.look.grayscale = !!gEditor.look.grayscale;
+  gEditor.look.custom = gEditor.look.custom || {};
   gEditor.icon = gEditor.look.icon;
   gEditor.shapeBefore = null;
   $('editor-title').textContent = look ? 'Edit ' + look.name : 'New look';
@@ -1243,10 +1716,14 @@ function openEditor(look) {
   $('f-glow').value = gEditor.look.glow;
   $('f-grayscale').checked = gEditor.look.grayscale;
   renderShapes();
-  renderBundled();
+  renderPicker();
   markPicked();
   setStatus('');
   showError('');
+  // Opened on a look that changes its picture, the Customize section shows how.
+  $('customize').open = !!(cleanCustom(gEditor.look.icon, gEditor.look.custom) || gEditor.look.grayscale || savedGlow(gEditor.look) !== 100);
+  syncCustom();
+  measureBounds();
   $('editor').hidden = false;
   preview();
   $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1276,10 +1753,11 @@ async function saveLook() {
   $('save').disabled = true;
   try {
     var before = l.id != null ? gState.looks.find(function(o) { return o.id === l.id; }) : null;
+    var custom = cleanCustom(l.icon, l.custom), drawn = Object.assign({}, l, { custom: custom });
     var b64 = null;
-    if (!before || !before.hasImage || before.stale || !sameDrawing(before, l)) {
+    if (!before || !before.hasImage || before.stale || !sameDrawing(before, drawn)) {
       setStatus('Drawing the picture…');
-      var dataUrl = await lookDataUrl(l, 300);
+      var dataUrl = await lookDataUrl(drawn, 300);
       b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
       if (b64.length * 3 / 4 > gState.maxBytes) { setStatus('The picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB.', true); return; }
     }
@@ -1287,6 +1765,7 @@ async function saveLook() {
     if (icon) delete icon.label;
     var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
       glow: savedGlow(l), grayscale: !!l.grayscale };
+    if (custom) fields.custom = custom;
     if (!gApiHost) {
       demoSave(fields);
       setStatus('Saved here only: this page is not open in Composer.');
@@ -1346,7 +1825,7 @@ async function sendPicture(lookId, name, b64) {
 
 function demoSave(fields) {
   var existing = gState.looks.find(function(x) { return x.id === fields.id; });
-  if (existing) Object.assign(existing, fields, { hasImage: true, stale: false });
+  if (existing) Object.assign(existing, fields, { custom: fields.custom, hasImage: true, stale: false });
   else {
     var id = gState.looks.reduce(function(m, x) { return Math.max(m, x.id); }, 0) + 1;
     gState.looks.push(Object.assign({}, fields, { id: id, hasImage: true, stale: false }));
@@ -1359,8 +1838,8 @@ function demoSave(fields) {
 // Boot
 // ============================================================
 (function boot() {
+  renderSources();
   renderCategories();
-  renderPackOptions();
   renderPacks();
   renderStyles();
   renderLicenses();
