@@ -1,5 +1,5 @@
-The Dynamic Button driver's Button tab includes icons from four icon collections, listed
-below with their licenses. They are stored as SVG path data in
+The Dynamic Button driver's Button tab includes icons from four icon collections and one
+font, listed below with their licenses. They are stored as SVG path data in
 drivers/dynamic_button/www/html/index.html:
 
 - The included icons, written by tools/bundle_icons.py from the names in
@@ -11,7 +11,10 @@ drivers/dynamic_button/www/html/index.html:
   Finite Labs' own drawings, most built around a Material Design Icons symbol; the list in
   resources/icon-packs/subjects.tsv names the symbol each picture uses.
 
-The driver carries these five notices, with the texts of the Apache License 2.0, the ISC
+A badge's text is drawn in Roboto Bold, cut down by hand to printable ASCII and the
+degree sign and stored in the same file as a WOFF2 font.
+
+The driver carries these six notices, with the texts of the Apache License 2.0, the ISC
 License and the MIT License, in
 drivers/dynamic_button/www/LICENSES.txt.
 
@@ -60,6 +63,14 @@ https://github.com/tabler/tabler-icons
 
 Copyright (c) 2020-2024 Paweł Kuna. Released under the MIT License.
 https://github.com/tabler/tabler-icons/blob/main/LICENSE
+
+-------------------------------------------------------------------------------
+
+Roboto
+https://github.com/googlefonts/roboto
+
+Copyright 2011 Google Inc. All Rights Reserved. Licensed under the Apache License,
+Version 2.0, https://www.apache.org/licenses/LICENSE-2.0.
 
 -------------------------------------------------------------------------------
 

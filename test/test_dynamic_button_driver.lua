@@ -297,9 +297,48 @@ H.update()
 T.eq("and a driver update", dimmedLook(), { 30, true })
 H.tab("_DELETE_LOOK", { id = dimmedId })
 
+T.section("A look's customization")
+local styledId = H.addLook("Styled")
+local styledCustom = {
+  color = "#14A39A",
+  size = 84,
+  x = -4,
+  badge = { text = "50%", place = "Under", color = "#FFFFFF", background = "None" },
+}
+H.tab("_SAVE_LOOK", H.lookFields("Styled", { id = styledId, custom = styledCustom }))
+local function styledLook()
+  H.tab("_GET_STATE")
+  for _, look in ipairs(H.state().looks) do
+    if look.id == styledId then
+      return look
+    end
+  end
+end
+T.eq("the tab is sent it", styledLook().custom, styledCustom)
+T.truthy("and its picture is out of date until a new one is drawn", styledLook().stale)
+H.restart()
+T.eq("it is kept across a Director restart", styledLook().custom, styledCustom)
+H.update()
+T.eq("and a driver update", styledLook().custom, styledCustom)
+local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("Styled", { id = styledId, custom = { size = 20 } })))
+T.eq(
+  "a customization the driver refuses is answered with why",
+  refused.message,
+  "size is a whole percent from 50 to 100"
+)
+T.eq("and the look keeps its own", styledLook().custom, styledCustom)
+H.tab("_DELETE_LOOK", { id = styledId })
+
 T.section("Reset Driver")
 H.addLook("Full")
 local lastId = H.addLook("Half")
+H.tab(
+  "_SAVE_LOOK",
+  H.lookFields("Half", {
+    id = lastId,
+    custom = { size = 80, badge = { text = "1/2", place = "Under", color = "#FFFFFF", background = "None" } },
+  })
+)
 local versionBefore = lastVersion()
 Properties["Log Level"] = "5 - Trace"
 H.mark()
@@ -316,6 +355,8 @@ T.eq("no Look Changed fires, as on a fresh install", #H.fired, 0)
 T.eq("Look Is is gone", select(2, lookIs()), nil)
 T.eq("settings return to their defaults", Properties["Log Level"], "3 - Info")
 T.eq("a new look never takes an old look's number", H.addLook("Again"), lastId + 1)
+H.tab("_GET_STATE")
+T.eq("and none keeps an old look's customization", H.state().looks[1].custom, nil)
 T.truthy("nor an address an app has seen", lastVersion() > versionBefore)
 H.mark()
 EC.Show_Look({ Look = "Half (" .. lastId .. ")" })

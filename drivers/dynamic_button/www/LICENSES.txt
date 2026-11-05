@@ -1,11 +1,13 @@
-Dynamic Button: icon notices
+Dynamic Button: icon and font notices
 
-The Button tab includes icons from four collections. The included icons are stored as SVG
+The Button tab includes icons from four collections and one font. The included icons are stored as SVG
 path data in www/html/index.html, unmodified apart from their color. The three icon packs
 (Classic Device, Classic Tile and Modern) are stored in the same file: the Classic Tile and
 Modern pictures place these collections' symbols on a tile or in a frame and color them, and
 the Classic Device pictures are Finite Labs' own drawings, most built around a Material
 Design Icons symbol.
+A badge's text is drawn in Roboto Bold, stored in the same file and cut down to printable
+ASCII and the degree sign.
 
 Material Design Icons
 Copyright Pictogrammers. The icons are licensed under the Apache License, Version 2.0.
@@ -28,6 +30,11 @@ https://github.com/feathericons/feather
 Tabler Icons
 Licensed under the MIT License, which follows the ISC License below.
 https://github.com/tabler/tabler-icons
+
+Roboto (the badge font)
+Copyright 2011 Google Inc. All Rights Reserved. Licensed under the Apache License,
+Version 2.0, which follows below.
+https://github.com/googlefonts/roboto
 
 The Apache License, Version 2.0, the ISC License and the MIT License follow.
 

@@ -215,6 +215,7 @@ local function tabState()
       inCycle = Looks.inCycle(look),
       glow = Looks.glow(look),
       grayscale = Looks.grayscale(look),
+      custom = look.custom,
     })
   end
   local properties = {}
