@@ -5,11 +5,7 @@
 -- it here; the driver keeps it (src/dynamic_button/images.lua) and serves the shown one under a new
 -- address on every change (src/dynamic_button/button.lua).
 
---#ifdef DRIVERCENTRAL
-DC_PID = 0 -- TODO: Assign DriverCentral product ID
-DC_X = nil
-DC_FILENAME = "dynamic_button.c4z"
---#else
+--#ifndef DRIVERCENTRAL
 DRIVER_GITHUB_REPO = "finitelabs/control4-dynamic-buttons"
 --#endif
 
@@ -28,6 +24,7 @@ local events = require("lib.events")
 local http = require("lib.http")
 local updateSettings = require("lib.update-settings")
 --#ifdef DRIVERCENTRAL
+local drivercentral = require("lib.drivercentral")
 local supportCode = require("lib.support-code")
 local diagnostics = require("lib.diagnostics")
 --#endif
@@ -339,8 +336,7 @@ end
 
 function OnDriverInit()
   --#ifdef DRIVERCENTRAL
-  require("cloud-client-byte")
-  C4:AllowExecute(false)
+  drivercentral:startClient()
   --#else
   C4:AllowExecute(true)
   --#endif
@@ -352,6 +348,33 @@ function OnDriverInit()
 
   values:restoreValues()
 end
+
+--#ifdef DRIVERCENTRAL
+--- The license gate stopped (false) or started (true) the driver. Stopped, the button shows the driver's own icon and
+--- keeps its looks; started, it shows its look again as a load would.
+--- @param licensed boolean
+local function onLicense(licensed)
+  if not licensed then
+    log:warn("No active license: the button shows the driver's own icon until there is one")
+    sendIcon("", "")
+    UpdateProperty("Driver Status", drivercentral.UNLICENSED_STATUS)
+    pushState()
+    return
+  end
+  log:info("Licensed again: the button shows its look")
+  local shown = button:shown()
+  if shown then
+    -- A new address, since the app may still hold the driver's icon for the old one.
+    local ok, err = button:show(shown.id, true)
+    if not ok then
+      log:warn("Could not show look %s: %s", shown.name, err)
+    end
+  end
+  registerLookIs(lookChoices(), true)
+  UpdateProperty("Driver Status", "Ready")
+  pushState()
+end
+--#endif
 
 function OnDriverLateInit()
   log:trace("OnDriverLateInit()")
@@ -402,6 +425,9 @@ function OnDriverLateInit()
 
   gInitialized = true
   UpdateProperty("Driver Status", "Ready")
+  --#ifdef DRIVERCENTRAL
+  drivercentral:startGate(onLicense)
+  --#endif
 end
 
 --#ifdef DRIVERCENTRAL
@@ -799,3 +825,45 @@ function EC.Reset_Driver(params)
   UpdateProperty("Driver Status", "Ready")
   pushState()
 end
+
+--#ifdef DRIVERCENTRAL
+--------------------------------------------------------------------------------
+-- License gate
+--------------------------------------------------------------------------------
+
+--- What the tab hears for a look change while the gate holds the driver stopped.
+local UNLICENSED_REFUSAL = "No active license: looks can't change until the driver is licensed"
+
+--- @param fn function
+--- @param refused? function What answers instead while stopped; nothing when nil.
+--- @return function gated
+local function whileLicensed(fn, refused)
+  return function(...)
+    if drivercentral:licensed() then
+      return fn(...)
+    end
+    if refused then
+      return refused(...)
+    end
+  end
+end
+
+-- Stopped, nothing changes the look: presses, programming, Reset Driver and the tab's look writes are turned away. _GET_STATE and
+-- _SET_DRIVER stay open, since they only do what Composer's own Properties tab can.
+RFP.SELECT = whileLicensed(RFP.SELECT)
+EC.Show_Look = whileLicensed(EC.Show_Look)
+EC.Next_Look = whileLicensed(EC.Next_Look)
+EC.Previous_Look = whileLicensed(EC.Previous_Look)
+EC.Reset_Driver = whileLicensed(EC.Reset_Driver)
+GCPL.Show_Look = whileLicensed(GCPL.Show_Look, function()
+  return {}
+end)
+for _, name in ipairs({ "_SAVE_LOOK", "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
+  UIR[name] = whileLicensed(UIR[name], function()
+    return pushError(UNLICENSED_REFUSAL)
+  end)
+end
+UIR._ICONIFY = whileLicensed(UIR._ICONIFY, function(tParams)
+  return uiRespond("ICONIFY", { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
+end)
+--#endif
