@@ -40,12 +40,12 @@ the programming you attach to it.
   - [Driver Installation](#driver-installation)
   - [Showing the Button in Navigator](#showing-the-button-in-navigator)
   - [The Button Tab](#the-button-tab)
+    - [Properties](#properties)
     - [Looks](#looks)
     - [Look Editor](#look-editor)
     - [Customize](#customize)
     - [Icon Packs](#icon-packs)
     - [Free Icon Libraries](#free-icon-libraries)
-    - [Properties](#properties)
   - [Cycling Through Looks](#cycling-through-looks)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
@@ -154,6 +154,29 @@ Until the button has a look, it shows the driver's own icon.
 
 Select the driver in the "System Design" tab and open its "Button" tab to make
 the button's looks.
+
+### Properties
+
+<!-- #ifdef DRIVERCENTRAL -->
+
+<img alt="Button tab - Properties" src="./images/ui-properties-drivercentral.png" width="640"/>
+<!-- #else -->
+<img alt="Button tab - Properties" src="./images/ui-properties.png" width="640"/>
+<!-- #endif -->
+
+1. **Cloud Settings** - the driver's [properties](#driver-properties) under the
+   same headings as Composer's "Properties" tab. Look Control and the shown look
+   are in the Shown now card.
+1. **Driver Status** - grayed out, as every read-only property is: the driver
+   sets it.
+1. **Log Level** - a change applies at once, and shows in Composer's
+   "Properties" tab too. A change made there shows here.
+
+<!-- #ifdef DRIVERCENTRAL -->
+
+The Support Code is entered in Composer's "Properties" tab only.
+
+<!-- #endif -->
 
 ### Looks
 
@@ -293,29 +316,6 @@ one applies. They work with no internet.
    the look.
 1. **Icons found** - how many icons the search found, and how many of them the
    style shows.
-
-### Properties
-
-<!-- #ifdef DRIVERCENTRAL -->
-
-<img alt="Button tab - Properties" src="./images/ui-properties-drivercentral.png" width="640"/>
-<!-- #else -->
-<img alt="Button tab - Properties" src="./images/ui-properties.png" width="640"/>
-<!-- #endif -->
-
-1. **Cloud Settings** - the driver's [properties](#driver-properties) under the
-   same headings as Composer's "Properties" tab. Look Control and the shown look
-   are in the Shown now card.
-1. **Driver Status** - grayed out, as every read-only property is: the driver
-   sets it.
-1. **Log Level** - a change applies at once, and shows in Composer's
-   "Properties" tab too. A change made there shows here.
-
-<!-- #ifdef DRIVERCENTRAL -->
-
-The Support Code is entered in Composer's "Properties" tab only.
-
-<!-- #endif -->
 
 ## Cycling Through Looks
 

@@ -158,6 +158,12 @@
   <div class="banner warn" id="conn-bar" hidden>No live connection to the driver: reconnecting&hellip;</div>
   <div class="banner err" id="err" hidden></div>
 
+  <div class="card" id="props-card">
+    <h3>Properties</h3>
+    <div class="note props-note">The driver’s properties, as in Composer’s Properties tab, with Look Control set below. Editing either side syncs.</div>
+    <div id="props"></div>
+  </div>
+
   <div class="cols">
     <div class="card" id="shown-card">
       <h3>Shown now <span id="shown-pill"></span></h3>
@@ -313,12 +319,6 @@
       <button class="btn btn-secondary" id="cancel" type="button">Cancel</button>
     </div>
     <div class="status" id="status"></div>
-  </div>
-
-  <div class="card" id="props-card">
-    <h3>Properties</h3>
-    <div class="note props-note">The driver’s properties, as in Composer’s Properties tab, with Look Control set above. Editing either side syncs.</div>
-    <div id="props"></div>
   </div>
 
   <div class="card" id="lic-card">
