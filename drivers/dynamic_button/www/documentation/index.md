@@ -187,16 +187,16 @@ the button's looks.
 1. **Name** - the look's name in programming: up to 40 characters, without
    commas, and different from the button's other looks. Picking an icon fills it
    in when it is empty.
-1. **In cycle** - when off, presses, Next Look and Previous Look pass over the
-   look. Show Look can still show it.
-1. **Grayscale** - draws the picture in grays, its tile too, which gives any
-   picture a gray version for an off look beside the packs' own on and off
-   pictures. A gray picture has no glow, and the look keeps its `Glow` setting
-   for when `Grayscale` is turned off again.
 1. **Tile shape** - `None`, `Circle`, `Rounded Square` or `Square`. With `None`
    the icon is drawn on its own, larger, and `Tile color` is hidden.
 1. **Icon color** - the color the icon is drawn in.
 1. **Tile color** - the color of the tile behind the icon.
+1. **Grayscale** - draws the picture in grays, its tile too, which gives any
+   picture a gray version for an off look beside the packs' own on and off
+   pictures. A gray picture has no glow, and the look keeps its `Glow` setting
+   for when `Grayscale` is turned off again.
+1. **Cycle** - with `In cycle` off, presses, Next Look and Previous Look pass
+   over the look. Show Look can still show it.
 1. **Included icons / Icon packs / Search online** - picks from the icons
    included with the driver, which work with no internet, from the driver's
    three icon packs (see [Icon Packs](#icon-packs)), or from the free icon packs
