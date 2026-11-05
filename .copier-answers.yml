@@ -7,7 +7,7 @@ extra_build_secrets: ''
 extra_required_checks: ''
 github_org: finitelabs
 icon_style: square
-primary_color: '#109EFF'
+primary_color: '#F59E0B'
 project_description: Control4 Navigator buttons whose picture changes with live values,
     icon packs, web images and uploads.
 project_name: control4-dynamic-buttons

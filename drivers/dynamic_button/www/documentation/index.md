@@ -17,7 +17,7 @@
 
 ______________________________________________________________________
 
-# <span style="color:#109EFF">Overview</span>
+# <span style="color:#F59E0B">Overview</span>
 
 > DISCLAIMER: This software is neither affiliated with nor endorsed by Control4.
 
@@ -27,7 +27,7 @@ a free icon pack, drawn in your colors on the tile shape you pick. Control4
 programming changes which look the button shows, and pressing the button runs
 the programming you attach to it.
 
-# <span style="color:#109EFF">Index</span>
+# <span style="color:#F59E0B">Index</span>
 
 <div style="font-size: small">
 
@@ -65,12 +65,12 @@ the programming you attach to it.
 
 </div>
 
-# <span style="color:#109EFF">System Requirements</span>
+# <span style="color:#F59E0B">System Requirements</span>
 
 - Control4 OS 3.3.1 or later
 - Composer Pro, to set up each button's looks in its Button tab
 
-# <span style="color:#109EFF">Features</span>
+# <span style="color:#F59E0B">Features</span>
 
 - A Navigator button with up to eight looks, each drawn from an icon in the
   colors and tile shape you pick
@@ -85,7 +85,7 @@ the programming you attach to it.
   a Look Changed event, an event for each look and a Look Is conditional
 - The button's picture updates in Navigator as soon as programming changes it
 
-# <span style="color:#109EFF">Installer Setup</span>
+# <span style="color:#F59E0B">Installer Setup</span>
 
 <!-- #ifdef DRIVERCENTRAL -->
 
@@ -491,7 +491,7 @@ and Previous Look work whatever Look Control is set to.
 | ----------- | -------------------------------------------------- |
 | Look Is     | Tests whether the button shows a look, or does not |
 
-# <span style="color:#109EFF">Icon Licenses</span>
+# <span style="color:#F59E0B">Icon Licenses</span>
 
 The included icons and the icon packs are drawn from these collections:
 
@@ -535,7 +535,7 @@ Each look keeps the name and license of the icon it was drawn from.
 
 <!-- #ifdef DRIVERCENTRAL -->
 
-# <span style="color:#109EFF">Developer Information</span>
+# <span style="color:#F59E0B">Developer Information</span>
 
 <p align="center">
 <img alt="Finite Labs" src="./images/finite-labs-logo.png" width="400"/>
@@ -553,7 +553,7 @@ from Finite Labs LLC.
 
 <!-- #endif -->
 
-# <span style="color:#109EFF">Support</span>
+# <span style="color:#F59E0B">Support</span>
 
 <!-- #ifdef DRIVERCENTRAL -->
 

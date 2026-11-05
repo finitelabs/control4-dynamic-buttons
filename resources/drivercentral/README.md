@@ -10,7 +10,7 @@ Marketing images for the driver's DriverCentral listing. Each banner and photo i
 | `product-card-300x300.png` | 300x300 | The listing's product card, written by `make icons` from `resources/Driver Icons.sketch` |
 | `photos/1-...` onward | 2000x2000 | Listing photos, uploaded in number order |
 
-`assets/` holds what the pages share: the Finite Labs logo, `scene.js`, which draws the banners' art, and the brand's logo as `brand-mark.png`.
+`assets/` holds what the pages share: the Finite Labs logo, `scene.js`, Dynamic Buttons' own mark as `brand-mark.png`, exported from this repo's `resources/Driver Icons.sketch`, and the banners' art, `looks.png` and `looks-wide.png`: pictures the driver drew for a demo project's buttons, from its included icon packs.
 
 ## Making the set
 
