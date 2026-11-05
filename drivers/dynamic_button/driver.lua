@@ -170,6 +170,38 @@ local function registerLookIs(items, saved)
   }, testLookIs)
 end
 
+--- The driver.xml properties the Button tab shows, read once.
+--- @type table[]|nil
+local gTabProperties = nil
+
+--- @return table[] properties Each property the Button tab shows, in driver.xml order: its name,
+--- the label above it as its group, whether it is read-only, and a list's choices. Passwords stay in
+--- Composer.
+local function tabProperties()
+  if gTabProperties then
+    return gTabProperties
+  end
+  gTabProperties = {}
+  local group = ""
+  for xml in XMLgCapture(C4:GetDriverConfigInfo("config") or "", "property") do
+    local kind = XMLCapture(xml, "type")
+    if kind == "LABEL" then
+      group = XMLCapture(xml, "default") or ""
+    elseif (kind == "LIST" or kind == "STRING") and XMLCapture(xml, "password") ~= "true" then
+      local property =
+        { name = XMLCapture(xml, "name"), group = group, readonly = XMLCapture(xml, "readonly") == "true" }
+      if kind == "LIST" then
+        property.choices = {}
+        for item in XMLgCapture(xml, "item") do
+          table.insert(property.choices, item)
+        end
+      end
+      table.insert(gTabProperties, property)
+    end
+  end
+  return gTabProperties
+end
+
 --- @return table state What the Button tab shows.
 local function tabState()
   local list = {}
@@ -186,8 +218,19 @@ local function tabState()
       inCycle = Looks.inCycle(look),
     })
   end
+  local properties = {}
+  for _, property in ipairs(tabProperties()) do
+    table.insert(properties, {
+      name = property.name,
+      group = property.group,
+      readonly = property.readonly,
+      choices = property.choices,
+      value = Properties[property.name] or "",
+    })
+  end
   local shown = button:shown()
   return {
+    properties = properties,
     looks = list,
     shown = shown and shown.id or nil,
     lookControl = lookControl(),
@@ -212,6 +255,13 @@ end
 --- @return string json
 local function pushState()
   return uiRespond("STATE", { state = JSON:encode(tabState()) })
+end
+
+--- Show a property change in the Button tab, once the button is up.
+local function syncTab()
+  if button then
+    pushState()
+  end
 end
 
 --- Answer the Button tab with the state included, so a reply that comes back without the socket
@@ -396,6 +446,7 @@ function OPC.Log_Mode(propertyValue)
   log:trace("OPC.Log_Mode(%s)", propertyValue)
   log:setLogMode(propertyValue)
   CancelTimer("LogMode")
+  syncTab()
   if not log:isEnabled() then
     UpdateProperty("Log Level", "3 - Info", true)
     return
@@ -424,13 +475,12 @@ function OPC.Log_Level(propertyValue)
     DEBUG_URL = false
     DEBUG_WEBSOCKET = false
   end
+  syncTab()
 end
 
 function OPC.Look_Control(propertyValue)
   log:trace("OPC.Look_Control(%s)", propertyValue)
-  if button then
-    pushState()
-  end
+  syncTab()
 end
 
 function OPC.Automatic_Updates(propertyValue)
@@ -438,6 +488,7 @@ function OPC.Automatic_Updates(propertyValue)
   if gInitialized then
     updateSettings:share("Automatic Updates", propertyValue)
   end
+  syncTab()
 end
 
 --#ifndef DRIVERCENTRAL
@@ -446,6 +497,7 @@ function OPC.Update_Channel(propertyValue)
   if gInitialized then
     updateSettings:share("Update Channel", propertyValue)
   end
+  syncTab()
 end
 --#endif
 
@@ -466,6 +518,7 @@ end
 function OPC.Cloud_Monitoring(propertyValue)
   log:trace("OPC.Cloud_Monitoring(%s)", propertyValue)
   diagnostics:setEnabled(propertyValue == "Enabled")
+  syncTab()
 end
 
 --- Prints a diagnostics report, and sends it while Cloud Monitoring is on.
@@ -482,6 +535,22 @@ end
 function UIR._GET_STATE()
   log:trace("UIR._GET_STATE()")
   return pushState()
+end
+
+--- Set one of the driver's properties, as Composer's Properties tab would.
+--- @param tParams table
+function UIR._SET_DRIVER(tParams)
+  local params = tabParams(tParams)
+  local name, value = params.property, params.value
+  log:trace("UIR._SET_DRIVER(%s)", name)
+  for _, property in ipairs(tabProperties()) do
+    if property.name == name and not property.readonly and type(value) == "string" then
+      -- The wrapper turns away a value its list lacks, and fires OnPropertyChanged on a change.
+      UpdateProperty(name, value, true)
+      return pushState()
+    end
+  end
+  return pushError("The tab cannot set " .. tostring(name) .. ".")
 end
 
 --- Create a look, or change one when an id is given. Its picture follows in _PUT_IMAGE.
