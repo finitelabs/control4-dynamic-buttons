@@ -118,10 +118,10 @@ file:close()
 T.truthy("the bar starts hidden, so one tab shows no bar", page:find(".nav{display:none;", 1, true))
 T.truthy("and shows with the class the count sets", page:find(".nav.multi{display:flex;}", 1, true))
 T.truthy("the count sets it only for two tabs or more", page:find("classList.toggle('multi',tabs.length>1)", 1, true))
+T.truthy("the bar's first child is the tab", page:find('id="nav"><divclass="nav-tabactive"', 1, true))
 T.truthy(
-  "the device line follows the tab and comes before the panel",
-  page:find('id="nav"><divclass="nav-tabactive"', 1, true)
-    and page:find('id="nav-meta"', 1, true) < page:find('id="panel-button"', 1, true)
+  "the device line comes before the panel",
+  page:find('id="nav-meta"', 1, true) < page:find('id="panel-button"', 1, true)
 )
 T.truthy(
   "its one tab is a real tab naming its panel",
