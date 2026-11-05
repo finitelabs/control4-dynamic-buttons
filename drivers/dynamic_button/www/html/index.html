@@ -70,11 +70,14 @@
   .rangerow { display: flex; align-items: center; gap: 8px; min-height: 28px; }
   .rangerow input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
   .rangerow code { font-size: 12px; color: var(--text-muted); width: 36px; text-align: right; }
-  #editor .fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 32px; }
-  #editor .fields + .fields { margin-top: 12px; }
-  #editor .fields[hidden] { display: none; }
-  #editor .field.fname { width: 240px; }
-  #fld-glow .rangerow { width: 220px; }
+  /* The look's settings: labels in one column, their controls lined up in the next. */
+  .lookform { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px 14px; align-items: center; }
+  .lookform .frow { display: contents; }
+  .lookform .frow[hidden] { display: none; }
+  .lookform .frow > label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .lookform .fctl { display: flex; align-items: center; gap: 8px; min-height: 30px; min-width: 0; }
+  #f-name { width: 280px; max-width: 100%; }
+  #fld-glow .rangerow { width: 280px; max-width: 100%; }
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .control select { width: auto; min-width: 110px; }
@@ -96,7 +99,7 @@
 
   .picker { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
   .pickbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-  .pickbar select { width: auto; min-width: 160px; }
+  .pickbar select { width: 180px; flex: none; }
   .pickbar input { flex: 1 1 180px; width: auto; }
   .filters { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 8px; }
   .filters .grp { display: flex; align-items: center; gap: 8px; }
@@ -158,36 +161,34 @@
     <h3 id="editor-title">New look</h3>
     <div class="editgrid">
       <div>
-        <div class="fields">
-          <div class="field fname">
+        <div class="lookform" id="look-form">
+          <div class="frow" id="fld-name">
             <label for="f-name">Name</label>
-            <input type="text" id="f-name" maxlength="40" autocomplete="off">
+            <div class="fctl"><input type="text" id="f-name" maxlength="40" autocomplete="off"></div>
           </div>
-          <div class="field">
-            <label for="f-in-cycle">Cycle</label>
-            <label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label>
-          </div>
-          <div class="field" id="fld-grayscale">
-            <label for="f-grayscale">Grayscale</label>
-            <label class="check" title="Draws the picture in grays with no glow, as for an off look."><input type="checkbox" id="f-grayscale"> Gray version</label>
-          </div>
-        </div>
-        <div class="fields" id="look-style">
-          <div class="field" id="fld-shape">
+          <div class="frow" id="fld-shape">
             <label>Tile shape</label>
-            <div class="seg" id="f-shape"></div>
+            <div class="fctl"><div class="seg" id="f-shape"></div></div>
           </div>
-          <div class="field" id="fld-icon-color">
+          <div class="frow" id="fld-icon-color">
             <label for="f-icon-color">Icon color</label>
-            <div class="colorrow"><input type="color" id="f-icon-color" value="#ffffff"><code id="f-icon-color-v"></code></div>
+            <div class="fctl colorrow"><input type="color" id="f-icon-color" value="#ffffff"><code id="f-icon-color-v"></code></div>
           </div>
-          <div class="field" id="fld-tile-color">
+          <div class="frow" id="fld-tile-color">
             <label for="f-tile-color">Tile color</label>
-            <div class="colorrow"><input type="color" id="f-tile-color" value="#109eff"><code id="f-tile-color-v"></code></div>
+            <div class="fctl colorrow"><input type="color" id="f-tile-color" value="#109eff"><code id="f-tile-color-v"></code></div>
           </div>
-          <div class="field" id="fld-glow">
+          <div class="frow" id="fld-glow">
             <label for="f-glow">Glow</label>
-            <div class="rangerow" title="100% is the picture's own glow."><input type="range" id="f-glow" min="0" max="200" step="10" value="100"><code id="f-glow-v">100%</code></div>
+            <div class="fctl rangerow" title="100% is the picture's own glow."><input type="range" id="f-glow" min="0" max="200" step="10" value="100"><code id="f-glow-v">100%</code></div>
+          </div>
+          <div class="frow" id="fld-grayscale">
+            <label for="f-grayscale">Grayscale</label>
+            <div class="fctl"><label class="check" title="Draws the picture in grays with no glow, as for an off look."><input type="checkbox" id="f-grayscale"> Gray version</label></div>
+          </div>
+          <div class="frow" id="fld-cycle">
+            <label for="f-in-cycle">Cycle</label>
+            <div class="fctl"><label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label></div>
           </div>
         </div>
         <div class="picker">
@@ -623,11 +624,14 @@ async function lookDataUrl(look, size) {
   return c.toDataURL('image/png');
 }
 async function navTile(el, look) {
+  // Draws overlap while a slider moves: only the latest may paint the tile.
+  var turn = el.drawTurn = (el.drawTurn || 0) + 1;
   if (!look || !look.icon) {
     el.innerHTML = '<div class="noimg"></div><div class="nm">' + esc(look ? look.name : 'Dynamic Button') + '</div>';
     return;
   }
   var url = await lookDataUrl(look, 112);
+  if (turn !== el.drawTurn) return;
   el.innerHTML = '<img alt="" src="' + url + '"><div class="nm">' + esc(look.name || 'Unnamed') + '</div>';
 }
 function sameDrawing(a, b) {
@@ -1209,7 +1213,6 @@ function preview() {
   $('fld-tile-color').hidden = whole || !tiled;
   $('edit-big').classList.toggle('dark', whole);
   $('fld-glow').hidden = !hasGlow(l.icon) || !!l.grayscale;
-  $('look-style').hidden = ['fld-shape', 'fld-icon-color', 'fld-tile-color', 'fld-glow'].every(function(id) { return $(id).hidden; });
   $('f-glow-v').textContent = $('f-glow').value + '%';
   $('f-icon-color-v').textContent = l.iconColor;
   $('f-tile-color-v').textContent = l.tileColor;
