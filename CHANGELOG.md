@@ -45,3 +45,6 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   no glow, its gray version beside the packs' own on and off pictures
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
+- Added DriverCentral licensing: without an active license the button shows the
+  driver's own icon after five minutes and its looks can't change, and a license
+  shows its look again at once
