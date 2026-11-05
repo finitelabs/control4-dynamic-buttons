@@ -85,6 +85,72 @@ for _, shape in ipairs(Looks.SHAPES) do
   looks:delete(look.id)
 end
 
+T.section("Icons the Button tab carries")
+--- @param id string
+--- @return table icon An icon as the tab sends one it draws from its id.
+local function carried(id)
+  return { id = id, carried = true, width = 1024, height = 1024, license = "Own drawings", licenseUrl = "" }
+end
+local packStore = memoryStore()
+local packLooks = Looks:new(packStore)
+local pack, packErr = packLooks:add(H.lookFields("Lamp", { icon = carried("classic-device:lamp") }))
+T.eq("a pack picture sent without its markup is taken", packErr, nil)
+T.eq("and kept without it", pack.icon.body, nil)
+T.eq("marked as carried", pack.icon.carried, true)
+T.eq(
+  "with its name, size and license",
+  { pack.icon.id, pack.icon.width, pack.icon.height, pack.icon.license },
+  { "classic-device:lamp", 1024, 1024, "Own drawings" }
+)
+T.eq("and so it reads back", packLooks:get(pack.id).icon.body, nil)
+local included = packLooks:add(H.lookFields("Battery", { icon = carried("mdi:battery-50") }))
+T.eq("an included icon sent without its markup is kept without it", included and included.icon.body, nil)
+local sentBody = carried("modern:tv")
+sentBody.body = '<path d="M0 0h1v1z"/>'
+local tv = packLooks:add(H.lookFields("TV", { icon = sentBody }))
+T.eq("a carried icon's markup, if sent, is not kept", tv and tv.icon.body, nil)
+local bare = H.lookFields("Bare")
+bare.icon.body = nil
+_, err = packLooks:add(bare)
+T.eq("an icon with no markup that is not carried is refused", err, "the icon's picture is missing or too large")
+local loose = H.lookFields("Loose", { icon = carried("mdi:battery") })
+loose.icon.carried = "yes"
+_, err = packLooks:add(loose)
+T.eq("only carried = true marks an icon carried", err, "the icon's picture is missing or too large")
+
+local oldStore = memoryStore()
+oldStore:set("Looks", {
+  nextId = 2,
+  list = {
+    {
+      id = 1,
+      name = "Drawn",
+      icon = H.lookFields("Drawn").icon,
+      iconColor = "#FFFFFF",
+      tileShape = "Circle",
+      tileColor = "#109EFF",
+      image = { bytes = 10 },
+    },
+  },
+})
+local oldLooks = Looks:new(oldStore)
+T.eq("a look saved with its markup keeps it", oldLooks:get(1).icon.body, H.lookFields("Drawn").icon.body)
+local resaved = oldLooks:update(1, H.lookFields("Drawn", { tileShape = "Circle", tileColor = "#109EFF" }))
+T.eq("saved again with it, it still validates", resaved and resaved.icon.body, H.lookFields("Drawn").icon.body)
+T.falsy("and its picture stays current", resaved.image.stale)
+local nowCarried = carried("mdi:battery-50")
+nowCarried.width, nowCarried.height = 24, 24
+local moved =
+  oldLooks:update(1, H.lookFields("Drawn", { icon = nowCarried, tileShape = "Circle", tileColor = "#109EFF" }))
+T.eq("saved as carried, it drops the markup", moved.icon.body, nil)
+T.falsy("and the same icon keeps its picture current", moved.image.stale)
+oldLooks:setImage(1, 11)
+local other = oldLooks:update(
+  1,
+  H.lookFields("Drawn", { icon = carried("modern:tv"), tileShape = "Circle", tileColor = "#109EFF" })
+)
+T.truthy("a carried icon of another name is a change to the picture", other.image.stale)
+
 T.section("At most eight looks")
 local store = memoryStore()
 local full = Looks:new(store)

@@ -26,8 +26,9 @@ Images.MAX_BYTES = 512 * 1024
 --- An upload with no new chunk for this long is dropped, in seconds.
 Images.STALE_SECONDS = 60
 
---- The largest chunk the Button tab sends, in base64 characters.
-Images.MAX_CHUNK = 48 * 1024
+--- The largest chunk the Button tab sends, in base64 characters. Kept small: the controller's
+--- broker takes time that grows with the square of each command's size.
+Images.MAX_CHUNK = 3072
 
 local PNG_SIGNATURE = "\137PNG\r\n\26\n"
 local WWW_ROOT = "www/buttons"

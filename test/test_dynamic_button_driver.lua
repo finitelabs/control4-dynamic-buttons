@@ -75,9 +75,25 @@ end
 H.mark()
 H.tab("_SAVE_LOOK", H.lookFields("Spare", { id = 2, iconColor = "#000000" }))
 T.eq("a save sends the state over the socket once", statePushes(), 1)
+local spare = C4:Base64Encode(H.png("Spare black", 8000))
+local count = math.ceil(#spare / 3072)
+T.truthy("a picture of several chunks", count >= 3)
 H.mark()
-H.sendImage(2, H.png("Spare black"))
-T.eq("and so does its picture", statePushes(), 1)
+local first =
+  JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "s", index = 1, count = count, data = spare:sub(1, 3072) }))
+T.eq("a chunk before the last answers CHUNK", { first._command, first.look, first.index }, { "CHUNK", "2", "1" })
+T.eq("without the state", first.state, nil)
+T.eq("and sends nothing over the socket", #H.ui, 0)
+local last
+for i = 2, count do
+  last = H.tab(
+    "_PUT_IMAGE",
+    { look = 2, upload = "s", index = i, count = count, data = spare:sub((i - 1) * 3072 + 1, i * 3072) }
+  )
+end
+T.eq("the last chunk answers IMAGE_STORED", JSON:decode(last)._command, "IMAGE_STORED")
+T.eq("and the whole picture sends the socket one message", #H.ui, 1)
+T.eq("IMAGE_STORED, with the state", { H.ui[1].command, statePushes() }, { "IMAGE_STORED", 1 })
 local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("spare")))
 T.eq(
   "a refusal answers ERROR",
@@ -345,8 +361,10 @@ H.mark()
 EC.Reset_Driver({ ["Are You Sure?"] = "No" })
 H.tab("_GET_STATE")
 T.eq("No changes nothing", #H.state().looks, 2)
+H.mark()
 EC.Reset_Driver({ ["Are You Sure?"] = "Yes" })
 T.eq("Yes deletes every look", #H.state().looks, 0)
+T.eq("and sends the tab the state once, for all the settings it resets", statePushes(), 1)
 T.eq("and their stored pictures", next(H.stored()), nil)
 T.eq("and served ones", next(H.served()), nil)
 T.eq("the driver's own icon shows", H.lastIcon().params, { icon = "", icon_description = "" })

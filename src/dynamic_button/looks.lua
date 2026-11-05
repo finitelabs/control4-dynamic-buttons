@@ -6,7 +6,8 @@ local log = require("lib.logging")
 
 --- @class LookIcon
 --- @field id string The icon's Iconify name, `<pack>:<name>`.
---- @field body string The icon's SVG markup, without the outer svg element.
+--- @field body? string The icon's SVG markup, without the outer svg element; none when carried.
+--- @field carried? boolean True for an icon the Button tab carries and draws from its id.
 --- @field width number The icon's view box width.
 --- @field height number The icon's view box height.
 --- @field license string The icon pack's license title.
@@ -299,9 +300,13 @@ function Looks:_check(fields, exceptId)
   if not iconId:match("^[%w%-]+:[%w%-]+$") then
     return nil, "the icon's name is not an icon pack name"
   end
-  local body = tostring(icon.body or "")
-  if body == "" or #body > Looks.MAX_ICON_BODY then
-    return nil, "the icon's picture is missing or too large"
+  local carried = icon.carried == true
+  local body = nil
+  if not carried then
+    body = tostring(icon.body or "")
+    if body == "" or #body > Looks.MAX_ICON_BODY then
+      return nil, "the icon's picture is missing or too large"
+    end
   end
   local width, height = tonumber(icon.width), tonumber(icon.height)
   if not width or not height or width <= 0 or height <= 0 then
@@ -337,6 +342,7 @@ function Looks:_check(fields, exceptId)
     icon = {
       id = iconId,
       body = body,
+      carried = carried or nil,
       width = width,
       height = height,
       license = tostring(icon.license or ""):sub(1, 100),
@@ -444,7 +450,9 @@ end
 --- @param b Look
 --- @return boolean
 function Looks._drawnDiffers(a, b)
-  if a.icon.id ~= b.icon.id or a.icon.body ~= b.icon.body then
+  -- A carried icon's id names its markup, so the ids alone tell when either is carried.
+  local carried = a.icon.carried or b.icon.carried
+  if a.icon.id ~= b.icon.id or (not carried and a.icon.body ~= b.icon.body) then
     return true
   end
   for _, field in ipairs(DRAWN_FIELDS) do

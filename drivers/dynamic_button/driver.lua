@@ -257,10 +257,24 @@ local function pushState()
   return uiRespond("STATE", { state = JSON:encode(tabState()) })
 end
 
+--- While true, property changes leave the state push to the command that made them.
+local gTabHeld = false
+
 --- Show a property change in the Button tab, once the button is up.
 local function syncTab()
-  if button then
+  if button and not gTabHeld then
     pushState()
+  end
+end
+
+--- Run `fn` with property changes' state pushes held, so the caller pushes the state once after.
+--- @param fn function
+local function holdingTab(fn)
+  gTabHeld = true
+  local ok, err = pcall(fn)
+  gTabHeld = false
+  if not ok then
+    error(err, 0)
   end
 end
 
@@ -575,7 +589,9 @@ function UIR._SET_DRIVER(tParams)
   for _, property in ipairs(tabProperties()) do
     if property.name == name and not property.readonly and type(value) == "string" then
       -- The wrapper turns away a value its list lacks, then runs the property's handler.
-      UpdateProperty(name, value, true)
+      holdingTab(function()
+        UpdateProperty(name, value, true)
+      end)
       return pushState()
     end
   end
@@ -620,7 +636,8 @@ function UIR._PUT_IMAGE(tParams)
     return pushError(string.format("the picture for %s did not arrive: %s", look.name, err))
   end
   if not png then
-    return reply("CHUNK", { look = tostring(look.id), index = tostring(params.index) })
+    -- Only the REST reply, and without the state: the broker's time grows with each message's size.
+    return JSON:encode({ _command = "CHUNK", look = tostring(look.id), index = tostring(params.index) })
   end
   local before = button:shown()
   local ok = button:imageArrived(look.id, png)
@@ -817,12 +834,14 @@ function EC.Reset_Driver(params)
   gLookIsItems = nil
   -- As a fresh install: the variable comes back empty, and no Look Changed fires.
   announceShown(nil)
-  for name, value in pairs(GetPropertyResetValues({})) do
-    UpdateProperty(name, value, true)
-  end
-  for name, value in pairs(RESET_PROPERTY_VALUES) do
-    UpdateProperty(name, value, true)
-  end
+  holdingTab(function()
+    for name, value in pairs(GetPropertyResetValues({})) do
+      UpdateProperty(name, value, true)
+    end
+    for name, value in pairs(RESET_PROPERTY_VALUES) do
+      UpdateProperty(name, value, true)
+    end
+  end)
   UpdateProperty("Driver Status", "Ready")
   pushState()
 end
