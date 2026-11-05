@@ -40,3 +40,5 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   Button tab's Icon packs view: Classic Device and Classic Tile, which match the
   OS 3 look, and Modern, which matches the X4 look, with on, off and alert
   pictures where a subject has states
+- Added the driver's properties to the Button tab, where they can be changed as
+  in Composer's Properties tab, with Look Control beside the shown button

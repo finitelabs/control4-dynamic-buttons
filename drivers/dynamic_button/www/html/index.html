@@ -18,11 +18,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
 
-  .nav { display: flex; align-items: center; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 16px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 5; }
-  .nav-tab { padding: 10px 18px; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500; }
-  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .nav-meta { margin-left: auto; color: var(--text-muted); font-size: 11px; }
-
   .panel { padding: 16px; width: 100%; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
   .card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -74,6 +69,12 @@
   .colorrow code { font-size: 12px; color: var(--text-muted); }
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .control select { width: auto; min-width: 110px; }
+  .pgroup { font-size: 11px; font-weight: 600; color: var(--text); margin: 12px 0 6px; }
+  .pgroup:first-of-type { margin-top: 0; }
+  .props-note { margin: -2px 0 12px; }
+  #props .fields { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  input[type="text"]:disabled { background: var(--surface-hover); color: var(--text-muted); }
   .editgrid { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; }
   @media (max-width: 680px) { .editgrid { grid-template-columns: minmax(0, 1fr); } }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
@@ -124,10 +125,6 @@
 </style>
 </head>
 <body>
-<div class="nav">
-  <div class="nav-tab active">Button</div>
-  <div class="nav-meta" id="nav-meta"></div>
-</div>
 <div class="panel">
   <div class="banner warn" id="conn-warn" hidden>Opened outside Composer: these are example looks, and nothing is saved.</div>
   <div class="banner warn" id="conn-bar" hidden>No live connection to the driver: reconnecting&hellip;</div>
@@ -138,7 +135,7 @@
       <h3>Shown now <span id="shown-pill"></span></h3>
       <div class="navtile" id="shown-tile"></div>
       <div class="note">As the Control4 app shows the button. A list remote shows the look's name instead.</div>
-      <div class="control" id="control"><span class="flabel">Look Control</span><span class="pill info" id="control-mode"></span></div>
+      <div class="control" id="control"><label class="flabel" for="control-mode">Look Control</label><select id="control-mode" data-prop="Look Control"></select></div>
       <div class="note" id="control-note"></div>
     </div>
     <div class="card" id="looks-card">
@@ -223,6 +220,12 @@
       <button class="btn btn-secondary" id="cancel" type="button">Cancel</button>
     </div>
     <div class="status" id="status"></div>
+  </div>
+
+  <div class="card" id="props-card">
+    <h3>Properties</h3>
+    <div class="note props-note">The driver’s properties, as in Composer’s Properties tab, with Look Control set above. Editing either side syncs.</div>
+    <div id="props"></div>
   </div>
 
   <div class="card" id="lic-card">
@@ -571,7 +574,7 @@ function sameDrawing(a, b) {
 // ============================================================
 // State and the look list
 // ============================================================
-var gState = { looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 49152, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
+var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 49152, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
 
 function onState(state) {
   var packs = gState.packs.join(',');
@@ -591,9 +594,61 @@ var CONTROL_NOTES = {
 };
 function renderControl() {
   var mode = CONTROL_NOTES[gState.lookControl] ? gState.lookControl : 'Manual';
-  $('control-mode').textContent = mode;
-  $('control-note').textContent = CONTROL_NOTES[mode] + ' Set it in the driver’s properties.';
+  var prop = gState.properties.find(function(p) { return p.name === 'Look Control'; });
+  var sel = $('control-mode');
+  // The select and its note wait together while it is open; the next push catches up.
+  if (document.activeElement === sel) return;
+  sel.innerHTML = propOptions(prop ? prop.choices : Object.keys(CONTROL_NOTES), mode);
+  $('control-note').textContent = CONTROL_NOTES[mode];
 }
+
+// ============================================================
+// Properties
+// ============================================================
+// Shown in the Shown now card instead.
+var PROPS_ELSEWHERE = ['Look Control', 'Shown Look'];
+
+function propOptions(choices, value) {
+  return choices.map(function(c) { return '<option' + (c === value ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
+}
+
+function propField(p, i) {
+  var id = 'prop-' + i, attrs = ' id="' + id + '" data-prop="' + esc(p.name) + '"';
+  var control = p.choices && !p.readonly
+    ? '<select' + attrs + '>' + propOptions(p.choices, p.value) + '</select>'
+    // A long status runs past its field, so the full text is its tooltip.
+    : '<input type="text"' + attrs + ' value="' + esc(p.value) + '" title="' + esc(p.value) + '"' + (p.readonly ? ' disabled' : '') + '>';
+  return '<div class="field"><label for="' + id + '">' + esc(p.name) + '</label>' + control + '</div>';
+}
+
+function renderProps() {
+  var el = $('props');
+  // A push must not swap a control out from under the one being edited; the next push catches up.
+  if (el.contains(document.activeElement)) return;
+  var groups = [];
+  gState.properties.forEach(function(p, i) {
+    if (PROPS_ELSEWHERE.indexOf(p.name) >= 0) return;
+    var g = groups[groups.length - 1];
+    if (!g || g.name !== p.group) groups.push(g = { name: p.group, html: [] });
+    g.html.push(propField(p, i));
+  });
+  $('props-card').hidden = !groups.length;
+  el.innerHTML = groups.map(function(g) {
+    return (g.name ? '<div class="pgroup">' + esc(g.name) + '</div>' : '') + '<div class="fields">' + g.html.join('') + '</div>';
+  }).join('');
+}
+
+function setProperty(el) {
+  var name = el.dataset.prop, value = el.value;
+  el.blur();
+  command('_SET_DRIVER', { property: name, value: value }, function() {
+    var p = gState.properties.find(function(x) { return x.name === name; });
+    if (p) p.value = value;
+    if (name === 'Look Control') gState.lookControl = value;
+  });
+}
+$('props').addEventListener('change', function(e) { if (e.target.dataset.prop) setProperty(e.target); });
+$('control-mode').addEventListener('change', function(e) { setProperty(e.target); });
 
 function deleteWarning(name) {
   return 'Deletes ' + name + ', its picture, and its ' + name + ' Shown event with the programming on it.';
@@ -609,6 +664,7 @@ async function renderList() {
   $('shown-pill').innerHTML = shown ? '<span class="pill online">' + esc(shown.name) + '</span>' + (shown.stale ? ' ' + STALE_PILL : '') : '<span class="pill info">Driver icon</span>';
   navTile($('shown-tile'), shown);
   renderControl();
+  renderProps();
   var el = $('look-list');
   if (!list.length) {
     el.innerHTML = '<div class="empty">No looks yet. Add one to give the button a picture.</div>';
@@ -1220,7 +1276,6 @@ function demoSave(fields) {
 // Boot
 // ============================================================
 (function boot() {
-  $('nav-meta').textContent = 'Dynamic Button' + (gDriverId ? ' · device ' + gDriverId : '');
   renderCategories();
   renderPackOptions();
   renderPacks();
@@ -1239,6 +1294,24 @@ function demoSave(fields) {
     }).filter(function(l) { return l.icon; });
     gState.shown = gState.looks.length ? 1 : null;
     gState.lookControl = 'On Select';
+    gState.properties = [
+      // #ifdef DRIVERCENTRAL
+      ['Cloud Settings', 'Cloud Status', 'License Activated'],
+      // #endif
+      ['Cloud Settings', 'Automatic Updates', 'On', ['Off', 'On']],
+      // #ifndef DRIVERCENTRAL
+      ['Cloud Settings', 'Update Channel', 'Production', ['Production', 'Prerelease']],
+      // #endif
+      ['Driver Settings', 'Driver Status', 'Ready'],
+      ['Driver Settings', 'Driver Version', '20261104'],
+      ['Driver Settings', 'Log Level', '3 - Info', ['0 - Fatal', '1 - Error', '2 - Warning', '3 - Info', '4 - Debug', '5 - Trace', '6 - Ultra']],
+      ['Driver Settings', 'Log Mode', 'Off', ['Off', 'Print', 'Log', 'Print and Log']],
+      // #ifdef DRIVERCENTRAL
+      ['Driver Settings', 'Cloud Monitoring', 'Enabled', ['Disabled', 'Enabled']],
+      // #endif
+      ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual']],
+      ['Button Settings', 'Shown Look', 'Full']
+    ].map(function(d) { return { group: d[0], name: d[1], value: d[2], choices: d[3], readonly: !d[3] }; });
     renderList();
     return;
   }

@@ -44,6 +44,7 @@ the programming you attach to it.
     - [Look Editor](#look-editor)
     - [Icon Packs](#icon-packs)
     - [Icon Search](#icon-search)
+    - [Properties](#properties)
   - [Cycling Through Looks](#cycling-through-looks)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
@@ -159,8 +160,9 @@ the button's looks.
 
 1. **Shown now** - the button as the Control4 app shows it, with the name of the
    look it shows, or `Driver icon` until a look has a picture.
-1. **Look Control** - what a press of the button does, as the
-   [Look Control](#look-control--on-select--manual-) property sets it.
+1. **Look Control** - what a press of the button does. It sets the
+   [Look Control](#look-control--on-select--manual-) property, and a change to
+   the property in Composer shows here.
 1. **Looks** - each look with its picture, name, icon and tile shape. `Shown`
    marks the look the button shows. `No picture yet` marks a look whose picture
    has not reached the driver, and `Picture out of date` a look edited since its
@@ -247,6 +249,29 @@ one applies. They work with no internet.
    the look.
 1. **Icons found** - how many icons the search found, and how many of them the
    style shows.
+
+### Properties
+
+<!-- #ifdef DRIVERCENTRAL -->
+
+<img alt="Button tab - Properties" src="./images/ui-properties-drivercentral.png" width="640"/>
+<!-- #else -->
+<img alt="Button tab - Properties" src="./images/ui-properties.png" width="640"/>
+<!-- #endif -->
+
+1. **Cloud Settings** - the driver's [properties](#driver-properties) under the
+   same headings as Composer's "Properties" tab. Look Control and the shown look
+   are in the Shown now card.
+1. **Driver Status** - grayed out, as every read-only property is: the driver
+   sets it.
+1. **Log Level** - a change applies at once, and shows in Composer's
+   "Properties" tab too. A change made there shows here.
+
+<!-- #ifdef DRIVERCENTRAL -->
+
+The Support Code is entered in Composer's "Properties" tab only.
+
+<!-- #endif -->
 
 ## Cycling Through Looks
 
