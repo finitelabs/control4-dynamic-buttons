@@ -848,8 +848,7 @@ local function whileLicensed(fn, refused)
   end
 end
 
--- Stopped, nothing changes the look: presses, programming, Reset Driver and the tab's look writes are turned away. _GET_STATE and
--- _SET_DRIVER stay open, since they only do what Composer's own Properties tab can.
+-- _GET_STATE and _SET_DRIVER stay open while stopped: they only do what Composer's own Properties tab can.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
 EC.Next_Look = whileLicensed(EC.Next_Look)
