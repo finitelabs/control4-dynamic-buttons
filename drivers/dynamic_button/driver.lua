@@ -304,7 +304,8 @@ end
 --- @return table params The Button tab's parameters, base64 JSON in DATA.
 local function tabParams(tParams)
   local ok, params = pcall(function()
-    return JSON:decode(C4:Base64Decode(Select(tParams, "DATA") or "e30="))
+    -- The tab wraps its base64 in lines for the controller's broker.
+    return JSON:decode(C4:Base64Decode((tostring(Select(tParams, "DATA") or "e30="):gsub("[\r\n]", ""))))
   end)
   if ok and type(params) == "table" then
     return params

@@ -3,13 +3,6 @@
 
 require("c4_shim")
 
--- Measured on 4.3: C4:Base64Decode skips newlines, which the Button tab's commands carry. A space
--- still fails, as the shim's own decode has it.
-local base64Decode = C4.Base64Decode
-function C4:Base64Decode(data)
-  return base64Decode(self, type(data) == "string" and data:gsub("[\r\n]", "") or data)
-end
-
 local H = {}
 
 local HERE = debug.getinfo(1, "S").source:match("^@(.*)/") or "."

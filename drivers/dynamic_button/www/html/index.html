@@ -359,7 +359,7 @@ function api(method, path, body) {
 
 // A command's REST reply says only that the controller took it: the driver answers over the socket.
 // The controller's broker takes time that grows with the square of the longest unbroken run of
-// characters in a command. A newline ends a run, and C4:Base64Decode ignores it.
+// characters in a command. A newline ends a run, and the driver takes the newlines out again.
 function sendCommand(cmd, params) {
   return api('POST', '/api/v1/items/' + gDriverId + '/commands', {
     command: cmd,
