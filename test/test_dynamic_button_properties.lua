@@ -130,7 +130,7 @@ T.truthy(
 T.truthy("which exists and starts active", page:find('class="panelactive"id="panel-button"', 1, true))
 T.truthy("and a click calls showTab", page:find("showTab(tab)", 1, true))
 T.truthy(
-  "the Properties card comes first in the panel",
+  "the Properties card comes before Shown now",
   page:find('id="props-card"', 1, true) < page:find('id="shown-card"', 1, true)
 )
 
