@@ -242,8 +242,7 @@ local function tabState()
   }
 end
 
---- Send the Button tab one message over its socket, the only way an answer reaches it: a command's
---- REST reply says only that the controller took the command.
+--- Send the Button tab one message over its socket.
 --- @param command string
 --- @param data table<string, string>
 --- @return string json
@@ -259,8 +258,7 @@ local function pushState()
   return uiRespond("STATE", { state = JSON:encode(tabState()) })
 end
 
---- Tell the Button tab which look is shown, when nothing else in its state changed. The state can
---- be many KB, and a press can come often.
+--- Tell the Button tab which look is shown, when nothing else in its state changed.
 --- @return string json
 local function pushShown()
   return uiRespond("SHOWN", { shown = tostring(button:shown().id) })
@@ -616,7 +614,6 @@ function UIR._PUT_ICON(tParams)
   if err then
     return pushError("the icon's picture did not arrive: " .. err)
   end
-  return JSON:encode({ _command = "CHUNK", index = tostring(params.index) })
 end
 
 --- Create a look, or change one when an id is given. Its picture follows in _PUT_IMAGE.
@@ -664,8 +661,7 @@ function UIR._PUT_IMAGE(tParams)
     return pushError(string.format("the picture for %s did not arrive: %s", look.name, err))
   end
   if not png then
-    -- Nothing over the socket: the broker's time grows with each message's size.
-    return JSON:encode({ _command = "CHUNK", look = tostring(look.id), index = tostring(params.index) })
+    return
   end
   local before = button:shown()
   local ok = button:imageArrived(look.id, png)

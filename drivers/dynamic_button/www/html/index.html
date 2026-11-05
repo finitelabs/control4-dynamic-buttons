@@ -1322,8 +1322,8 @@ $('pk-grid').addEventListener('click', function(e) {
 // ============================================================
 // Iconify: straight from the page, or through the driver when the page can't reach it.
 var ICONIFY = 'https://api.iconify.design';
-// Through the driver, each answer is a push that costs the controller's broker time growing with the
-// square of its size, so icons go a few at a time and one request after another.
+// Each answer through the driver is one push over the socket, so icons go a few at a time and one
+// request after another.
 var ICONS_DIRECT = 48, ICONS_VIA_DRIVER = 4;
 var gViaDriver = false, gIconifySeq = 0, gIconifyPending = {}, gDriverTurn = Promise.resolve();
 function iconifyDirect(path) {
@@ -1349,9 +1349,9 @@ function askDriver(kind, value, prefixes) {
   });
 }
 function iconsViaDriver(value) {
-  var prefix = value.split(':')[0], names = value.split(':')[1].split(','), parts = [];
+  var prefix = value.split(':')[0], names = value.split(':')[1].split(','), parts = [], mine = gSearchSeq;
   for (var i = 0; i < names.length; i += ICONS_VIA_DRIVER) (function(batch) {
-    parts.push(driverTurn(function() { return askDriver('icon', prefix + ':' + batch.join(',')); }));
+    parts.push(driverTurn(function() { return mine === gSearchSeq ? askDriver('icon', prefix + ':' + batch.join(',')) : {}; }));
   })(names.slice(i, i + ICONS_VIA_DRIVER));
   return Promise.all(parts).then(function(answers) {
     var whole = Object.assign({}, answers[0], { icons: {}, aliases: {} });
@@ -1872,8 +1872,7 @@ async function savedAnyway(fields) {
   return found ? found.id : null;
 }
 
-// One chunk at a time, each taken by the controller before the next. Calls beforeLast before the last
-// chunk goes.
+// One chunk at a time, each taken by the controller before the next.
 async function sendChunks(cmd, fields, b64, label, beforeLast) {
   var size = gState.maxChunk || 2916, count = Math.ceil(b64.length / size);
   var token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);

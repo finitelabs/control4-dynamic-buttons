@@ -47,5 +47,6 @@ T.section("Icons through the driver")
 T.eq("a few at a time", tonumber(page:match("ICONS_VIA_DRIVER = (%d+)")), 4)
 T.eq("while direct requests stay larger", tonumber(page:match("ICONS_DIRECT = (%d+)")), 48)
 T.truthy("and one request after another", has("gDriverTurn = turn.catch"))
+T.truthy("and a new search ends the old search's queued requests", has("mine === gSearchSeq ? askDriver('icon'"))
 
 T.finish()
