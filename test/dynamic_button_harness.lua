@@ -3,6 +3,13 @@
 
 require("c4_shim")
 
+-- Measured on 4.3: C4:Base64Decode skips newlines, which the Button tab's commands carry. A space
+-- still fails, as the shim's own decode has it.
+local base64Decode = C4.Base64Decode
+function C4:Base64Decode(data)
+  return base64Decode(self, type(data) == "string" and data:gsub("[\r\n]", "") or data)
+end
+
 local H = {}
 
 local HERE = debug.getinfo(1, "S").source:match("^@(.*)/") or "."
@@ -232,7 +239,7 @@ end
 --- @param command string
 --- @param params table|nil
 function H.tab(command, params)
-  return UIR[command]({ DATA = C4:Base64Encode(JSON:encode(params or {})) })
+  return UIR[command]({ DATA = (C4:Base64Encode(JSON:encode(params or {})):gsub(string.rep(".", 76), "%0\n")) })
 end
 
 --- A small stand-in PNG; only its signature is checked.
@@ -284,7 +291,7 @@ end
 --- @param png string
 --- @param chunk integer|nil
 function H.sendImage(id, png, chunk)
-  chunk = chunk or require("dynamic_button.images").MAX_CHUNK
+  chunk = chunk or 3072
   local b64 = C4:Base64Encode(png)
   local count = math.ceil(#b64 / chunk)
   for i = 1, count do

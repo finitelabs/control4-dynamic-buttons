@@ -112,8 +112,6 @@ T.contains("and is told why", refused.message, UNLICENSED)
 for _, command in ipairs({ "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
   T.eq(command .. " is refused", JSON:decode(H.tab(command, { id = 1, look = 1, ids = { 2, 1 } }))._command, "ERROR")
 end
-local iconChunk = { upload = "u", index = 1, count = 1, data = C4:Base64Encode("<path/>") }
-T.contains("an icon's chunk is refused for the license", JSON:decode(H.tab("_PUT_ICON", iconChunk)).message, UNLICENSED)
 local search = JSON:decode(H.tab("_ICONIFY", { request = "r1", kind = "search", value = "battery" }))
 T.eq("an icon search answers at once", search._command, "ICONIFY")
 T.contains("with the reason, and asks Iconify nothing", search.error, UNLICENSED)

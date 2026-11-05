@@ -70,7 +70,6 @@ local gLookIsItems = nil
 
 -- Chunks are large and carry nothing a log needs.
 UIR.suppressDebug["_PUT_IMAGE"] = true
-UIR.suppressDebug["_PUT_ICON"] = true
 
 --- @return string name The driver's file name without `.c4z`, which names its web folder.
 local function driverName()
@@ -606,29 +605,12 @@ function UIR._SET_DRIVER(tParams)
   return pushError("The tab cannot set " .. tostring(name) .. ".")
 end
 
---- One chunk of an online icon's markup, ahead of the _SAVE_LOOK that names its upload.
---- @param tParams table
-function UIR._PUT_ICON(tParams)
-  local params = tabParams(tParams)
-  local err = images:acceptIcon(params.upload, params.index, params.count, params.data, Looks.MAX_ICON_BODY)
-  if err then
-    return pushError("the icon's picture did not arrive: " .. err)
-  end
-end
-
 --- Create a look, or change one when an id is given. Its picture follows in _PUT_IMAGE.
 --- @param tParams table
 function UIR._SAVE_LOOK(tParams)
   log:trace("UIR._SAVE_LOOK()")
   local params = tabParams(tParams)
   local id = tonumber(params.id)
-  local icon = params.icon
-  if type(icon) == "table" and icon.upload ~= nil then
-    icon.body = images:takeIcon(icon.upload)
-    if not icon.body then
-      return pushError("the icon's picture did not arrive: save the look again")
-    end
-  end
   local before = button:shown()
   local look, err
   if id then
@@ -906,7 +888,7 @@ EC.Reset_Driver = whileLicensed(EC.Reset_Driver)
 GCPL.Show_Look = whileLicensed(GCPL.Show_Look, function()
   return {}
 end)
-for _, name in ipairs({ "_SAVE_LOOK", "_PUT_ICON", "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
+for _, name in ipairs({ "_SAVE_LOOK", "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
   UIR[name] = whileLicensed(UIR[name], function()
     return pushError(UNLICENSED_REFUSAL)
   end)

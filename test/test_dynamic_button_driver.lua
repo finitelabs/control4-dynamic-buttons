@@ -10,8 +10,6 @@
 
 local T = require("testlib")
 local H = require("dynamic_button_harness")
-local Images = require("dynamic_button.images")
-local Looks = require("dynamic_button.looks")
 
 local ADDRESS = "controller://driver/dynamic_button/buttons/" .. H.DEVICE_ID .. "/"
 
@@ -41,7 +39,6 @@ T.eq("Driver Status is Ready", Properties["Driver Status"], "Ready")
 T.eq("no Look Changed fires at start", #H.fired, 0)
 T.eq("there is no Look Is conditional with no looks", select(2, lookIs()), nil)
 T.truthy("picture chunks are kept out of the log", UIR.suppressDebug["_PUT_IMAGE"])
-T.truthy("and so are an icon's", UIR.suppressDebug["_PUT_ICON"])
 
 T.section("The first look")
 H.mark()
@@ -79,7 +76,7 @@ H.mark()
 H.tab("_SAVE_LOOK", H.lookFields("Spare", { id = 2, iconColor = "#000000" }))
 T.eq("a save sends the state over the socket once", statePushes(), 1)
 local spare = C4:Base64Encode(H.png("Spare black", 8000))
-local size = Images.MAX_CHUNK
+local size = 3072
 local count = math.ceil(#spare / size)
 T.truthy("a picture of several chunks", count >= 3)
 H.mark()
@@ -359,62 +356,18 @@ T.eq("which answers the same", { showAnswer._command, showAnswer.state }, { "SHO
 H.tab("_DELETE_LOOK", { id = oneId })
 H.tab("_DELETE_LOOK", { id = twoId })
 
-T.section("An online icon's markup goes ahead of its save")
-local onlineBody = '<path fill="currentColor" d="M1 1h22v22H1z"/>' .. string.rep('<circle r="1"/>', 400)
---- @return integer chunks Send markup as the Button tab does, in chunks of the largest size.
-local function sendIconChunks(upload, body)
-  local b64 = C4:Base64Encode(body)
-  local chunks = math.ceil(#b64 / size)
-  for i = 1, chunks do
-    H.tab("_PUT_ICON", { upload = upload, index = i, count = chunks, data = b64:sub((i - 1) * size + 1, i * size) })
-  end
-  return chunks
+T.section("A command's DATA can be wrapped")
+--- @param separator string
+--- @return string data The fields as the Button tab sends them, with the separator every 76 characters.
+local function wrappedData(fields, separator)
+  return (C4:Base64Encode(JSON:encode(fields)):gsub(string.rep(".", 76), "%0" .. separator))
 end
---- @return table fields A look that names its icon's upload instead of carrying the markup.
-local function namingUpload(name, upload)
-  local fields = H.lookFields(name)
-  fields.icon.body = nil
-  fields.icon.upload = upload
-  return fields
-end
-H.mark()
-T.truthy("the markup takes several chunks", sendIconChunks("i1", onlineBody) > 1)
-T.eq("which send nothing over the socket", #H.ui, 0)
-local namedSave = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Online", "i1")))
-T.eq("a save naming the upload is taken", namedSave._command, "SAVED")
-local onlineId = tonumber(namedSave.look)
---- @return table|nil icon The icon of a look in the tab's state.
-local function iconOf(id)
-  for _, look in ipairs(H.state().looks) do
-    if look.id == id then
-      return look.icon
-    end
-  end
-  return nil
-end
-T.eq("the look keeps the markup whole", iconOf(onlineId).body, onlineBody)
-T.eq("and not the upload's name", iconOf(onlineId).upload, nil)
-local usedAgain = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Again", "i1")))
-T.eq(
-  "an upload is good for one save",
-  { usedAgain._command, usedAgain.message },
-  { "ERROR", "the icon's picture did not arrive: save the look again" }
-)
-local lost = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Lost", "never sent")))
-T.eq("an upload that never came is refused with the same reason", lost.message, usedAgain.message)
-local edited = H.lookFields("Online", { id = onlineId })
-edited.icon.id = "mdi:battery-20"
-edited.icon.body = nil
-edited.icon.upload = "i2"
-sendIconChunks("i2", "<path/>")
-T.eq("an edit can name one too", JSON:decode(H.tab("_SAVE_LOOK", edited))._command, "SAVED")
-T.eq("and the look takes the new markup", iconOf(onlineId).body, "<path/>")
-H.mark()
-sendIconChunks("i3", string.rep("x", Looks.MAX_ICON_BODY + 1))
-T.contains("markup past the look's cap is refused", H.lastUi("ERROR").message, "the markup is too large")
-local huge = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Huge", "i3")))
-T.eq("and a save naming it is too", huge.message, usedAgain.message)
-H.tab("_DELETE_LOOK", { id = onlineId })
+local wrapped = JSON:decode(UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped"), "\n") }))
+T.eq("a save with newlines in its DATA is taken", wrapped._command, "SAVED")
+local crlf = JSON:decode(UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped CRLF"), "\r\n") }))
+T.eq("and so is one with CRLF", crlf._command, "SAVED")
+H.tab("_DELETE_LOOK", { id = tonumber(wrapped.look) })
+H.tab("_DELETE_LOOK", { id = tonumber(crlf.look) })
 
 T.section("Reset Driver")
 H.addLook("Full")

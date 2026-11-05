@@ -92,7 +92,7 @@ T.eq("an empty chunk", err, "chunk is not whole base64 of the allowed size")
 _, err = images:accept(8, "g", 1, 1, "abc")
 T.eq("a chunk that is not whole base64", err, "chunk is not whole base64 of the allowed size")
 _, err = images:accept(8, "g", 1, 1, string.rep("A", Images.MAX_CHUNK + 4))
-T.eq("a chunk over the limit", err, "chunk is not whole base64 of the allowed size")
+T.eq("a chunk over 48 KB", err, "chunk is not whole base64 of the allowed size")
 _, err = images:accept(8, "g", 0, 1, parts[1])
 T.eq("a chunk numbered 0", err, "chunk out of range")
 _, err = images:accept(8, "g", 2, 1, parts[1])
@@ -100,9 +100,9 @@ T.eq("a chunk past the count", err, "chunk out of range")
 _, err = images:accept(8, "g", 1, 500, parts[1])
 T.eq("a count more than the largest picture needs", err, "chunk out of range")
 _, err = images:accept(nil, "g", 1, 1, parts[1])
-T.eq("a chunk with no look", err, "chunk without its look")
+T.eq("a chunk with no look", err, "chunk without its look, upload, place or count")
 _, err = images:accept(8, "", 1, 1, parts[1])
-T.eq("a chunk with no upload", err, "chunk without its upload, place or count")
+T.eq("a chunk with no upload", err, "chunk without its look, upload, place or count")
 _, err = images:accept(8, "g", 1, 1, C4:Base64Encode("not a png at all"))
 T.eq("a picture that is not a PNG", err, "picture is not a PNG")
 
@@ -124,77 +124,9 @@ for i, part in ipairs(exactParts) do
   whole = images:accept(10, "i", i, #exactParts, part)
 end
 T.eq("a picture of exactly 512 KB is taken", whole and #whole, Images.MAX_BYTES)
-T.eq("which is 240 chunks at the largest size", #exactParts, 240)
-
-T.section("A chunk's command")
---- @return string body A command's body as the Button tab builds it: its fields as JSON, base64 into DATA.
-local function requestBody(command, fields)
-  return JSON:encode({ command = command, tParams = { DATA = C4:Base64Encode(JSON:encode(fields)) }, async = false })
-end
-local fullChunk = string.rep("A", Images.MAX_CHUNK)
-local token = "mhn6zv2kq4x9aa"
-T.truthy(
-  "a picture's largest chunk goes in 4 KB or less",
-  #requestBody("_PUT_IMAGE", { look = 8, upload = token, index = 240, count = 240, data = fullChunk }) <= 4096
-)
-T.truthy(
-  "so does an icon's",
-  #requestBody("_PUT_ICON", { upload = token, index = 8, count = 8, data = fullChunk }) <= 4096
-)
+T.eq("a chunk is at most 48 KB of base64", Images.MAX_CHUNK, 48 * 1024)
+T.eq("which makes a 512 KB picture 15 chunks", #exactParts, 15)
 T.eq("each chunk is whole base64", Images.MAX_CHUNK % 4, 0)
-
-T.section("An online icon's markup in chunks")
-local markup = '<path fill="currentColor" d="M0 0h24v24H0z"/>' .. string.rep('<circle r="1"/>', 20) .. "caf\195\169"
-local markupParts = chunks(markup, 136)
-local icons = Images:new()
-T.truthy("the markup makes several chunks", #markupParts > 1)
-for i, part in ipairs(markupParts) do
-  T.eq("chunk " .. i .. " is taken", icons:acceptIcon("m", i, #markupParts, part, 16384), nil)
-end
-T.eq("it comes back whole, with no PNG check", icons:takeIcon("m"), markup)
-T.eq("once", icons:takeIcon("m"), nil)
-T.eq("an upload that never came gives nothing", icons:takeIcon("nothing"), nil)
-icons:acceptIcon("kept", 1, 1, chunks(markup, 8192)[1], 16384)
-T.eq("another upload's name gives nothing", icons:takeIcon("other"), nil)
-T.eq("and leaves it waiting", icons:takeIcon("kept"), markup)
-icons:acceptIcon("old", 1, 1, chunks("old", 8192)[1], 16384)
-icons:acceptIcon("new", 1, 1, chunks(markup, 8192)[1], 16384)
-T.eq("a new upload replaces one waiting", icons:takeIcon("old"), nil)
-T.eq("and is the one kept", icons:takeIcon("new"), markup)
-T.eq(
-  "a chunk out of order is refused",
-  icons:acceptIcon("m", 2, #markupParts, markupParts[2], 16384),
-  "chunk out of order"
-)
-T.eq(
-  "a chunk that isn't whole base64 is refused",
-  icons:acceptIcon("m", 1, 1, "abc", 16384),
-  "chunk is not whole base64 of the allowed size"
-)
-T.eq("a count past the cap is refused", icons:acceptIcon("m", 1, 500, markupParts[1], 16384), "chunk out of range")
-local tooBig = chunks(string.rep("x", 90), 8192)[1]
-T.eq("markup past the cap is refused", icons:acceptIcon("big", 1, 1, tooBig, 64), "the markup is too large")
-T.eq("and keeps nothing", icons:takeIcon("big"), nil)
-
-T.section("An icon's upload and a picture's are kept apart")
-local both = Images:new()
-both:accept(1, "p", 1, 3, parts[1])
-both:acceptIcon("i", 1, 1, chunks(markup, 8192)[1], 16384)
-T.eq("the icon's markup is whole", both:takeIcon("i"), markup)
-both:accept(1, "p", 2, 3, parts[2])
-T.eq("and the picture goes on", both:accept(1, "p", 3, 3, parts[3]), png)
-
-T.section("Icon markup that waits too long")
-local iconClock = 2000
-local late = Images:new(function()
-  return iconClock
-end)
-late:acceptIcon("s", 1, 1, chunks(markup, 8192)[1], 16384)
-iconClock = iconClock + Images.STALE_SECONDS - 1
-T.eq("waits a little under a minute", late:takeIcon("s"), markup)
-late:acceptIcon("t", 1, 1, chunks(markup, 8192)[1], 16384)
-iconClock = iconClock + Images.STALE_SECONDS
-T.eq("and is gone after", late:takeIcon("t"), nil)
 
 T.section("Keeping and serving a picture")
 T.raises("the harness refuses a folder call with an explicit nil folder", function()

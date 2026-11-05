@@ -20,11 +20,15 @@ local function has(text)
   return page:find(text, 1, true) ~= nil
 end
 
+T.section("Commands")
+T.truthy(
+  "each command's base64 is wrapped, so the broker never meets a long unbroken run",
+  has("DATA: btoa(unescape(encodeURIComponent(JSON.stringify(params || {})))).replace(/.{76}/g, '$&\\n')")
+)
+
 T.section("Chunks")
 T.eq("the page's chunk size is the driver's", tonumber(page:match("maxChunk: (%d+)")), Images.MAX_CHUNK)
 T.eq("and so is its fallback", tonumber(page:match("gState%.maxChunk || (%d+)")), Images.MAX_CHUNK)
-T.truthy("an online icon goes in chunks", has("sendChunks('_PUT_ICON'"))
-T.truthy("and the save names its upload, without the markup", has("upload: upload.token, body: undefined"))
 
 T.section("How often it asks for the state")
 T.falsy("no poll", has("setInterval(refresh"))
@@ -42,11 +46,5 @@ T.truthy("what needs the state now waits for its push", has("call('_GET_STATE', 
 
 T.section("Which look is shown")
 T.truthy("the page takes the small message", has("if (cmd === 'SHOWN') onShown(params);"))
-
-T.section("Icons through the driver")
-T.eq("a few at a time", tonumber(page:match("ICONS_VIA_DRIVER = (%d+)")), 4)
-T.eq("while direct requests stay larger", tonumber(page:match("ICONS_DIRECT = (%d+)")), 48)
-T.truthy("and one request after another", has("gDriverTurn = turn.catch"))
-T.truthy("and a new search ends the old search's queued requests", has("mine === gSearchSeq ? askDriver('icon'"))
 
 T.finish()
