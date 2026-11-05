@@ -216,6 +216,8 @@ local function tabState()
       hasImage = look.image ~= nil,
       stale = look.image ~= nil and look.image.stale == true,
       inCycle = Looks.inCycle(look),
+      glow = Looks.glow(look),
+      grayscale = Looks.grayscale(look),
     })
   end
   local properties = {}
