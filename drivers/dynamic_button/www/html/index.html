@@ -1887,9 +1887,6 @@ function demoSave(fields) {
 }
 
 // ============================================================
-// Boot
-// ============================================================
-// ============================================================
 // Tabs
 // ============================================================
 // A new tab is one more .nav-tab naming its panel.
@@ -1905,6 +1902,9 @@ function initTabs() {
   tabs.forEach(function(tab) { tab.addEventListener('click', function() { showTab(tab); }); });
 }
 
+// ============================================================
+// Boot
+// ============================================================
 (function boot() {
   initTabs();
   $('nav-meta').textContent = 'Dynamic Button' + (gDriverId ? ' \u00b7 device ' + gDriverId : '');
