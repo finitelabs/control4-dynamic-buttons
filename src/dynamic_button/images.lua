@@ -26,9 +26,9 @@ Images.MAX_BYTES = 512 * 1024
 --- An upload with no new chunk for this long is dropped, in seconds.
 Images.STALE_SECONDS = 60
 
---- The largest chunk the Button tab sends, in base64 characters, a multiple of 4. A picture goes in
---- pieces so each command is answered quickly and a failure names its place.
-Images.MAX_CHUNK = 48 * 1024
+--- The largest chunk the Button tab sends, in base64 characters, a multiple of 4. Director's time
+--- on a command grows faster than its size: one 48 KB chunk took 1.9 s, four 12 KB chunks 1.1 s.
+Images.MAX_CHUNK = 12 * 1024
 
 local PNG_SIGNATURE = "\137PNG\r\n\26\n"
 local WWW_ROOT = "www/buttons"

@@ -32,7 +32,7 @@ T.eq("the last returns the whole picture", images:accept(1, "a", 3, 3, parts[3])
 
 T.section("A picture in one chunk")
 local single = H.png("one", 40)
-T.eq("one chunk is the whole picture", images:accept(2, "b", 1, 1, chunks(single, 49152)[1]), single)
+T.eq("one chunk is the whole picture", images:accept(2, "b", 1, 1, chunks(single, Images.MAX_CHUNK)[1]), single)
 
 T.section("Chunks out of order")
 local _, err = images:accept(3, "c", 2, 3, parts[2])
@@ -52,7 +52,11 @@ T.eq("a chunk that changes the count is refused", err, "chunk out of order")
 T.section("A new upload replaces an unfinished one")
 images:accept(4, "first", 1, 3, parts[1])
 images:accept(4, "first", 2, 3, parts[2])
-T.eq("chunk 1 of a new upload starts over", images:accept(4, "second", 1, 1, chunks(single, 49152)[1]), single)
+T.eq(
+  "chunk 1 of a new upload starts over",
+  images:accept(4, "second", 1, 1, chunks(single, Images.MAX_CHUNK)[1]),
+  single
+)
 _, err = images:accept(4, "first", 3, 3, parts[3])
 T.eq("and the old upload's last chunk is refused", err, "chunk out of order")
 
@@ -66,7 +70,7 @@ clock = clock + Images.STALE_SECONDS - 1
 timed:accept(11, "s", 2, 3, parts[2])
 T.eq("waits while its chunks keep coming", timed._uploads[11] ~= nil, true)
 clock = clock + Images.STALE_SECONDS
-timed:accept(12, "t", 1, 1, chunks(single, 49152)[1])
+timed:accept(12, "t", 1, 1, chunks(single, Images.MAX_CHUNK)[1])
 T.eq("is dropped a minute after its last chunk", timed._uploads[11], nil)
 _, err = timed:accept(11, "s", 3, 3, parts[3])
 T.eq("so its last chunk is refused", err, "chunk out of order")
@@ -82,7 +86,11 @@ T.eq("cancel forgets it", waiting._uploads[5], nil)
 T.section("Uploads are kept apart by look")
 local apart = Images:new()
 apart:accept(6, "e", 1, 3, parts[1])
-T.eq("another look's picture arrives whole meanwhile", apart:accept(7, "f", 1, 1, chunks(single, 49152)[1]), single)
+T.eq(
+  "another look's picture arrives whole meanwhile",
+  apart:accept(7, "f", 1, 1, chunks(single, Images.MAX_CHUNK)[1]),
+  single
+)
 apart:accept(6, "e", 2, 3, parts[2])
 T.eq("and the first look's goes on", apart:accept(6, "e", 3, 3, parts[3]), png)
 
@@ -92,7 +100,7 @@ T.eq("an empty chunk", err, "chunk is not whole base64 of the allowed size")
 _, err = images:accept(8, "g", 1, 1, "abc")
 T.eq("a chunk that is not whole base64", err, "chunk is not whole base64 of the allowed size")
 _, err = images:accept(8, "g", 1, 1, string.rep("A", Images.MAX_CHUNK + 4))
-T.eq("a chunk over 48 KB", err, "chunk is not whole base64 of the allowed size")
+T.eq("a chunk over the limit", err, "chunk is not whole base64 of the allowed size")
 _, err = images:accept(8, "g", 0, 1, parts[1])
 T.eq("a chunk numbered 0", err, "chunk out of range")
 _, err = images:accept(8, "g", 2, 1, parts[1])
@@ -124,8 +132,8 @@ for i, part in ipairs(exactParts) do
   whole = images:accept(10, "i", i, #exactParts, part)
 end
 T.eq("a picture of exactly 512 KB is taken", whole and #whole, Images.MAX_BYTES)
-T.eq("a chunk is at most 48 KB of base64", Images.MAX_CHUNK, 48 * 1024)
-T.eq("which makes a 512 KB picture 15 chunks", #exactParts, 15)
+T.eq("a chunk is at most 12 KB of base64", Images.MAX_CHUNK, 12 * 1024)
+T.eq("which makes a 512 KB picture 57 chunks", #exactParts, 57)
 T.eq("each chunk is whole base64", Images.MAX_CHUNK % 4, 0)
 
 T.section("Keeping and serving a picture")

@@ -991,7 +991,7 @@ function savedIcon(icon) {
 // ============================================================
 // State and the look list
 // ============================================================
-var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 49152, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
+var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 12288, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
 
 function onState(state) {
   var packs = gState.packs.join(',');
@@ -1831,7 +1831,7 @@ async function savedAnyway(fields) {
 }
 
 async function sendPicture(lookId, name, b64) {
-  var size = gState.maxChunk || 49152, count = Math.ceil(b64.length / size);
+  var size = gState.maxChunk || 12288, count = Math.ceil(b64.length / size);
   var token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   gUpload = { failed: null };
   var stored = null;
