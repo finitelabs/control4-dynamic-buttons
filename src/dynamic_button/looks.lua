@@ -20,7 +20,7 @@ local log = require("lib.logging")
 --- @field tileShape string The shape behind the icon, one of `Looks.SHAPES`.
 --- @field tileColor string The tile's color, `#RRGGBB`.
 --- @field inCycle? boolean False for a look the cycle skips; a look without the field is in it.
---- @field glow? integer How much of the picture's own glow is drawn, 0 to 100; 100 without the field.
+--- @field glow? integer How much of the picture's own glow is drawn, 0 to 200; 100 without the field.
 --- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
 --- @field image? { bytes: integer, stale?: boolean } The drawn picture, once the Button tab has sent it;
 --- stale while the look's fields have changed since it was drawn.
@@ -39,8 +39,11 @@ Looks.MAX_NAME = 40
 --- The fields a look's picture is drawn from.
 local DRAWN_FIELDS = { "iconColor", "tileShape", "tileColor" }
 
---- The glow a look draws when it does not say.
+--- The glow a look draws when it does not say: the picture's own.
 Looks.FULL_GLOW = 100
+
+--- The strongest glow a look can ask for, twice the picture's own.
+Looks.MAX_GLOW = 200
 
 --- The shapes a look's tile can take.
 Looks.SHAPES = { "None", "Circle", "Rounded Square", "Square" }
@@ -196,8 +199,8 @@ function Looks:_check(fields, exceptId)
   if glow == nil then
     glow = Looks.FULL_GLOW
   end
-  if type(glow) ~= "number" or glow ~= math.floor(glow) or glow < 0 or glow > Looks.FULL_GLOW then
-    return nil, "glow is a whole percent from 0 to 100"
+  if type(glow) ~= "number" or glow ~= math.floor(glow) or glow < 0 or glow > Looks.MAX_GLOW then
+    return nil, "glow is a whole percent from 0 to 200"
   end
   if fields.grayscale ~= nil and type(fields.grayscale) ~= "boolean" then
     return nil, "grayscale is on or off"

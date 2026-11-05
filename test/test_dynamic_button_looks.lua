@@ -150,11 +150,11 @@ T.truthy("grayscale is kept", gray.grayscale)
 T.truthy("and is a change to the picture", gray.image.stale)
 T.eq("a grayscale look keeps its glow for when it is in color again", gray.glow, 40)
 T.eq("which it is again with grayscale off", looks:update(a.id, withDrawn({ glow = 40 })).glow, 40)
-for _, bad in ipairs({ -1, 101, 40.5, "40", true }) do
+for _, bad in ipairs({ -1, 201, 40.5, "40", true }) do
   local _, why = looks:update(a.id, withDrawn({ glow = bad }))
-  T.eq("a glow of " .. tostring(bad) .. " is refused", why, "glow is a whole percent from 0 to 100")
+  T.eq("a glow of " .. tostring(bad) .. " is refused", why, "glow is a whole percent from 0 to 200")
 end
-for _, ok in ipairs({ 0, 100 }) do
+for _, ok in ipairs({ 0, 100, 200 }) do
   T.eq("a glow of " .. ok .. " is taken", looks:update(a.id, withDrawn({ glow = ok })).glow, ok)
 end
 local _, grayWhy = looks:update(a.id, withDrawn({ grayscale = "yes" }))
