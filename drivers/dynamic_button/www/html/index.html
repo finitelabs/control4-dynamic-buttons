@@ -1788,8 +1788,8 @@ async function saveLook() {
     if (saved && saved.error) { setStatus('The look was not saved: ' + saved.error, true); return; }
     var lookId = saved && saved.look ? Number(saved.look) : await savedAnyway(fields);
     if (!lookId) { setStatus('The driver did not save the look.', true); return; }
+    // SAVED and IMAGE_STORED carry the state, so no refresh follows.
     if (b64 && !(await sendPicture(lookId, l.name, b64))) return;
-    refresh();
     setStatus('Saved.');
     closeEditor();
   } catch (e) {

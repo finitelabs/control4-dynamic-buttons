@@ -65,12 +65,13 @@ local answer = JSON:decode(H.tab("_SET_DRIVER", { property = "Log Level", value 
 T.eq("sets the property", Properties["Log Level"], "4 - Debug")
 T.eq("the reply carries the state", answer._command, "STATE")
 T.eq("with the new value", property("Log Level", JSON:decode(answer.state)).value, "4 - Debug")
-T.truthy("and the socket hears it", statePushes() >= 1)
+T.eq("and the socket hears it once", statePushes(), 1)
 
 H.mark()
 H.tab("_SET_DRIVER", { property = "Look Control", value = "On Select" })
 T.eq("Look Control is set from the tab", Properties["Look Control"], "On Select")
 T.eq("and the state follows it", H.state().lookControl, "On Select")
+T.eq("sent once", statePushes(), 1)
 
 T.section("Changes the tab is turned away from")
 H.mark()
