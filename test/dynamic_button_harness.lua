@@ -15,6 +15,10 @@ package.preload["cloud-client-byte"] = function()
   return {}
 end
 
+-- A product id, so the DriverCentral lines start the gate as a licensed install does: the stubbed client leaves DC_X
+-- nil, which runs. test_license_gate.lua drives the gate with the real client.
+require("lib.drivercentral").PRODUCT_ID = 900
+
 local function readXml()
   local f = assert(io.open(H.XML, "r"))
   local xml = f:read("*a")
@@ -129,6 +133,10 @@ function C4:GetDriverConfigInfo(section)
   end
   if section == "config" then
     return readXml():match("<config>(.-)</config>")
+  end
+  -- The build stamps driver.xml's version; the cloud client's late init stops without one.
+  if section == "version" then
+    return "20261104"
   end
   return configInfo(self, section)
 end
