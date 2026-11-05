@@ -39,8 +39,8 @@ local log = require("lib.logging")
 --- @field symbol? string A Classic Tile's symbol color, `#RRGGBB`.
 --- @field glowColor? string The glow's color, `#RRGGBB`.
 --- @field size? integer The picture's size, `Looks.MIN_SIZE` to 100 percent.
---- @field x? integer How far right the picture moves, percent of its size, within `Looks.MAX_SHIFT`.
---- @field y? integer How far down the picture moves, percent of its size, within `Looks.MAX_SHIFT`.
+--- @field x? integer How far right the picture moves, percent of the canvas, within `Looks.MAX_SHIFT`.
+--- @field y? integer How far down the picture moves, percent of the canvas, within `Looks.MAX_SHIFT`.
 --- @field badge? LookBadge Text drawn over the picture.
 
 --- @class Looks

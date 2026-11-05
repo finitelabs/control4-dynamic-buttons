@@ -129,7 +129,6 @@
   .icon.dark:hover { background: #2b3a4a; }
   .icon.dark img { width: 40px; height: 40px; }
   .field[hidden] { display: none; }
-  .packnote { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
   .icon .txt { font-size: 9px; color: var(--text-muted); padding: 2px; word-break: break-all; text-align: center; }
   .picked { font-size: 12px; }
   .picked .lic { color: var(--text-muted); }
@@ -642,8 +641,17 @@ function fixedShape(el) {
 }
 function hueGap(a, b) { var d = Math.abs(hslOf(a).h - hslOf(b).h) % 360; return d > 180 ? 360 - d : d; }
 function forEachPaint(root, fn) {
+  // A gradient no shape paints with is not part of the picture.
+  var used = {};
+  Array.prototype.forEach.call(root.querySelectorAll('[fill], [stroke]'), function(el) {
+    ['fill', 'stroke'].forEach(function(a) {
+      var m = /^url\(#([^)]+)\)$/.exec(el.getAttribute(a) || '');
+      if (m) used[m[1]] = true;
+    });
+  });
   Array.prototype.forEach.call(root.querySelectorAll('*'), function(el) {
     var grad = el.localName === 'stop' ? el.parentNode.getAttribute('id') : null;
+    if (grad && !used[grad]) return;
     if (fixedShape(el)) grad = el.getAttribute('fill').slice(5, -1);
     ['fill', 'stroke', 'stop-color'].forEach(function(a) {
       var v = el.getAttribute(a);
