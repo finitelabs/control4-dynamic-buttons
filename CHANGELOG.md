@@ -40,5 +40,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   Button tab's Icon packs view: Classic Device and Classic Tile, which match the
   OS 3 look, and Modern, which matches the X4 look, with on, off and alert
   pictures where a subject has states
+- Added Glow and Grayscale to each look: Glow sets how much of a Classic Device
+  picture's glow is drawn, and Grayscale draws any picture in grays with no
+  glow, its gray version beside the packs' own on and off pictures
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button

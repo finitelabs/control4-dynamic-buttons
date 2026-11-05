@@ -193,6 +193,10 @@ the button's looks.
 1. **Tile color** - the color of the tile behind the icon.
 1. **In cycle** - when off, presses, Next Look and Previous Look pass over the
    look. Show Look can still show it.
+1. **Grayscale** - draws the picture in grays, its tile too, which gives any
+   picture a gray version for an off look beside the packs' own on and off
+   pictures. A gray picture has no glow, and the look keeps its `Glow` setting
+   for when `Grayscale` is turned off again.
 1. **Included icons / Icon packs / Search online** - picks from the icons
    included with the driver, which work with no internet, from the driver's
    three icon packs (see [Icon Packs](#icon-packs)), or from the free icon packs
@@ -218,6 +222,9 @@ temperature and humidity, devices, appliances, status, home modes, holidays and
 weather. A subject with states has a picture for each: on, off and alert where
 one applies. They work with no internet.
 
+1. **Glow** - how much of the picture's own glow to draw, from none to the full
+   glow the pack gives it. It shows for the Classic Device pictures that glow,
+   and is off while `Grayscale` is on.
 1. **Icon packs** - shows the packs instead of the included icons.
 1. **Classic Device / Classic Tile / Modern** - the pack to show.
    `Classic Device` is shaded device pictures and `Classic Tile` is a white
