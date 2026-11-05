@@ -300,7 +300,6 @@ function Looks:_check(fields, exceptId)
   if not iconId:match("^[%w%-]+:[%w%-]+$") then
     return nil, "the icon's name is not an icon pack name"
   end
-  -- A carried icon is one the Button tab draws from its id, so the look keeps no markup for it.
   local carried = icon.carried == true
   local body = nil
   if not carried then

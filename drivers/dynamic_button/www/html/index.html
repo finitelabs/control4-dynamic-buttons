@@ -983,8 +983,7 @@ function sameDrawing(a, b) {
 function carriedIcon(id) {
   return gPackIcons[id] ? packIcon(id) : bundledIcon(id);
 }
-// A look keeps a carried icon without its markup: the page draws it from its own copy. An id the
-// page no longer has draws as an empty tile.
+// An id the page no longer has draws as an empty tile.
 function withIconBody(look) {
   var icon = look.icon;
   if (!icon || !icon.carried || icon.body) return look;
