@@ -29,7 +29,7 @@ material-symbols:battery-full
 material-symbols:battery-charging-full
 material-symbols:battery-alert
 
-# Power and energy
+# Power and Plugs
 mdi:power
 mdi:power-plug
 mdi:power-plug-off
@@ -99,7 +99,7 @@ mdi:air-filter
 material-symbols:mode-fan
 material-symbols:mode-fan-off
 
-# Climate
+# Temperature and Humidity
 mdi:thermometer
 mdi:thermometer-low
 mdi:thermometer-high
@@ -123,7 +123,7 @@ material-symbols:humidity-percentage
 material-symbols:mode-heat
 material-symbols:mode-cool
 
-# Water
+# Water and Leaks
 mdi:water
 mdi:water-outline
 mdi:water-percent
@@ -144,7 +144,7 @@ material-symbols:water-damage
 material-symbols:shower
 material-symbols:sprinkler
 
-# Doors and windows
+# Doors and Windows
 mdi:door
 mdi:door-open
 mdi:door-closed
@@ -170,7 +170,7 @@ material-symbols:window
 material-symbols:blinds
 material-symbols:blinds-closed
 
-# Locks and security
+# Locks and Security
 mdi:lock
 mdi:lock-open
 mdi:lock-open-variant
@@ -217,7 +217,7 @@ material-symbols:music-note
 material-symbols:play-arrow
 material-symbols:movie
 
-# Home and modes
+# Home Modes
 mdi:home
 mdi:home-outline
 mdi:home-export-outline
@@ -259,7 +259,7 @@ material-symbols:warning
 material-symbols:celebration
 material-symbols:directions-car
 
-# Holidays and seasons
+# Holidays
 mdi:pine-tree
 mdi:gift
 mdi:candle
