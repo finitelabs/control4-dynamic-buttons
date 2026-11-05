@@ -559,6 +559,10 @@ var GLOW_GRADIENT = /(<radialGradient\b[^>]*\bid=(["'])h\2[^>]*>)([\s\S]*?)(<\/r
 function hasGlow(icon) {
   return !!(icon && packOf(icon) && GLOW_GRADIENT.test(icon.body || '') && /url\(#h\)/.test(icon.body || ''));
 }
+// The look's Glow setting, kept while it is gray.
+function savedGlow(look) {
+  return lookGlow(Object.assign({}, look, { grayscale: false }));
+}
 // Gray looks draw no glow; the look keeps its glow for when it is in color again.
 function lookGlow(look) {
   if (look.grayscale) return 0;
@@ -637,7 +641,7 @@ async function navTile(el, look) {
 function sameDrawing(a, b) {
   var ia = a.icon || {}, ib = b.icon || {};
   return ia.id === ib.id && ia.body === ib.body && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor &&
-    lookGlow(Object.assign({}, a, { grayscale: false })) === lookGlow(Object.assign({}, b, { grayscale: false })) && !!a.grayscale === !!b.grayscale;
+    savedGlow(a) === savedGlow(b) && !!a.grayscale === !!b.grayscale;
 }
 
 // ============================================================
@@ -1206,7 +1210,7 @@ function titleCase(s) {
 
 function preview() {
   var l = gEditor.look, whole = !!packOf(l.icon);
-  // What a picture can't use is hidden, not shown switched off.
+  // Only the rows the picked picture can use are shown.
   var tiled = l.tileShape && l.tileShape !== 'None';
   $('fld-shape').hidden = whole;
   $('fld-icon-color').hidden = whole;
@@ -1282,7 +1286,7 @@ async function saveLook() {
     var icon = l.icon && Object.assign({}, l.icon);
     if (icon) delete icon.label;
     var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
-      glow: lookGlow(Object.assign({}, l, { grayscale: false })), grayscale: !!l.grayscale };
+      glow: savedGlow(l), grayscale: !!l.grayscale };
     if (!gApiHost) {
       demoSave(fields);
       setStatus('Saved here only: this page is not open in Composer.');
