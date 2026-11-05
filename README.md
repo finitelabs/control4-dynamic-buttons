@@ -133,16 +133,16 @@ the button's looks.
 1. **Name** - the look's name in programming: up to 40 characters, without
    commas, and different from the button's other looks. Picking an icon fills it
    in when it is empty.
-1. **Tile shape** - `None`, `Circle`, `Rounded Square` or `Square`. With `None`
-   the icon is drawn on its own, larger.
-1. **Icon color** - the color the icon is drawn in.
-1. **Tile color** - the color of the tile behind the icon.
 1. **In cycle** - when off, presses, Next Look and Previous Look pass over the
    look. Show Look can still show it.
 1. **Grayscale** - draws the picture in grays, its tile too, which gives any
    picture a gray version for an off look beside the packs' own on and off
    pictures. A gray picture has no glow, and the look keeps its `Glow` setting
    for when `Grayscale` is turned off again.
+1. **Tile shape** - `None`, `Circle`, `Rounded Square` or `Square`. With `None`
+   the icon is drawn on its own, larger, and `Tile color` is hidden.
+1. **Icon color** - the color the icon is drawn in.
+1. **Tile color** - the color of the tile behind the icon.
 1. **Included icons / Icon packs / Search online** - picks from the icons
    included with the driver, which work with no internet, from the driver's
    three icon packs (see [Icon Packs](#icon-packs)), or from the free icon packs
@@ -168,9 +168,9 @@ temperature and humidity, devices, appliances, status, home modes, holidays and
 weather. A subject with states has a picture for each: on, off and alert where
 one applies. They work with no internet.
 
-1. **Glow** - how much of the picture's own glow to draw, from none to the full
-   glow the pack gives it. It shows for the Classic Device pictures that glow,
-   and is off while `Grayscale` is on.
+1. **Glow** - the picture's glow, from none through its own at `100%` to twice
+   as strong at `200%`. It shows for the Classic Device pictures that glow, and
+   is hidden while `Grayscale` is on.
 1. **Icon packs** - shows the packs instead of the included icons.
 1. **Classic Device / Classic Tile / Modern** - the pack to show.
    `Classic Device` is shaded device pictures and `Classic Tile` is a white
@@ -182,7 +182,7 @@ one applies. They work with no internet.
    when the name is empty.
 1. **Pack note** - what the chosen pack looks like.
 1. **Picture** - a pack picture keeps its own colors, so `Tile shape`,
-   `Icon color` and `Tile color` do not apply to it, and the picture shows on a
+   `Icon color` and `Tile color` are hidden for it, and the picture shows on a
    dark background. The Classic packs add the soft shadow the OS 3 look has.
 
 ### Icon Search
@@ -433,8 +433,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   Button tab's Icon packs view: Classic Device and Classic Tile, which match the
   OS 3 look, and Modern, which matches the X4 look, with on, off and alert
   pictures where a subject has states
-- Added Glow and Grayscale to each look: Glow sets how much of a Classic Device
-  picture's glow is drawn, and Grayscale draws any picture in grays with no
-  glow, its gray version beside the packs' own on and off pictures
+- Added Glow and Grayscale to each look: Glow sets a Classic Device picture's
+  glow from none to twice its own, and Grayscale draws any picture in grays with
+  no glow, its gray version beside the packs' own on and off pictures
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
