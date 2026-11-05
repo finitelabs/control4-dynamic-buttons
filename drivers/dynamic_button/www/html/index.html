@@ -357,6 +357,7 @@ function api(method, path, body) {
   });
 }
 
+// A command's REST reply says only that the controller took it: the driver answers over the socket.
 function sendCommand(cmd, params) {
   return api('POST', '/api/v1/items/' + gDriverId + '/commands', {
     command: cmd,
@@ -365,29 +366,7 @@ function sendCommand(cmd, params) {
   });
 }
 
-// The driver answers every command with one JSON message, the same one it sends over the socket.
-function replyOf(res, depth) {
-  depth = depth || 0;
-  if (res == null || depth > 5) return null;
-  if (typeof res === 'string') {
-    var s = res.trim();
-    if (s.charAt(0) !== '{') return null;
-    try { return replyOf(JSON.parse(s), depth + 1); } catch (e) { return null; }
-  }
-  if (typeof res !== 'object') return null;
-  if (typeof res._command === 'string') return res;
-  for (var k in res) {
-    var found = replyOf(res[k], depth + 1);
-    if (found) return found;
-  }
-  return null;
-}
-function applyReply(res) {
-  var r = replyOf(res);
-  if (r) handleDriverData(r._command, r);
-  return r;
-}
-function refresh() { return sendCommand('_GET_STATE').then(applyReply); }
+function refresh() { return sendCommand('_GET_STATE'); }
 
 // Driver -> page over socket.io. The datatoui subscription is keyed to the socket's engine id,
 // so every connect, a reconnect after a Director restart too, needs a fresh one.
@@ -451,8 +430,13 @@ function waitFor(cmd, ms) {
 }
 function call(cmd, params, expect, ms) {
   var answer = waitFor(expect, ms);
-  sendCommand(cmd, params).then(applyReply);
+  sendCommand(cmd, params);
   return answer;
+}
+// Null if the state didn't come in time, so gState can't be taken as current.
+async function freshState() {
+  var fresh = await call('_GET_STATE', {}, 'STATE', 10000);
+  return fresh && !fresh.error ? fresh : null;
 }
 
 function handleDriverData(cmd, params) {
@@ -464,6 +448,7 @@ function handleDriverData(cmd, params) {
       Object.keys(gWaiters).forEach(function(k) { gWaiters[k]({ error: params.message || 'refused' }); });
       return;
     }
+    if (cmd === 'SHOWN') onShown(params);
     if (cmd === 'ICONIFY') onIconify(params);
     if (gWaiters[cmd]) gWaiters[cmd](params);
   } catch (e) { console.error('handleDriverData error:', cmd, e); }
@@ -1004,13 +989,18 @@ function savedIcon(icon) {
 // ============================================================
 // State and the look list
 // ============================================================
-var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 3072, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
+var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 2916, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
 
 function onState(state) {
   var packs = gState.packs.join(',');
   gState = Object.assign(gState, state || {});
   gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
+  renderList();
+}
+
+function onShown(params) {
+  gState.shown = Number(params.shown) || null;
   renderList();
 }
 
@@ -1167,7 +1157,7 @@ function move(id, step) {
 function command(cmd, params, demoApply) {
   showError('');
   if (!gApiHost) { demoApply(); renderList(); return; }
-  sendCommand(cmd, params).then(applyReply);
+  sendCommand(cmd, params);
 }
 
 // ============================================================
@@ -1332,12 +1322,19 @@ $('pk-grid').addEventListener('click', function(e) {
 // ============================================================
 // Iconify: straight from the page, or through the driver when the page can't reach it.
 var ICONIFY = 'https://api.iconify.design';
-var gViaDriver = false, gIconifySeq = 0, gIconifyPending = {};
+// Through the driver, each answer is a push that costs the controller's broker time growing with the
+// square of its size, so icons go a few at a time and one request after another.
+var ICONS_DIRECT = 48, ICONS_VIA_DRIVER = 4;
+var gViaDriver = false, gIconifySeq = 0, gIconifyPending = {}, gDriverTurn = Promise.resolve();
 function iconifyDirect(path) {
   return fetch(ICONIFY + path).then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
 }
-function iconifyViaDriver(kind, value, prefixes) {
-  if (!gApiHost) return Promise.reject(new Error('no controller'));
+function driverTurn(ask) {
+  var turn = gDriverTurn.then(ask);
+  gDriverTurn = turn.catch(function() {});
+  return turn;
+}
+function askDriver(kind, value, prefixes) {
   var request = String(++gIconifySeq);
   return new Promise(function(resolve, reject) {
     var t = setTimeout(function() { delete gIconifyPending[request]; reject(new Error('no answer')); }, 15000);
@@ -1348,8 +1345,27 @@ function iconifyViaDriver(kind, value, prefixes) {
     };
     var params = { request: request, kind: kind, value: value };
     if (prefixes) params.prefixes = prefixes;
-    sendCommand('_ICONIFY', params).then(applyReply);
+    sendCommand('_ICONIFY', params);
   });
+}
+function iconsViaDriver(value) {
+  var prefix = value.split(':')[0], names = value.split(':')[1].split(','), parts = [];
+  for (var i = 0; i < names.length; i += ICONS_VIA_DRIVER) (function(batch) {
+    parts.push(driverTurn(function() { return askDriver('icon', prefix + ':' + batch.join(',')); }));
+  })(names.slice(i, i + ICONS_VIA_DRIVER));
+  return Promise.all(parts).then(function(answers) {
+    var whole = Object.assign({}, answers[0], { icons: {}, aliases: {} });
+    answers.forEach(function(a) {
+      Object.assign(whole.icons, a && a.icons);
+      Object.assign(whole.aliases, a && a.aliases);
+    });
+    return whole;
+  });
+}
+function iconifyViaDriver(kind, value, prefixes) {
+  if (!gApiHost) return Promise.reject(new Error('no controller'));
+  if (kind === 'icon') return iconsViaDriver(value);
+  return driverTurn(function() { return askDriver(kind, value, prefixes); });
 }
 function onIconify(p) { if (gIconifyPending[p.request]) gIconifyPending[p.request](p); }
 function iconify(kind, value, path, prefixes) {
@@ -1486,29 +1502,40 @@ function renderOnline() {
   onlineNote((count + (gViaDriver ? ' Searched through the controller, since this computer could not reach the icon service.' : '')).trim());
   fetchMissing(ids);
 }
-function fetchMissing(ids) {
-  var byPrefix = {};
+function fetchBatch(prefix, batch) {
+  return fetchIcons(prefix, batch).then(function(found) {
+    Object.keys(found).forEach(function(n) {
+      var id = prefix + ':' + n;
+      gOnline[id] = { id: id, body: found[n].body, width: found[n].width, height: found[n].height };
+      var b = $('o-grid').querySelector('button[data-id="' + CSS.escape(id) + '"]');
+      if (b) setCellArt(b, gOnline[id]);
+    });
+  }).catch(function() {}).then(function() {
+    batch.forEach(function(n) { delete gFetching[prefix + ':' + n]; });
+  });
+}
+// Through the driver a new search ends the requests of the one before it.
+async function fetchMissing(ids) {
+  var byPrefix = {}, mine = gSearchSeq;
   ids.forEach(function(id) {
     if (gOnline[id] || gFetching[id]) return;
     gFetching[id] = true;
     var p = id.split(':');
     (byPrefix[p[0]] = byPrefix[p[0]] || []).push(p[1]);
   });
-  Object.keys(byPrefix).forEach(function(prefix) {
+  for (var prefix in byPrefix) {
     var names = byPrefix[prefix];
-    for (var i = 0; i < names.length; i += 48) (function(batch) {
-      fetchIcons(prefix, batch).then(function(found) {
-        Object.keys(found).forEach(function(n) {
-          var id = prefix + ':' + n;
-          gOnline[id] = { id: id, body: found[n].body, width: found[n].width, height: found[n].height };
-          var b = $('o-grid').querySelector('button[data-id="' + CSS.escape(id) + '"]');
-          if (b) setCellArt(b, gOnline[id]);
-        });
-      }).catch(function() {}).then(function() {
+    for (var i = 0; i < names.length;) {
+      var size = gViaDriver ? ICONS_VIA_DRIVER : ICONS_DIRECT, batch = names.slice(i, i + size);
+      i += size;
+      if (gViaDriver && mine !== gSearchSeq) {
         batch.forEach(function(n) { delete gFetching[prefix + ':' + n]; });
-      });
-    })(names.slice(i, i + 48));
-  });
+        continue;
+      }
+      var done = fetchBatch(prefix, batch);
+      if (gViaDriver) await done;
+    }
+  }
 }
 $('o-go').addEventListener('click', search);
 $('o-grid').addEventListener('click', function(e) {
@@ -1810,7 +1837,14 @@ async function saveLook() {
       return;
     }
     setStatus('Saving the look…');
-    var saved = await call('_SAVE_LOOK', fields, 'SAVED', 10000);
+    var sent = fields;
+    if (icon && icon.body) {
+      var upload = await sendChunks('_PUT_ICON', {}, btoa(unescape(encodeURIComponent(icon.body))), 'Sending the icon');
+      if (upload.error) { setStatus('The look was not saved: ' + upload.error, true); return; }
+      sent = Object.assign({}, fields, { icon: Object.assign({}, icon, { upload: upload.token, body: undefined }) });
+      setStatus('Saving the look…');
+    }
+    var saved = await call('_SAVE_LOOK', sent, 'SAVED', 10000);
     if (saved && saved.error) { setStatus('The look was not saved: ' + saved.error, true); return; }
     var lookId = saved && saved.look ? Number(saved.look) : await savedAnyway(fields);
     if (!lookId) { setStatus('The driver did not save the look.', true); return; }
@@ -1829,7 +1863,7 @@ $('save').addEventListener('click', saveLook);
 
 // When an answer is lost (a Director restart, a dropped connection), the driver's state says whether the save took.
 async function savedAnyway(fields) {
-  await refresh();
+  if (!(await freshState())) return null;
   var name = fields.name.toLowerCase();
   var found = gState.looks.find(function(o) {
     return (fields.id == null || o.id === fields.id) && o.name.toLowerCase() === name && sameDrawing(o, fields) &&
@@ -1838,26 +1872,31 @@ async function savedAnyway(fields) {
   return found ? found.id : null;
 }
 
-async function sendPicture(lookId, name, b64) {
-  var size = gState.maxChunk || 3072, count = Math.ceil(b64.length / size);
+// One chunk at a time, each taken by the controller before the next. Calls beforeLast before the last
+// chunk goes.
+async function sendChunks(cmd, fields, b64, label, beforeLast) {
+  var size = gState.maxChunk || 2916, count = Math.ceil(b64.length / size);
   var token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   gUpload = { failed: null };
-  var stored = null;
-  // One chunk at a time, each answered before the next. The wait for IMAGE_STORED starts with the
-  // last chunk, so a long picture doesn't use it up.
   for (var i = 0; i < count; i++) {
-    setStatus('Sending the picture (' + (i + 1) + ' of ' + count + ')…');
-    if (i === count - 1) stored = waitFor('IMAGE_STORED', 20000);
-    var res = await sendCommand('_PUT_IMAGE', { look: lookId, upload: token, index: i + 1, count: count, data: b64.slice(i * size, (i + 1) * size) });
-    applyReply(res);
-    if (gUpload.failed) { setStatus('The picture was not kept: ' + gUpload.failed, true); return false; }
-    if (res === null) { setStatus('The controller did not take the picture.', true); return false; }
+    setStatus(label + ' (' + (i + 1) + ' of ' + count + ')…');
+    if (i === count - 1 && beforeLast) beforeLast();
+    var res = await sendCommand(cmd, Object.assign({}, fields, { upload: token, index: i + 1, count: count, data: b64.slice(i * size, (i + 1) * size) }));
+    if (gUpload.failed) return { error: gUpload.failed };
+    if (res === null) return { error: 'the controller did not take it' };
   }
+  return { token: token };
+}
+
+async function sendPicture(lookId, name, b64) {
+  var stored = null;
+  // The wait for IMAGE_STORED starts with the last chunk, so a long picture doesn't use it up.
+  var sent = await sendChunks('_PUT_IMAGE', { look: lookId }, b64, 'Sending the picture', function() { stored = waitFor('IMAGE_STORED', 20000); });
+  if (sent.error) { setStatus('The picture was not kept: ' + sent.error, true); return false; }
   var done = await stored;
   if (done && done.error) { setStatus('The picture was not kept: ' + done.error, true); return false; }
   if (done) return true;
-  await refresh();
-  var look = gState.looks.find(function(o) { return o.id === lookId; });
+  var look = (await freshState()) && gState.looks.find(function(o) { return o.id === lookId; });
   if (look && look.hasImage && !look.stale) return true;
   setStatus('The driver did not keep the picture for ' + name + '.', true);
   return false;
@@ -1922,8 +1961,6 @@ function demoSave(fields) {
   }
   renderList();
   initSocket();
-  refresh();
-  setInterval(refresh, 30000);
   setTimeout(function() { if (!gLive) setConn(false); }, 10000);
 })();
 </script>
