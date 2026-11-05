@@ -184,9 +184,9 @@ that changes its picture.
    pictures. A gray picture has no glow, and the look keeps its `Glow` setting
    for when `Grayscale` is turned off again.
 1. **Size** - the picture's size, from `50%` to `100%`.
-1. **Position** - moves the picture 2% at a time, up to 10% each way, and stops
-   where a Classic picture's shadow would run out of room. `Center` puts it
-   back.
+1. **Position** - moves the picture 2% of the picture area at a time, up to 10%
+   each way, and stops where a Classic picture's shadow would run out of room.
+   `Center` puts it back.
 1. **Badge** - up to 5 characters drawn over the picture. Empty means no badge.
 1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
 1. **Text color** - the color of the badge's text.
