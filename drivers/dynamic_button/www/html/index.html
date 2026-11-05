@@ -19,7 +19,14 @@
   [hidden] { display: none !important; }
   body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
 
-  .panel { padding: 16px; width: 100%; }
+  .nav { display: none; align-items: center; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 16px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 5; }
+  .nav.multi { display: flex; }
+  .nav-tab { padding: 10px 18px; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500; cursor: pointer; }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-meta { margin-left: auto; min-width: 0; color: var(--text-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel { display: none; padding: 16px; width: 100%; }
+  .panel.active { display: block; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
   .card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .card h3 .count { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-muted); }
@@ -142,7 +149,11 @@
 </style>
 </head>
 <body>
-<div class="panel">
+<div class="nav" id="nav">
+  <div class="nav-tab active" data-panel="panel-button">Button</div>
+  <span class="nav-meta" id="nav-meta">Dynamic Button</span>
+</div>
+<div class="panel active" id="panel-button">
   <div class="banner warn" id="conn-warn" hidden>Opened outside Composer: these are example looks, and nothing is saved.</div>
   <div class="banner warn" id="conn-bar" hidden>No live connection to the driver: reconnecting&hellip;</div>
   <div class="banner err" id="err" hidden></div>
@@ -1878,7 +1889,25 @@ function demoSave(fields) {
 // ============================================================
 // Boot
 // ============================================================
+// ============================================================
+// Tabs
+// ============================================================
+// A new tab is one more .nav-tab naming its panel.
+function showTab(tab) {
+  closeEditor();
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.toggle('active', t === tab); });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.toggle('active', p.id === tab.dataset.panel); });
+}
+
+function initTabs() {
+  var tabs = document.querySelectorAll('.nav-tab');
+  $('nav').classList.toggle('multi', tabs.length > 1);
+  tabs.forEach(function(tab) { tab.addEventListener('click', function() { showTab(tab); }); });
+}
+
 (function boot() {
+  initTabs();
+  $('nav-meta').textContent = 'Dynamic Button' + (gDriverId ? ' \u00b7 device ' + gDriverId : '');
   // Composer's browser takes a moment to load the font, so it starts before the first badge needs it.
   badgeFont();
   renderSources();
