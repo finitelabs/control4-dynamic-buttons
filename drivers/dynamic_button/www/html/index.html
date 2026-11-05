@@ -853,7 +853,7 @@ function loadImage(src) {
 async function drawLook(canvas, look) {
   var size = canvas.width, ctx = canvas.getContext('2d');
   var turn = canvas.drawTurn = (canvas.drawTurn || 0) + 1;
-  if (!look.icon) { ctx.clearRect(0, 0, size, size); return; }
+  if (!look.icon || look.icon.missing) { ctx.clearRect(0, 0, size, size); return; }
   var c = look.custom || {}, badge = c.badge && c.badge.text ? c.badge : null;
   var face = badge ? await badgeFont() : '';
   if (turn !== canvas.drawTurn) return;
@@ -962,7 +962,7 @@ async function lookDataUrl(look, size) {
 async function navTile(el, look) {
   // Draws overlap while a slider moves: only the latest may paint the tile.
   var turn = el.drawTurn = (el.drawTurn || 0) + 1;
-  if (!look || !look.icon) {
+  if (!look || !look.icon || look.icon.missing) {
     el.innerHTML = '<div class="noimg"></div><div class="nm">' + esc(look ? look.name : 'Dynamic Button') + '</div>';
     return;
   }
@@ -970,10 +970,36 @@ async function navTile(el, look) {
   if (turn !== el.drawTurn) return;
   el.innerHTML = '<img alt="" src="' + url + '"><div class="nm">' + esc(look.name || 'Unnamed') + '</div>';
 }
+// A carried icon's id names its markup, so the ids alone tell when either is carried.
 function sameDrawing(a, b) {
   var ia = a.icon || {}, ib = b.icon || {};
-  return ia.id === ib.id && ia.body === ib.body && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor &&
+  return ia.id === ib.id && (ia.carried || ib.carried || ia.body === ib.body) && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor &&
     savedGlow(a) === savedGlow(b) && !!a.grayscale === !!b.grayscale && customKey(a) === customKey(b);
+}
+
+// ============================================================
+// Icons the page carries: the packs and the included set go by id
+// ============================================================
+function carriedIcon(id) {
+  return gPackIcons[id] ? packIcon(id) : bundledIcon(id);
+}
+// A look keeps a carried icon without its markup: the page draws it from its own copy. An id the
+// page no longer has draws as an empty tile.
+function withIconBody(look) {
+  var icon = look.icon;
+  if (!icon || !icon.carried || icon.body) return look;
+  var own = carriedIcon(icon.id);
+  look.icon = Object.assign({}, icon, own ? { body: own.body } : { body: '', missing: true });
+  return look;
+}
+// The icon as a look saves it: one the page carries, with the same markup, goes by its id alone.
+function savedIcon(icon) {
+  var out = Object.assign({}, icon), own = carriedIcon(icon.id);
+  delete out.label;
+  delete out.missing;
+  if (own && own.body === icon.body) { delete out.body; out.carried = true; }
+  else delete out.carried;
+  return out;
 }
 
 // ============================================================
@@ -984,6 +1010,7 @@ var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', ma
 function onState(state) {
   var packs = gState.packs.join(',');
   gState = Object.assign(gState, state || {});
+  gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
   renderList();
 }
@@ -1751,6 +1778,7 @@ function checkLook(l) {
   var clash = gState.looks.find(function(o) { return o.id !== l.id && o.name.toLowerCase() === name.toLowerCase(); });
   if (clash) return 'Another look is already named ' + clash.name + '.';
   if (!l.icon) return 'Pick an icon.';
+  if (l.icon.missing) return 'This driver no longer has the icon ' + l.icon.id + '. Pick another.';
   return null;
 }
 
@@ -1772,8 +1800,7 @@ async function saveLook() {
       b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
       if (b64.length * 3 / 4 > gState.maxBytes) { setStatus('The picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB.', true); return; }
     }
-    var icon = l.icon && Object.assign({}, l.icon);
-    if (icon) delete icon.label;
+    var icon = l.icon && savedIcon(l.icon);
     var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
       glow: savedGlow(l), grayscale: !!l.grayscale };
     if (custom) fields.custom = custom;
@@ -1845,6 +1872,7 @@ function demoSave(fields) {
     gState.looks.push(Object.assign({}, fields, { id: id, hasImage: true, stale: false }));
     if (!gState.shown) gState.shown = id;
   }
+  gState.looks.forEach(withIconBody);
   renderList();
 }
 
