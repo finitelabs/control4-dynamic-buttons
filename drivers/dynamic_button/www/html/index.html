@@ -368,37 +368,18 @@ function api(method, path, body) {
   });
 }
 
+// A command's REST reply says only that the controller took it: the driver answers over the socket.
+// The controller's broker takes time that grows with the square of the longest unbroken run of
+// characters in a command. A newline ends a run, and the driver takes the newlines out again.
 function sendCommand(cmd, params) {
   return api('POST', '/api/v1/items/' + gDriverId + '/commands', {
     command: cmd,
-    tParams: { DATA: btoa(unescape(encodeURIComponent(JSON.stringify(params || {})))) },
+    tParams: { DATA: btoa(unescape(encodeURIComponent(JSON.stringify(params || {})))).replace(/.{76}/g, '$&\n') },
     async: false
   });
 }
 
-// The driver answers every command with one JSON message, the same one it sends over the socket.
-function replyOf(res, depth) {
-  depth = depth || 0;
-  if (res == null || depth > 5) return null;
-  if (typeof res === 'string') {
-    var s = res.trim();
-    if (s.charAt(0) !== '{') return null;
-    try { return replyOf(JSON.parse(s), depth + 1); } catch (e) { return null; }
-  }
-  if (typeof res !== 'object') return null;
-  if (typeof res._command === 'string') return res;
-  for (var k in res) {
-    var found = replyOf(res[k], depth + 1);
-    if (found) return found;
-  }
-  return null;
-}
-function applyReply(res) {
-  var r = replyOf(res);
-  if (r) handleDriverData(r._command, r);
-  return r;
-}
-function refresh() { return sendCommand('_GET_STATE').then(applyReply); }
+function refresh() { return sendCommand('_GET_STATE'); }
 
 // Driver -> page over socket.io. The datatoui subscription is keyed to the socket's engine id,
 // so every connect, a reconnect after a Director restart too, needs a fresh one.
@@ -462,8 +443,13 @@ function waitFor(cmd, ms) {
 }
 function call(cmd, params, expect, ms) {
   var answer = waitFor(expect, ms);
-  sendCommand(cmd, params).then(applyReply);
+  sendCommand(cmd, params);
   return answer;
+}
+// Null if the state didn't come in time, so gState can't be taken as current.
+async function freshState() {
+  var fresh = await call('_GET_STATE', {}, 'STATE', 10000);
+  return fresh && !fresh.error ? fresh : null;
 }
 
 function handleDriverData(cmd, params) {
@@ -475,6 +461,7 @@ function handleDriverData(cmd, params) {
       Object.keys(gWaiters).forEach(function(k) { gWaiters[k]({ error: params.message || 'refused' }); });
       return;
     }
+    if (cmd === 'SHOWN') onShown(params);
     if (cmd === 'ICONIFY') onIconify(params);
     if (gWaiters[cmd]) gWaiters[cmd](params);
   } catch (e) { console.error('handleDriverData error:', cmd, e); }
@@ -1015,13 +1002,18 @@ function savedIcon(icon) {
 // ============================================================
 // State and the look list
 // ============================================================
-var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 3072, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
+var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', max: 8, maxChunk: 12288, maxBytes: 524288, packs: PACKS.map(function(p) { return p[0]; }) };
 
 function onState(state) {
   var packs = gState.packs.join(',');
   gState = Object.assign(gState, state || {});
   gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
+  renderList();
+}
+
+function onShown(params) {
+  gState.shown = Number(params.shown) || null;
   renderList();
 }
 
@@ -1178,7 +1170,7 @@ function move(id, step) {
 function command(cmd, params, demoApply) {
   showError('');
   if (!gApiHost) { demoApply(); renderList(); return; }
-  sendCommand(cmd, params).then(applyReply);
+  sendCommand(cmd, params);
 }
 
 // ============================================================
@@ -1359,7 +1351,7 @@ function iconifyViaDriver(kind, value, prefixes) {
     };
     var params = { request: request, kind: kind, value: value };
     if (prefixes) params.prefixes = prefixes;
-    sendCommand('_ICONIFY', params).then(applyReply);
+    sendCommand('_ICONIFY', params);
   });
 }
 function onIconify(p) { if (gIconifyPending[p.request]) gIconifyPending[p.request](p); }
@@ -1840,7 +1832,7 @@ $('save').addEventListener('click', saveLook);
 
 // When an answer is lost (a Director restart, a dropped connection), the driver's state says whether the save took.
 async function savedAnyway(fields) {
-  await refresh();
+  if (!(await freshState())) return null;
   var name = fields.name.toLowerCase();
   var found = gState.looks.find(function(o) {
     return (fields.id == null || o.id === fields.id) && o.name.toLowerCase() === name && sameDrawing(o, fields) &&
@@ -1850,25 +1842,23 @@ async function savedAnyway(fields) {
 }
 
 async function sendPicture(lookId, name, b64) {
-  var size = gState.maxChunk || 3072, count = Math.ceil(b64.length / size);
+  var size = gState.maxChunk || 12288, count = Math.ceil(b64.length / size);
   var token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   gUpload = { failed: null };
   var stored = null;
-  // One chunk at a time, each answered before the next. The wait for IMAGE_STORED starts with the
-  // last chunk, so a long picture doesn't use it up.
+  // One chunk at a time, each taken by the controller before the next. The wait for IMAGE_STORED
+  // starts with the last chunk, so a long picture doesn't use it up.
   for (var i = 0; i < count; i++) {
     setStatus('Sending the picture (' + (i + 1) + ' of ' + count + ')…');
     if (i === count - 1) stored = waitFor('IMAGE_STORED', 20000);
     var res = await sendCommand('_PUT_IMAGE', { look: lookId, upload: token, index: i + 1, count: count, data: b64.slice(i * size, (i + 1) * size) });
-    applyReply(res);
     if (gUpload.failed) { setStatus('The picture was not kept: ' + gUpload.failed, true); return false; }
     if (res === null) { setStatus('The controller did not take the picture.', true); return false; }
   }
   var done = await stored;
   if (done && done.error) { setStatus('The picture was not kept: ' + done.error, true); return false; }
   if (done) return true;
-  await refresh();
-  var look = gState.looks.find(function(o) { return o.id === lookId; });
+  var look = (await freshState()) && gState.looks.find(function(o) { return o.id === lookId; });
   if (look && look.hasImage && !look.stale) return true;
   setStatus('The driver did not keep the picture for ' + name + '.', true);
   return false;
@@ -1951,8 +1941,6 @@ function initTabs() {
   }
   renderList();
   initSocket();
-  refresh();
-  setInterval(refresh, 30000);
   setTimeout(function() { if (!gLive) setConn(false); }, 10000);
 })();
 </script>

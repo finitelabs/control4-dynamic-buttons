@@ -241,7 +241,7 @@ local function tabState()
   }
 end
 
---- Send the Button tab one message, over its socket and as the REST reply.
+--- Send the Button tab one message over its socket.
 --- @param command string
 --- @param data table<string, string>
 --- @return string json
@@ -255,6 +255,12 @@ end
 --- @return string json
 local function pushState()
   return uiRespond("STATE", { state = JSON:encode(tabState()) })
+end
+
+--- Tell the Button tab which look is shown, when nothing else in its state changed.
+--- @return string json
+local function pushShown()
+  return uiRespond("SHOWN", { shown = tostring(button:shown().id) })
 end
 
 --- While true, property changes leave the state push to the command that made them.
@@ -278,8 +284,7 @@ local function holdingTab(fn)
   end
 end
 
---- Answer the Button tab with the state included, so a reply that comes back without the socket
---- still updates the page.
+--- Answer the Button tab with the state included.
 --- @param command string
 --- @param data table<string, string>
 --- @return string json
@@ -299,7 +304,8 @@ end
 --- @return table params The Button tab's parameters, base64 JSON in DATA.
 local function tabParams(tParams)
   local ok, params = pcall(function()
-    return JSON:decode(C4:Base64Decode(Select(tParams, "DATA") or "e30="))
+    -- The tab wraps its base64 in lines for the controller's broker.
+    return JSON:decode(C4:Base64Decode((tostring(Select(tParams, "DATA") or "e30="):gsub("[\r\n]", ""))))
   end)
   if ok and type(params) == "table" then
     return params
@@ -440,6 +446,8 @@ function OnDriverLateInit()
 
   gInitialized = true
   UpdateProperty("Driver Status", "Ready")
+  -- A tab left open through a restart keeps its socket, so nothing else tells it. With none open this costs nothing.
+  pushState()
   --#ifdef DRIVERCENTRAL
   drivercentral:startGate(onLicense)
   --#endif
@@ -636,8 +644,7 @@ function UIR._PUT_IMAGE(tParams)
     return pushError(string.format("the picture for %s did not arrive: %s", look.name, err))
   end
   if not png then
-    -- Only the REST reply, and without the state: the broker's time grows with each message's size.
-    return JSON:encode({ _command = "CHUNK", look = tostring(look.id), index = tostring(params.index) })
+    return
   end
   local before = button:shown()
   local ok = button:imageArrived(look.id, png)
@@ -684,7 +691,7 @@ function UIR._SHOW_LOOK(tParams)
     return pushError(err or "the look was not shown")
   end
   announceShown(before and before.id or nil)
-  return pushState()
+  return pushShown()
 end
 
 --- Fetch from Iconify for a Button tab that can't reach it; only the offered packs.
@@ -726,7 +733,7 @@ function EC.Show_Look(params)
     return
   end
   announceShown(before and before.id or nil)
-  pushState()
+  pushShown()
 end
 
 --- Show the next (1) or previous (-1) look in the cycle. A look whose picture can't be shown is
@@ -743,7 +750,12 @@ local function stepLook(step)
     local ok, err = button:show(look.id)
     if ok then
       announceShown(before and before.id or nil)
-      pushState()
+      -- A look passed over may have lost its picture, which only the whole state tells.
+      if next(tried) then
+        pushState()
+      else
+        pushShown()
+      end
       return
     end
     log:warn("Could not show look %s: %s", look.name, err)

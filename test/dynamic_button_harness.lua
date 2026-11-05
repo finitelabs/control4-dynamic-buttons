@@ -232,7 +232,7 @@ end
 --- @param command string
 --- @param params table|nil
 function H.tab(command, params)
-  return UIR[command]({ DATA = C4:Base64Encode(JSON:encode(params or {})) })
+  return UIR[command]({ DATA = (C4:Base64Encode(JSON:encode(params or {})):gsub(string.rep(".", 76), "%0\n")) })
 end
 
 --- A small stand-in PNG; only its signature is checked.

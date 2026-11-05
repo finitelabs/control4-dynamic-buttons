@@ -48,11 +48,16 @@ T.section("On Select steps through the looks in order")
 H.mark()
 setLookControl("On Select")
 T.eq("the tab hears the new mode", H.state().lookControl, "On Select")
+H.mark()
 H.press()
 T.eq("a press shows the next look", shown(), "Green")
 T.eq("on the button", H.lastIcon().params.icon_description, "Green")
 T.eq("and fires Look Changed and the look's own event", H.fired, { "Look Changed", "Green Shown" })
-T.eq("the tab hears the new look", H.state().shown, green)
+T.eq(
+  "the tab hears the new look, and nothing else",
+  H.ui,
+  { { command = "SHOWN", params = { shown = tostring(green) } } }
+)
 H.press()
 H.press()
 T.eq("each press steps on", shown(), "Off")
@@ -166,6 +171,7 @@ H.update()
 T.eq("the shown look is kept", shown(), "Off")
 T.eq("each look's event keeps its id", H.eventIds(), before)
 T.eq("and nothing fires at start", H.fired, {})
+T.truthy("a tab left open hears the state", H.lastUi("STATE"))
 H.press()
 T.eq("presses still step the cycle", shown(), "Red")
 
@@ -193,6 +199,7 @@ H.unopenable["C4Z/www/buttons/" .. H.DEVICE_ID .. "/" .. lookId("Lime") .. ".png
 H.mark()
 H.press()
 T.eq("a press passes over it to the next look", shown(), "Off")
+T.truthy("and the tab hears the whole state, since the look passed over may have changed", H.lastUi("STATE"))
 EC.Show_Look({ Look = "Blue (" .. blue .. ")" })
 for _, name in ipairs({ "Red", "Off" }) do
   H.unopenable["C4Z/www/buttons/" .. H.DEVICE_ID .. "/" .. lookId(name) .. ".png"] = true

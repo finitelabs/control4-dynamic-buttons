@@ -56,11 +56,11 @@ T.eq("the tab hears the picture was kept", H.lastUi("IMAGE_STORED").look, "1")
 T.eq("and its state shows the look shown", H.state().shown, 1)
 T.eq("Look Is lists it", select(2, lookIs()), "Charged (1)")
 
-T.section("The REST replies carry the state")
+T.section("A command's answer carries the state")
 local saved = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("Spare")))
 T.eq("a save answers SAVED", saved._command, "SAVED")
 T.eq("with the new look's id", saved.look, "2")
-T.eq("and the state, so a save works without the socket", #JSON:decode(saved.state).looks, 2)
+T.eq("and the state", #JSON:decode(saved.state).looks, 2)
 local b64 = C4:Base64Encode(H.png("Spare"))
 local stored = JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "r", index = 1, count = 1, data = b64 }))
 T.eq("the last chunk answers IMAGE_STORED", stored._command, "IMAGE_STORED")
@@ -76,19 +76,18 @@ H.mark()
 H.tab("_SAVE_LOOK", H.lookFields("Spare", { id = 2, iconColor = "#000000" }))
 T.eq("a save sends the state over the socket once", statePushes(), 1)
 local spare = C4:Base64Encode(H.png("Spare black", 8000))
-local count = math.ceil(#spare / 3072)
+local size = 3072
+local count = math.ceil(#spare / size)
 T.truthy("a picture of several chunks", count >= 3)
 H.mark()
-local first =
-  JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "s", index = 1, count = count, data = spare:sub(1, 3072) }))
-T.eq("a chunk before the last answers CHUNK", { first._command, first.look, first.index }, { "CHUNK", "2", "1" })
-T.eq("without the state", first.state, nil)
+local first = H.tab("_PUT_IMAGE", { look = 2, upload = "s", index = 1, count = count, data = spare:sub(1, size) })
+T.eq("a chunk before the last answers nothing", first, nil)
 T.eq("and sends nothing over the socket", #H.ui, 0)
 local last
 for i = 2, count do
   last = H.tab(
     "_PUT_IMAGE",
-    { look = 2, upload = "s", index = i, count = count, data = spare:sub((i - 1) * 3072 + 1, i * 3072) }
+    { look = 2, upload = "s", index = i, count = count, data = spare:sub((i - 1) * size + 1, i * size) }
   )
 end
 T.eq("the last chunk answers IMAGE_STORED", JSON:decode(last)._command, "IMAGE_STORED")
@@ -344,6 +343,31 @@ T.eq(
 )
 T.eq("and the look keeps its own", styledLook().custom, styledCustom)
 H.tab("_DELETE_LOOK", { id = styledId })
+
+T.section("The tab hears only which look is shown")
+local oneId, twoId = H.addLook("One"), H.addLook("Two")
+H.mark()
+EC.Show_Look({ Look = "One (" .. oneId .. ")" })
+T.eq("Show Look sends it one small message", H.ui, { { command = "SHOWN", params = { shown = tostring(oneId) } } })
+H.mark()
+local showAnswer = JSON:decode(H.tab("_SHOW_LOOK", { id = twoId }))
+T.eq("so does the tab's own Show", H.ui, { { command = "SHOWN", params = { shown = tostring(twoId) } } })
+T.eq("which answers the same", { showAnswer._command, showAnswer.state }, { "SHOWN", nil })
+H.tab("_DELETE_LOOK", { id = oneId })
+H.tab("_DELETE_LOOK", { id = twoId })
+
+T.section("A command's DATA can be wrapped")
+--- @param separator string
+--- @return string data The fields as the Button tab sends them, with the separator every 76 characters.
+local function wrappedData(fields, separator)
+  return (C4:Base64Encode(JSON:encode(fields)):gsub(string.rep(".", 76), "%0" .. separator))
+end
+local wrapped = JSON:decode(UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped"), "\n") }))
+T.eq("a save with newlines in its DATA is taken", wrapped._command, "SAVED")
+local crlf = JSON:decode(UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped CRLF"), "\r\n") }))
+T.eq("and so is one with CRLF", crlf._command, "SAVED")
+H.tab("_DELETE_LOOK", { id = tonumber(wrapped.look) })
+H.tab("_DELETE_LOOK", { id = tonumber(crlf.look) })
 
 T.section("Reset Driver")
 H.addLook("Full")
