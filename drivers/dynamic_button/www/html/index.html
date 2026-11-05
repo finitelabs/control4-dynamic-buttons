@@ -1849,6 +1849,8 @@ function demoSave(fields) {
 // Boot
 // ============================================================
 (function boot() {
+  // Composer's browser takes a moment to load the font, so it starts before the first badge needs it.
+  badgeFont();
   renderSources();
   renderCategories();
   renderPacks();
