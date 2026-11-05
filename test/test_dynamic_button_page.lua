@@ -32,6 +32,9 @@ local boot = page:match("initSocket%(%);(.-)%}%)%(%);")
 T.truthy("the boot code is found", boot)
 T.falsy("and boot leaves asking to the socket's connect", boot:find("refresh", 1, true))
 
+local _, refreshes = page:gsub("refresh%(%)", "")
+T.eq("and nothing else asks that way, so no refresh follows IMAGE_STORED", refreshes, 2)
+
 T.section("Answers come over the socket")
 T.falsy("nothing reads an answer from a REST reply", has("applyReply") or has("replyOf"))
 T.falsy("nothing reads the state right after asking for it", has("await refresh()"))

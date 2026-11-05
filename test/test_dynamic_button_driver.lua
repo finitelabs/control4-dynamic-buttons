@@ -85,8 +85,7 @@ T.truthy("a picture of several chunks", count >= 3)
 H.mark()
 local first =
   JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "s", index = 1, count = count, data = spare:sub(1, size) }))
-T.eq("a chunk before the last answers CHUNK", { first._command, first.look, first.index }, { "CHUNK", "2", "1" })
-T.eq("without the state", first.state, nil)
+T.eq("a chunk before the last answers only its place", first, { _command = "CHUNK", look = "2", index = "1" })
 T.eq("and sends nothing over the socket", #H.ui, 0)
 local last
 for i = 2, count do
