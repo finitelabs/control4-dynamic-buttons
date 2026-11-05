@@ -284,7 +284,7 @@ end
 --- @param png string
 --- @param chunk integer|nil
 function H.sendImage(id, png, chunk)
-  chunk = chunk or 3072
+  chunk = chunk or require("dynamic_button.images").MAX_CHUNK
   local b64 = C4:Base64Encode(png)
   local count = math.ceil(#b64 / chunk)
   for i = 1, count do

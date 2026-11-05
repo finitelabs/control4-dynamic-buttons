@@ -10,6 +10,8 @@
 
 local T = require("testlib")
 local H = require("dynamic_button_harness")
+local Images = require("dynamic_button.images")
+local Looks = require("dynamic_button.looks")
 
 local ADDRESS = "controller://driver/dynamic_button/buttons/" .. H.DEVICE_ID .. "/"
 
@@ -39,6 +41,7 @@ T.eq("Driver Status is Ready", Properties["Driver Status"], "Ready")
 T.eq("no Look Changed fires at start", #H.fired, 0)
 T.eq("there is no Look Is conditional with no looks", select(2, lookIs()), nil)
 T.truthy("picture chunks are kept out of the log", UIR.suppressDebug["_PUT_IMAGE"])
+T.truthy("and so are an icon's", UIR.suppressDebug["_PUT_ICON"])
 
 T.section("The first look")
 H.mark()
@@ -56,11 +59,11 @@ T.eq("the tab hears the picture was kept", H.lastUi("IMAGE_STORED").look, "1")
 T.eq("and its state shows the look shown", H.state().shown, 1)
 T.eq("Look Is lists it", select(2, lookIs()), "Charged (1)")
 
-T.section("The REST replies carry the state")
+T.section("A command's answer carries the state")
 local saved = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("Spare")))
 T.eq("a save answers SAVED", saved._command, "SAVED")
 T.eq("with the new look's id", saved.look, "2")
-T.eq("and the state, so a save works without the socket", #JSON:decode(saved.state).looks, 2)
+T.eq("and the state", #JSON:decode(saved.state).looks, 2)
 local b64 = C4:Base64Encode(H.png("Spare"))
 local stored = JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "r", index = 1, count = 1, data = b64 }))
 T.eq("the last chunk answers IMAGE_STORED", stored._command, "IMAGE_STORED")
@@ -76,11 +79,12 @@ H.mark()
 H.tab("_SAVE_LOOK", H.lookFields("Spare", { id = 2, iconColor = "#000000" }))
 T.eq("a save sends the state over the socket once", statePushes(), 1)
 local spare = C4:Base64Encode(H.png("Spare black", 8000))
-local count = math.ceil(#spare / 3072)
+local size = Images.MAX_CHUNK
+local count = math.ceil(#spare / size)
 T.truthy("a picture of several chunks", count >= 3)
 H.mark()
 local first =
-  JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "s", index = 1, count = count, data = spare:sub(1, 3072) }))
+  JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "s", index = 1, count = count, data = spare:sub(1, size) }))
 T.eq("a chunk before the last answers CHUNK", { first._command, first.look, first.index }, { "CHUNK", "2", "1" })
 T.eq("without the state", first.state, nil)
 T.eq("and sends nothing over the socket", #H.ui, 0)
@@ -88,7 +92,7 @@ local last
 for i = 2, count do
   last = H.tab(
     "_PUT_IMAGE",
-    { look = 2, upload = "s", index = i, count = count, data = spare:sub((i - 1) * 3072 + 1, i * 3072) }
+    { look = 2, upload = "s", index = i, count = count, data = spare:sub((i - 1) * size + 1, i * size) }
   )
 end
 T.eq("the last chunk answers IMAGE_STORED", JSON:decode(last)._command, "IMAGE_STORED")
@@ -344,6 +348,75 @@ T.eq(
 )
 T.eq("and the look keeps its own", styledLook().custom, styledCustom)
 H.tab("_DELETE_LOOK", { id = styledId })
+
+T.section("The tab hears only which look is shown")
+local oneId, twoId = H.addLook("One"), H.addLook("Two")
+H.mark()
+EC.Show_Look({ Look = "One (" .. oneId .. ")" })
+T.eq("Show Look sends it one small message", H.ui, { { command = "SHOWN", params = { shown = tostring(oneId) } } })
+H.mark()
+local showAnswer = JSON:decode(H.tab("_SHOW_LOOK", { id = twoId }))
+T.eq("so does the tab's own Show", H.ui, { { command = "SHOWN", params = { shown = tostring(twoId) } } })
+T.eq("which answers the same", { showAnswer._command, showAnswer.state }, { "SHOWN", nil })
+H.tab("_DELETE_LOOK", { id = oneId })
+H.tab("_DELETE_LOOK", { id = twoId })
+
+T.section("An online icon's markup goes ahead of its save")
+local onlineBody = '<path fill="currentColor" d="M1 1h22v22H1z"/>' .. string.rep('<circle r="1"/>', 400)
+--- @return integer chunks Send markup as the Button tab does, in chunks of the largest size.
+local function sendIconChunks(upload, body)
+  local b64 = C4:Base64Encode(body)
+  local chunks = math.ceil(#b64 / size)
+  for i = 1, chunks do
+    H.tab("_PUT_ICON", { upload = upload, index = i, count = chunks, data = b64:sub((i - 1) * size + 1, i * size) })
+  end
+  return chunks
+end
+--- @return table fields A look that names its icon's upload instead of carrying the markup.
+local function namingUpload(name, upload)
+  local fields = H.lookFields(name)
+  fields.icon.body = nil
+  fields.icon.upload = upload
+  return fields
+end
+H.mark()
+T.truthy("the markup takes several chunks", sendIconChunks("i1", onlineBody) > 1)
+T.eq("which send nothing over the socket", #H.ui, 0)
+local namedSave = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Online", "i1")))
+T.eq("a save naming the upload is taken", namedSave._command, "SAVED")
+local onlineId = tonumber(namedSave.look)
+--- @return table|nil icon The icon of a look in the tab's state.
+local function iconOf(id)
+  for _, look in ipairs(H.state().looks) do
+    if look.id == id then
+      return look.icon
+    end
+  end
+  return nil
+end
+T.eq("the look keeps the markup whole", iconOf(onlineId).body, onlineBody)
+T.eq("and not the upload's name", iconOf(onlineId).upload, nil)
+local usedAgain = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Again", "i1")))
+T.eq(
+  "an upload is good for one save",
+  { usedAgain._command, usedAgain.message },
+  { "ERROR", "the icon's picture did not arrive: save the look again" }
+)
+local lost = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Lost", "never sent")))
+T.eq("an upload that never came is refused with the same reason", lost.message, usedAgain.message)
+local edited = H.lookFields("Online", { id = onlineId })
+edited.icon.id = "mdi:battery-20"
+edited.icon.body = nil
+edited.icon.upload = "i2"
+sendIconChunks("i2", "<path/>")
+T.eq("an edit can name one too", JSON:decode(H.tab("_SAVE_LOOK", edited))._command, "SAVED")
+T.eq("and the look takes the new markup", iconOf(onlineId).body, "<path/>")
+H.mark()
+sendIconChunks("i3", string.rep("x", Looks.MAX_ICON_BODY + 1))
+T.contains("markup past the look's cap is refused", H.lastUi("ERROR").message, "the markup is too large")
+local huge = JSON:decode(H.tab("_SAVE_LOOK", namingUpload("Huge", "i3")))
+T.eq("and a save naming it is too", huge.message, usedAgain.message)
+H.tab("_DELETE_LOOK", { id = onlineId })
 
 T.section("Reset Driver")
 H.addLook("Full")

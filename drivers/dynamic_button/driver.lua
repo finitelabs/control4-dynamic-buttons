@@ -70,6 +70,7 @@ local gLookIsItems = nil
 
 -- Chunks are large and carry nothing a log needs.
 UIR.suppressDebug["_PUT_IMAGE"] = true
+UIR.suppressDebug["_PUT_ICON"] = true
 
 --- @return string name The driver's file name without `.c4z`, which names its web folder.
 local function driverName()
@@ -241,7 +242,8 @@ local function tabState()
   }
 end
 
---- Send the Button tab one message, over its socket and as the REST reply.
+--- Send the Button tab one message over its socket, the only way an answer reaches it: a command's
+--- REST reply says only that the controller took the command.
 --- @param command string
 --- @param data table<string, string>
 --- @return string json
@@ -255,6 +257,13 @@ end
 --- @return string json
 local function pushState()
   return uiRespond("STATE", { state = JSON:encode(tabState()) })
+end
+
+--- Tell the Button tab which look is shown, when nothing else in its state changed. The state can
+--- be many KB, and a press can come often.
+--- @return string json
+local function pushShown()
+  return uiRespond("SHOWN", { shown = tostring(button:shown().id) })
 end
 
 --- While true, property changes leave the state push to the command that made them.
@@ -278,8 +287,7 @@ local function holdingTab(fn)
   end
 end
 
---- Answer the Button tab with the state included, so a reply that comes back without the socket
---- still updates the page.
+--- Answer the Button tab with the state included.
 --- @param command string
 --- @param data table<string, string>
 --- @return string json
@@ -440,6 +448,8 @@ function OnDriverLateInit()
 
   gInitialized = true
   UpdateProperty("Driver Status", "Ready")
+  -- A tab left open through a restart keeps its socket, so nothing else tells it. With none open this costs nothing.
+  pushState()
   --#ifdef DRIVERCENTRAL
   drivercentral:startGate(onLicense)
   --#endif
@@ -598,12 +608,30 @@ function UIR._SET_DRIVER(tParams)
   return pushError("The tab cannot set " .. tostring(name) .. ".")
 end
 
+--- One chunk of an online icon's markup, ahead of the _SAVE_LOOK that names its upload.
+--- @param tParams table
+function UIR._PUT_ICON(tParams)
+  local params = tabParams(tParams)
+  local err = images:acceptIcon(params.upload, params.index, params.count, params.data, Looks.MAX_ICON_BODY)
+  if err then
+    return pushError("the icon's picture did not arrive: " .. err)
+  end
+  return JSON:encode({ _command = "CHUNK", index = tostring(params.index) })
+end
+
 --- Create a look, or change one when an id is given. Its picture follows in _PUT_IMAGE.
 --- @param tParams table
 function UIR._SAVE_LOOK(tParams)
   log:trace("UIR._SAVE_LOOK()")
   local params = tabParams(tParams)
   local id = tonumber(params.id)
+  local icon = params.icon
+  if type(icon) == "table" and icon.upload ~= nil then
+    icon.body = images:takeIcon(icon.upload)
+    if not icon.body then
+      return pushError("the icon's picture did not arrive: save the look again")
+    end
+  end
   local before = button:shown()
   local look, err
   if id then
@@ -636,7 +664,7 @@ function UIR._PUT_IMAGE(tParams)
     return pushError(string.format("the picture for %s did not arrive: %s", look.name, err))
   end
   if not png then
-    -- Only the REST reply, and without the state: the broker's time grows with each message's size.
+    -- Nothing over the socket: the broker's time grows with each message's size.
     return JSON:encode({ _command = "CHUNK", look = tostring(look.id), index = tostring(params.index) })
   end
   local before = button:shown()
@@ -684,7 +712,7 @@ function UIR._SHOW_LOOK(tParams)
     return pushError(err or "the look was not shown")
   end
   announceShown(before and before.id or nil)
-  return pushState()
+  return pushShown()
 end
 
 --- Fetch from Iconify for a Button tab that can't reach it; only the offered packs.
@@ -726,7 +754,7 @@ function EC.Show_Look(params)
     return
   end
   announceShown(before and before.id or nil)
-  pushState()
+  pushShown()
 end
 
 --- Show the next (1) or previous (-1) look in the cycle. A look whose picture can't be shown is
@@ -743,7 +771,12 @@ local function stepLook(step)
     local ok, err = button:show(look.id)
     if ok then
       announceShown(before and before.id or nil)
-      pushState()
+      -- A look passed over may have lost its picture, which only the whole state tells.
+      if next(tried) then
+        pushState()
+      else
+        pushShown()
+      end
       return
     end
     log:warn("Could not show look %s: %s", look.name, err)
@@ -877,7 +910,7 @@ EC.Reset_Driver = whileLicensed(EC.Reset_Driver)
 GCPL.Show_Look = whileLicensed(GCPL.Show_Look, function()
   return {}
 end)
-for _, name in ipairs({ "_SAVE_LOOK", "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
+for _, name in ipairs({ "_SAVE_LOOK", "_PUT_ICON", "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
   UIR[name] = whileLicensed(UIR[name], function()
     return pushError(UNLICENSED_REFUSAL)
   end)

@@ -109,7 +109,7 @@ T.eq("Show Look offers no looks", GCPL.Show_Look("Look"), {})
 local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("New")))
 T.eq("the tab can't add a look", refused._command, "ERROR")
 T.contains("and is told why", refused.message, UNLICENSED)
-for _, command in ipairs({ "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
+for _, command in ipairs({ "_PUT_ICON", "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
   T.eq(command .. " is refused", JSON:decode(H.tab(command, { id = 1, look = 1, ids = { 2, 1 } }))._command, "ERROR")
 end
 local search = JSON:decode(H.tab("_ICONIFY", { request = "r1", kind = "search", value = "battery" }))
