@@ -29,8 +29,9 @@ the programming you attach to it.
   - [The Button Tab](#the-button-tab)
     - [Looks](#looks)
     - [Look Editor](#look-editor)
+    - [Customize](#customize)
     - [Icon Packs](#icon-packs)
-    - [Icon Search](#icon-search)
+    - [Free Icon Libraries](#free-icon-libraries)
     - [Properties](#properties)
   - [Cycling Through Looks](#cycling-through-looks)
   - [Driver Setup](#driver-setup)
@@ -131,31 +132,66 @@ the button's looks.
 <img alt="Button tab - Look Editor" src="./images/ui-look-editor.png" width="640"/>
 
 1. **Name** - the look's name in programming: up to 40 characters, without
-   commas, and different from the button's other looks. Picking an icon fills it
-   in when it is empty.
+   commas, and different from the button's other looks. Picking a picture fills
+   it in when it is empty.
 1. **Tile shape** - `None`, `Circle`, `Rounded Square` or `Square`. With `None`
    the icon is drawn on its own, larger, and `Tile color` is hidden.
 1. **Icon color** - the color the icon is drawn in.
 1. **Tile color** - the color of the tile behind the icon.
+1. **Cycle** - with `In cycle` off, presses, Next Look and Previous Look pass
+   over the look. Show Look can still show it.
+1. **Picture** - where the picture comes from: `All included`, the default, one
+   of the driver's three icon packs (see [Icon Packs](#icon-packs)),
+   `Basic icons`, or `Free icon libraries` online (see
+   [Free Icon Libraries](#free-icon-libraries)). Everything but the libraries
+   works with no internet.
+1. **All categories** - narrows the pictures to one subject group.
+1. **Search pictures** - narrows the pictures by name as you type.
+1. **Pictures** - select one to use it for the look.
+1. **Search free icon libraries** - looks for the same words in the free icon
+   libraries online, when the included pictures don't have what you need.
+1. **Icon** - the picked picture and its license.
+1. **Preview** - the look as the Control4 app shows it.
+1. **The picture at 300 px** - the picture the driver keeps, at the size the app
+   loads.
+1. **Save Look / Cancel** - `Save Look` saves the look and sends its picture to
+   the driver. A look renamed without other changes keeps its picture. The
+   button's first look shows as soon as its picture arrives.
+
+### Customize
+
+<img alt="Button tab - Customize" src="./images/ui-customize.png" width="640"/>
+
+`Customize`, under the picture, changes the look's picture before it is saved.
+It shows only what the picked picture can use, and opens by itself on a look
+that changes its picture.
+
+1. **Reset to the pack's look** - puts the picture back as it comes: no changes,
+   its own glow and in color. For a basic or library icon it reads
+   `Reset to the icon's look`.
+1. **Color** - the picture's color, for a Classic Device or Modern picture. Its
+   shading stays, and the charging bolt, the warning mark and the sun keep
+   theirs. A Classic Tile picture shows `Tile` and `Symbol` here instead, the
+   colors of its tile and its symbol.
+1. **Body** - tints the metal or plastic of a Classic Device drawing.
+1. **Glow** - the picture's glow, from none through its own at `100%` to twice
+   as strong at `200%`. It shows for the Classic Device pictures that glow, and
+   is hidden while `Grayscale` is on.
+1. **Glow color** - the glow's color. Where the glow belongs to the colored part
+   it follows `Color` until set here.
 1. **Grayscale** - draws the picture in grays, its tile too, which gives any
    picture a gray version for an off look beside the packs' own on and off
    pictures. A gray picture has no glow, and the look keeps its `Glow` setting
    for when `Grayscale` is turned off again.
-1. **Cycle** - with `In cycle` off, presses, Next Look and Previous Look pass
-   over the look. Show Look can still show it.
-1. **Included icons / Icon packs / Search online** - picks from the icons
-   included with the driver, which work with no internet, from the driver's
-   three icon packs (see [Icon Packs](#icon-packs)), or from the free icon packs
-   online (see [Icon Search](#icon-search)).
-1. **All categories / Filter by name** - narrow the included icons by category
-   and by name.
-1. **Icons** - select one to use it for the look.
-1. **Icon** - the picked icon and its license.
-1. **Preview** - the look as the Control4 app shows it.
-1. **Picture** - the picture the driver keeps, at the 300 pixels the app loads.
-1. **Save Look / Cancel** - `Save Look` saves the look and sends its picture to
-   the driver. A look renamed without other changes keeps its picture. The
-   button's first look shows as soon as its picture arrives.
+1. **Size** - the picture's size, from `50%` to `100%`.
+1. **Position** - moves the picture 2% at a time, up to 10% each way, and stops
+   where a Classic picture's shadow would run out of room. `Center` puts it
+   back.
+1. **Badge** - up to 5 characters drawn over the picture. Empty means no badge.
+1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
+1. **Text color** - the color of the badge's text.
+1. **Background** - the badge's color, or `None` for the text alone. A gray
+   picture keeps its badge's colors.
 
 ### Icon Packs
 
@@ -168,30 +204,31 @@ temperature and humidity, devices, appliances, status, home modes, holidays and
 weather. A subject with states has a picture for each: on, off and alert where
 one applies. They work with no internet.
 
-1. **Glow** - the picture's glow, from none through its own at `100%` to twice
-   as strong at `200%`. It shows for the Classic Device pictures that glow, and
-   is hidden while `Grayscale` is on.
-1. **Icon packs** - shows the packs instead of the included icons.
-1. **Classic Device / Classic Tile / Modern** - the pack to show.
-   `Classic Device` is shaded device pictures and `Classic Tile` is a white
-   symbol on a colored tile, both matching the OS 3 look. `Modern` is outline
-   icons when off and filled, colored icons when on, matching the X4 look.
+1. **Classic Device / Classic Tile / Modern** - the pack to show, in the
+   `Picture` list. `Classic Device` is shaded device pictures and `Classic Tile`
+   is a white symbol on a colored tile, both matching the OS 3 look. `Modern` is
+   outline icons when off and filled, colored icons when on, matching the X4
+   look. `All included` shows all three with the basic icons.
 1. **All categories** - narrows the pictures to one subject group.
-1. **Filter by name** - narrows the pictures by name.
+1. **Search pictures** - narrows the pictures by name.
 1. **Pictures** - select one to use it for the look. The look is named after it
    when the name is empty.
-1. **Pack note** - what the chosen pack looks like.
-1. **Picture** - a pack picture keeps its own colors, so `Tile shape`,
-   `Icon color` and `Tile color` are hidden for it, and the picture shows on a
-   dark background. The Classic packs add the soft shadow the OS 3 look has.
+1. **Pack note** - how many pictures show, and what the pack looks like.
+1. **The picture at 300 px** - a pack picture keeps its own colors, so
+   `Tile shape`, `Icon color` and `Tile color` are hidden for it, and the
+   picture shows on a dark background. The Classic packs add the soft shadow the
+   OS 3 look has. [Customize](#customize) can change its colors.
 
-### Icon Search
+### Free Icon Libraries
 
-<img alt="Button tab - Icon Search" src="./images/ui-icon-search.png" width="640"/>
+<img alt="Button tab - Free Icon Libraries" src="./images/ui-icon-search.png" width="640"/>
 
+1. **Free icon libraries** - in the `Picture` list: searches free icon libraries
+   online, for an icon the included pictures don't have.
 1. **Search** - searches the packs chosen under `Packs` for icons whose names
-   match. If the computer running Composer cannot reach the icon service, the
-   search goes through the controller.
+   match the words in the search box, on `Search` or Enter. If the computer
+   running Composer cannot reach the icon service, the search goes through the
+   controller.
 1. **Style** - `Any`, `Outline` or `Filled`. Shows only the outline or the
    filled icons among those found, as each pack marks them in its icon names. An
    icon whose name does not say shows under both. It filters the icons found
@@ -356,11 +393,13 @@ The included icons and the icon packs are drawn from these collections:
 The Classic Device pictures are our own drawings, most built around a Material
 Design Icons symbol. The Classic Tile pictures use Material Design Icons
 symbols, and the Modern pictures use Lucide, Tabler Icons and Material Design
-Icons symbols. The driver includes these notices and the full license texts in
-its `LICENSES.txt` file.
+Icons symbols. A badge's text is drawn in
+[Roboto](https://github.com/googlefonts/roboto), under the
+[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license. The driver
+includes these notices and the full license texts in its `LICENSES.txt` file.
 
-**Search online** uses the free [Iconify](https://iconify.design) service and
-offers only these packs, whose licenses allow their icons to be used without
+**Free icon libraries** uses the free [Iconify](https://iconify.design) service
+and offers only these packs, whose licenses allow their icons to be used without
 credit on each one:
 
 | Pack                   | License                                                       |
@@ -429,13 +468,17 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   look that presses and both commands pass over when it is off
 - Added an event for each look, named for the look, that fires when it becomes
   the shown look
-- Added three icon packs with the same 100 subjects in each, picked from the
-  Button tab's Icon packs view: Classic Device and Classic Tile, which match the
-  OS 3 look, and Modern, which matches the X4 look, with on, off and alert
-  pictures where a subject has states
+- Added three icon packs with the same 100 subjects in each: Classic Device and
+  Classic Tile, which match the OS 3 look, and Modern, which matches the X4
+  look, with on, off and alert pictures where a subject has states
+- Added one picture list to the look editor, with a source, a category and a
+  search across the packs, the included icons and, when asked, the free icon
+  libraries online
 - Added Glow and Grayscale to each look: Glow sets a Classic Device picture's
   glow from none to twice its own, and Grayscale draws any picture in grays with
   no glow, its gray version beside the packs' own on and off pictures
+- Added Customize to each look: the picture's colors with its shading kept, the
+  glow's color, its size and position, and a badge of up to five characters
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
 - Added DriverCentral licensing: without an active license the button shows the
