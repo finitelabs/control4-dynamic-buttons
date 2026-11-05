@@ -124,6 +124,8 @@ for i, part in ipairs(exactParts) do
   whole = images:accept(10, "i", i, #exactParts, part)
 end
 T.eq("a picture of exactly 512 KB is taken", whole and #whole, Images.MAX_BYTES)
+T.eq("a chunk is at most 3072 base64 characters, so each command stays near 4 KB", Images.MAX_CHUNK, 3072)
+T.eq("which makes a 512 KB picture 228 chunks", #exactParts, 228)
 
 T.section("Keeping and serving a picture")
 T.raises("the harness refuses a folder call with an explicit nil folder", function()

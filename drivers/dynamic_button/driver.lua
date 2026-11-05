@@ -620,7 +620,8 @@ function UIR._PUT_IMAGE(tParams)
     return pushError(string.format("the picture for %s did not arrive: %s", look.name, err))
   end
   if not png then
-    return reply("CHUNK", { look = tostring(look.id), index = tostring(params.index) })
+    -- Only the REST reply, and without the state: the broker's time grows with each message's size.
+    return JSON:encode({ _command = "CHUNK", look = tostring(look.id), index = tostring(params.index) })
   end
   local before = button:shown()
   local ok = button:imageArrived(look.id, png)
