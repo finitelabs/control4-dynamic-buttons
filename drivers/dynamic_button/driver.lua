@@ -446,7 +446,7 @@ function OPC.Log_Mode(propertyValue)
   log:trace("OPC.Log_Mode(%s)", propertyValue)
   log:setLogMode(propertyValue)
   CancelTimer("LogMode")
-  syncTab()
+  -- Log Level's handler, run below on either path, updates the Button tab.
   if not log:isEnabled() then
     UpdateProperty("Log Level", "3 - Info", true)
     return
@@ -545,7 +545,7 @@ function UIR._SET_DRIVER(tParams)
   log:trace("UIR._SET_DRIVER(%s)", name)
   for _, property in ipairs(tabProperties()) do
     if property.name == name and not property.readonly and type(value) == "string" then
-      -- The wrapper turns away a value its list lacks, and fires OnPropertyChanged on a change.
+      -- The wrapper turns away a value its list lacks, then runs the property's handler.
       UpdateProperty(name, value, true)
       return pushState()
     end

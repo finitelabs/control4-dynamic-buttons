@@ -596,7 +596,9 @@ function renderControl() {
   var mode = CONTROL_NOTES[gState.lookControl] ? gState.lookControl : 'Manual';
   var prop = gState.properties.find(function(p) { return p.name === 'Look Control'; });
   var sel = $('control-mode');
-  if (document.activeElement !== sel) sel.innerHTML = propOptions(prop ? prop.choices : Object.keys(CONTROL_NOTES), mode);
+  // The select and its note wait together while it is open; the next push catches up.
+  if (document.activeElement === sel) return;
+  sel.innerHTML = propOptions(prop ? prop.choices : Object.keys(CONTROL_NOTES), mode);
   $('control-note').textContent = CONTROL_NOTES[mode];
 }
 
@@ -1293,12 +1295,20 @@ function demoSave(fields) {
     gState.shown = gState.looks.length ? 1 : null;
     gState.lookControl = 'On Select';
     gState.properties = [
+      // #ifdef DRIVERCENTRAL
+      ['Cloud Settings', 'Cloud Status', 'License Activated'],
+      // #endif
       ['Cloud Settings', 'Automatic Updates', 'On', ['Off', 'On']],
+      // #ifndef DRIVERCENTRAL
       ['Cloud Settings', 'Update Channel', 'Production', ['Production', 'Prerelease']],
+      // #endif
       ['Driver Settings', 'Driver Status', 'Ready'],
       ['Driver Settings', 'Driver Version', '20261104'],
       ['Driver Settings', 'Log Level', '3 - Info', ['0 - Fatal', '1 - Error', '2 - Warning', '3 - Info', '4 - Debug', '5 - Trace', '6 - Ultra']],
       ['Driver Settings', 'Log Mode', 'Off', ['Off', 'Print', 'Log', 'Print and Log']],
+      // #ifdef DRIVERCENTRAL
+      ['Driver Settings', 'Cloud Monitoring', 'Enabled', ['Disabled', 'Enabled']],
+      // #endif
       ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual']],
       ['Button Settings', 'Shown Look', 'Full']
     ].map(function(d) { return { group: d[0], name: d[1], value: d[2], choices: d[3], readonly: !d[3] }; });

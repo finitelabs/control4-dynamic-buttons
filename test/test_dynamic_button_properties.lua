@@ -36,6 +36,7 @@ local names = {}
 for _, p in ipairs(H.state().properties) do
   table.insert(names, p.name)
 end
+-- The harness reads driver.xml unbuilt, so both builds' properties are here.
 T.eq("every property in driver.xml order, labels and the Support Code left out", names, {
   "Cloud Status",
   "Automatic Updates",
