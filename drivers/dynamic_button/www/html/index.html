@@ -67,6 +67,10 @@
   input[type="color"] { width: 44px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
   .colorrow { display: flex; align-items: center; gap: 8px; }
   .colorrow code { font-size: 12px; color: var(--text-muted); }
+  .rangerow { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+  .rangerow input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .rangerow code { font-size: 12px; color: var(--text-muted); width: 36px; text-align: right; }
+  .field .fnote { font-size: 11px; color: var(--text-muted); }
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .control select { width: auto; min-width: 110px; }
@@ -111,6 +115,7 @@
   .icon.dark:hover { background: #2b3a4a; }
   .icon.dark img { width: 40px; height: 40px; }
   .field.off { opacity: 0.45; pointer-events: none; }
+  .field[hidden] { display: none; }
   .packnote { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
   .icon .txt { font-size: 9px; color: var(--text-muted); padding: 2px; word-break: break-all; text-align: center; }
   .picked { font-size: 12px; margin-top: 8px; }
@@ -170,6 +175,16 @@
           <div class="field">
             <label for="f-in-cycle">Cycle</label>
             <label class="check"><input type="checkbox" id="f-in-cycle" checked> In cycle</label>
+          </div>
+          <div class="field" id="fld-glow">
+            <label for="f-glow">Glow</label>
+            <div class="rangerow"><input type="range" id="f-glow" min="0" max="100" step="5" value="100"><code id="f-glow-v">100%</code></div>
+            <div class="fnote">How much of the picture’s own glow to draw.</div>
+          </div>
+          <div class="field" id="fld-grayscale">
+            <label for="f-grayscale">Grayscale</label>
+            <label class="check"><input type="checkbox" id="f-grayscale"> Gray version</label>
+            <div class="fnote">Draws the picture in grays with no glow, as for an off look.</div>
           </div>
         </div>
         <div class="picker">
@@ -508,11 +523,13 @@ async function drawLook(canvas, look) {
   if (!look.icon) { ctx.clearRect(0, 0, size, size); return; }
   var pack = packOf(look.icon);
   if (pack) {
-    var pic = await loadImage(svgUrl(look.icon, '#FFFFFF', size));
+    var icon = Object.assign({}, look.icon, { body: withGlow(look.icon.body, lookGlow(look)) });
+    var pic = await loadImage(svgUrl(icon, '#FFFFFF', size));
     if (turn !== canvas.drawTurn) return;
     ctx.clearRect(0, 0, size, size);
     if (pack.shadow) drawShadows(ctx, pic, size);
     ctx.drawImage(pic, 0, 0, size, size);
+    if (look.grayscale) grayOut(ctx, size);
     return;
   }
   var tiled = look.tileShape && look.tileShape !== 'None';
@@ -529,6 +546,38 @@ async function drawLook(canvas, look) {
     ctx.fill();
   }
   ctx.drawImage(img, (size - art) / 2, (size - art) / 2, art, art);
+  if (look.grayscale) grayOut(ctx, size);
+}
+
+// A pack picture's glow is its radial gradient 'h', however the picture draws it: the slider
+// scales the gradient's opacities, so every shape that uses it fades together.
+var GLOW_GRADIENT = /(<radialGradient\b[^>]*\bid=(["'])h\2[^>]*>)([\s\S]*?)(<\/radialGradient>)/;
+function hasGlow(icon) {
+  return !!(icon && packOf(icon) && GLOW_GRADIENT.test(icon.body || '') && /url\(#h\)/.test(icon.body || ''));
+}
+// Gray looks draw no glow; the look keeps its glow for when it is in color again.
+function lookGlow(look) {
+  if (look.grayscale) return 0;
+  var g = Number(look.glow);
+  return look.glow == null || isNaN(g) ? 100 : Math.max(0, Math.min(100, g));
+}
+function withGlow(body, pct) {
+  if (pct >= 100) return body;
+  return String(body || '').replace(GLOW_GRADIENT, function(m, open, q, stops, close) {
+    return open + stops.replace(/stop-opacity=(["'])([\d.]+)\1/g, function(s, qq, v) {
+      return 'stop-opacity=' + qq + (Number(v) * pct / 100).toFixed(3) + qq;
+    }) + close;
+  });
+}
+// Each pixel to its luminance (Rec. 709), by hand: the canvas filter property is not in every
+// browser Composer embeds.
+function grayOut(ctx, size) {
+  var img = ctx.getImageData(0, 0, size, size), d = img.data;
+  for (var i = 0; i < d.length; i += 4) {
+    var y = Math.round(0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]);
+    d[i] = d[i + 1] = d[i + 2] = y;
+  }
+  ctx.putImageData(img, 0, 0);
 }
 // The OS 3 icon template's two black shadows, in 1024 units: 35 down blurred 58 at 30%, 12 down
 // blurred 23 at 20%. The picture is drawn off the canvas so only its shadow lands on it.
@@ -568,7 +617,8 @@ async function navTile(el, look) {
 }
 function sameDrawing(a, b) {
   var ia = a.icon || {}, ib = b.icon || {};
-  return ia.id === ib.id && ia.body === ib.body && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor;
+  return ia.id === ib.id && ia.body === ib.body && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor &&
+    lookGlow(Object.assign({}, a, { grayscale: false })) === lookGlow(Object.assign({}, b, { grayscale: false })) && !!a.grayscale === !!b.grayscale;
 }
 
 // ============================================================
@@ -1108,6 +1158,8 @@ $('f-shape').addEventListener('click', function(e) {
   });
 });
 $('f-name').addEventListener('input', function() { gEditor.look.name = $('f-name').value; preview(); });
+$('f-glow').addEventListener('input', function() { gEditor.look.glow = Number($('f-glow').value); preview(); });
+$('f-grayscale').addEventListener('change', function() { gEditor.look.grayscale = $('f-grayscale').checked; preview(); });
 
 function pickIcon(icon) {
   if (!icon) return;
@@ -1140,6 +1192,10 @@ function preview() {
     $(id).inert = whole;
   });
   $('edit-big').classList.toggle('dark', whole);
+  $('fld-glow').hidden = !hasGlow(l.icon);
+  $('fld-glow').classList.toggle('off', !!l.grayscale);
+  $('fld-glow').inert = !!l.grayscale;
+  $('f-glow-v').textContent = $('f-glow').value + '%';
   $('f-icon-color-v').textContent = l.iconColor;
   $('f-tile-color-v').textContent = l.tileColor;
   $('picked').innerHTML = gEditor.icon
@@ -1152,7 +1208,9 @@ function preview() {
 function openEditor(look) {
   gEditor.look = look
     ? JSON.parse(JSON.stringify(look))
-    : { id: null, name: '', icon: null, iconColor: '#FFFFFF', tileShape: 'Rounded Square', tileColor: '#109EFF', inCycle: true };
+    : { id: null, name: '', icon: null, iconColor: '#FFFFFF', tileShape: 'Rounded Square', tileColor: '#109EFF', inCycle: true, glow: 100, grayscale: false };
+  if (gEditor.look.glow == null) gEditor.look.glow = 100;
+  gEditor.look.grayscale = !!gEditor.look.grayscale;
   gEditor.icon = gEditor.look.icon;
   gEditor.shapeBefore = null;
   $('editor-title').textContent = look ? 'Edit ' + look.name : 'New look';
@@ -1160,6 +1218,8 @@ function openEditor(look) {
   $('f-icon-color').value = gEditor.look.iconColor.toLowerCase();
   $('f-tile-color').value = gEditor.look.tileColor.toLowerCase();
   $('f-in-cycle').checked = gEditor.look.inCycle !== false;
+  $('f-glow').value = gEditor.look.glow;
+  $('f-grayscale').checked = gEditor.look.grayscale;
   renderShapes();
   renderBundled();
   markPicked();
@@ -1203,7 +1263,8 @@ async function saveLook() {
     }
     var icon = l.icon && Object.assign({}, l.icon);
     if (icon) delete icon.label;
-    var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked };
+    var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
+      glow: lookGlow(Object.assign({}, l, { grayscale: false })), grayscale: !!l.grayscale };
     if (!gApiHost) {
       demoSave(fields);
       setStatus('Saved here only: this page is not open in Composer.');
