@@ -22,8 +22,26 @@ local log = require("lib.logging")
 --- @field inCycle? boolean False for a look the cycle skips; a look without the field is in it.
 --- @field glow? integer How much of the picture's own glow is drawn, 0 to 200; 100 without the field.
 --- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
+--- @field custom? LookCustom How the look changes its picture; the picture as it comes without the field.
 --- @field image? { bytes: integer, stale?: boolean } The drawn picture, once the Button tab has sent it;
 --- stale while the look's fields have changed since it was drawn.
+
+--- @class LookBadge
+--- @field text string Up to `Looks.MAX_BADGE` characters.
+--- @field place string One of `Looks.BADGE_PLACES`.
+--- @field color string The text's color, `#RRGGBB`.
+--- @field background string The badge's color, `#RRGGBB`, or `None`.
+
+--- @class LookCustom A missing field keeps the picture's own.
+--- @field color? string The picture's color, `#RRGGBB`.
+--- @field body? string The tint of a drawing's metal or plastic, `#RRGGBB`.
+--- @field tile? string A Classic Tile's tile color, `#RRGGBB`.
+--- @field symbol? string A Classic Tile's symbol color, `#RRGGBB`.
+--- @field glowColor? string The glow's color, `#RRGGBB`.
+--- @field size? integer The picture's size, `Looks.MIN_SIZE` to 100 percent.
+--- @field x? integer How far right the picture moves, percent of its size, within `Looks.MAX_SHIFT`.
+--- @field y? integer How far down the picture moves, percent of its size, within `Looks.MAX_SHIFT`.
+--- @field badge? LookBadge Text drawn over the picture.
 
 --- @class Looks
 --- @field _store table The persist store the looks are kept in.
@@ -47,6 +65,21 @@ Looks.MAX_GLOW = 200
 
 --- The shapes a look's tile can take.
 Looks.SHAPES = { "None", "Circle", "Rounded Square", "Square" }
+
+--- The smallest a customized picture can be, in percent.
+Looks.MIN_SIZE = 50
+
+--- The furthest a customized picture moves each way, in percent.
+Looks.MAX_SHIFT = 10
+
+--- The longest badge, in characters.
+Looks.MAX_BADGE = 5
+
+--- Where a badge can sit.
+Looks.BADGE_PLACES = { "Top Right", "Bottom Right", "Under" }
+
+--- The colors a look's customization can set, in the order they are compared.
+local CUSTOM_COLORS = { "color", "body", "tile", "symbol", "glowColor" }
 
 --- The largest icon markup a look keeps, in bytes.
 Looks.MAX_ICON_BODY = 16 * 1024
@@ -131,6 +164,96 @@ local function normalizeColor(color)
   return nil
 end
 
+--- @param value any
+--- @param low integer
+--- @param high integer
+--- @return boolean
+local function wholeBetween(value, low, high)
+  return type(value) == "number" and value == math.floor(value) and value >= low and value <= high
+end
+
+--- @param text string
+--- @return integer count Characters, as the tab counts them: UTF-8 continuation bytes don't count.
+local function characters(text)
+  return #text:gsub("[\128-\191]", "")
+end
+
+--- @param raw any
+--- @return LookBadge|nil badge
+--- @return string|nil err
+local function checkBadge(raw)
+  if type(raw) ~= "table" then
+    return nil, "a badge needs its text, place and colors"
+  end
+  local text = tostring(raw.text or ""):match("^%s*(.-)%s*$")
+  if text == "" or characters(text) > Looks.MAX_BADGE then
+    return nil, string.format("a badge is 1 to %d characters", Looks.MAX_BADGE)
+  end
+  if text:find("%c") then
+    return nil, "a badge can't hold control characters"
+  end
+  local place
+  for _, p in ipairs(Looks.BADGE_PLACES) do
+    if p == raw.place then
+      place = p
+    end
+  end
+  if not place then
+    return nil, "unknown badge place"
+  end
+  local color = normalizeColor(raw.color)
+  local background = raw.background == "None" and "None" or normalizeColor(raw.background)
+  if not color or not background then
+    return nil, "a badge's colors are #RRGGBB, and its background can be None"
+  end
+  return { text = text, place = place, color = color, background = background }
+end
+
+--- Check a look's customization. What the tab doesn't set, and keys this driver doesn't know,
+--- are left out, so the picture keeps its own.
+--- @param raw any
+--- @return LookCustom|nil custom Nil for no customization.
+--- @return string|nil err Why it was refused.
+local function checkCustom(raw)
+  if raw == nil then
+    return nil
+  end
+  if type(raw) ~= "table" then
+    return nil, "a look's customization is a table"
+  end
+  local custom = {}
+  for _, key in ipairs(CUSTOM_COLORS) do
+    if raw[key] ~= nil then
+      custom[key] = normalizeColor(raw[key])
+      if not custom[key] then
+        return nil, "colors are #RRGGBB"
+      end
+    end
+  end
+  if raw.size ~= nil then
+    if not wholeBetween(raw.size, Looks.MIN_SIZE, 100) then
+      return nil, string.format("size is a whole percent from %d to 100", Looks.MIN_SIZE)
+    end
+    custom.size = raw.size ~= 100 and raw.size or nil
+  end
+  for _, key in ipairs({ "x", "y" }) do
+    if raw[key] ~= nil then
+      if not wholeBetween(raw[key], -Looks.MAX_SHIFT, Looks.MAX_SHIFT) then
+        return nil, string.format("position is a whole percent from -%d to %d", Looks.MAX_SHIFT, Looks.MAX_SHIFT)
+      end
+      custom[key] = raw[key] ~= 0 and raw[key] or nil
+    end
+  end
+  if raw.badge ~= nil then
+    local badge, err = checkBadge(raw.badge)
+    if not badge then
+      return nil, err
+    end
+    custom.badge = badge
+  end
+  return next(custom) and custom or nil
+end
+
 --- @param shape any
 --- @return boolean
 local function knownShape(shape)
@@ -157,7 +280,7 @@ function Looks:_check(fields, exceptId)
     return nil, "a look needs a name"
   end
   -- Characters, as the tab counts them: UTF-8 continuation bytes don't count.
-  if #name:gsub("[\128-\191]", "") > Looks.MAX_NAME then
+  if characters(name) > Looks.MAX_NAME then
     return nil, string.format("a look's name can be at most %d characters", Looks.MAX_NAME)
   end
   if name:find(",", 1, true) then
@@ -205,6 +328,10 @@ function Looks:_check(fields, exceptId)
   if fields.grayscale ~= nil and type(fields.grayscale) ~= "boolean" then
     return nil, "grayscale is on or off"
   end
+  local custom, customErr = checkCustom(fields.custom)
+  if customErr then
+    return nil, customErr
+  end
   return {
     name = name,
     icon = {
@@ -221,7 +348,28 @@ function Looks:_check(fields, exceptId)
     inCycle = fields.inCycle ~= false,
     glow = glow,
     grayscale = fields.grayscale == true,
+    custom = custom,
   }
+end
+
+--- A look's customization as one string, the same for the same picture.
+--- @param look Look
+--- @return string key
+function Looks.customKey(look)
+  local custom = type(look.custom) == "table" and look.custom or {}
+  local parts = {}
+  for _, key in ipairs(CUSTOM_COLORS) do
+    table.insert(parts, tostring(custom[key] or ""))
+  end
+  table.insert(parts, tostring(custom.size or 100))
+  table.insert(parts, tostring(custom.x or 0))
+  table.insert(parts, tostring(custom.y or 0))
+  local badge = type(custom.badge) == "table" and custom.badge or {}
+  table.insert(parts, tostring(badge.text or ""))
+  table.insert(parts, tostring(badge.place or ""))
+  table.insert(parts, tostring(badge.color or ""))
+  table.insert(parts, tostring(badge.background or ""))
+  return table.concat(parts, "\n")
 end
 
 --- @param look Look
@@ -304,7 +452,9 @@ function Looks._drawnDiffers(a, b)
       return true
     end
   end
-  return Looks.glow(a) ~= Looks.glow(b) or Looks.grayscale(a) ~= Looks.grayscale(b)
+  return Looks.glow(a) ~= Looks.glow(b)
+    or Looks.grayscale(a) ~= Looks.grayscale(b)
+    or Looks.customKey(a) ~= Looks.customKey(b)
 end
 
 --- Record that a look's picture arrived, or with nil that it is gone.

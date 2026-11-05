@@ -178,6 +178,136 @@ local old = Looks:new(store2):update(1, H.lookFields("Old", { tileShape = "Circl
 T.falsy("saving a look stored before glow and grayscale, unchanged, keeps its picture current", old.image.stale)
 looks:update(a.id, withDrawn())
 
+T.section("Customization")
+T.eq("a look has none unless the tab sets some", looks:get(a.id).custom, nil)
+T.eq(
+  "a look stored without it reads the same",
+  Looks.customKey({ id = 9, name = "Old" }),
+  Looks.customKey(looks:get(a.id))
+)
+local badge = { text = "50%", place = "Under", color = "#ffffff", background = "#3e9a1e" }
+local custom = {
+  color = "#14a39a",
+  body = "#2F80D8",
+  tile = "#2E9C5A",
+  symbol = "#FFD36E",
+  glowColor = "#3FC0B6",
+  size = 84,
+  x = -4,
+  y = 6,
+  badge = badge,
+}
+looks:setImage(a.id, 4567)
+local styled = looks:update(a.id, withDrawn({ custom = custom }))
+T.eq(
+  "its colors are kept, as #RRGGBB",
+  { styled.custom.color, styled.custom.body, styled.custom.glowColor },
+  { "#14A39A", "#2F80D8", "#3FC0B6" }
+)
+T.eq("so are its size and position", { styled.custom.size, styled.custom.x, styled.custom.y }, { 84, -4, 6 })
+T.eq("and its badge", styled.custom.badge, { text = "50%", place = "Under", color = "#FFFFFF", background = "#3E9A1E" })
+T.truthy("which is a change to the picture", styled.image.stale)
+looks:setImage(a.id, 4568)
+T.falsy(
+  "saving it again unchanged keeps the picture current",
+  looks:update(a.id, withDrawn({ custom = custom })).image.stale
+)
+local moved = TableDeepCopy(custom)
+moved.x = -2
+T.truthy("moving it is a change", looks:update(a.id, withDrawn({ custom = moved })).image.stale)
+looks:setImage(a.id, 4569)
+local rebadged = TableDeepCopy(moved)
+rebadged.badge.text = "OFF"
+T.truthy("so is new badge text", looks:update(a.id, withDrawn({ custom = rebadged })).image.stale)
+looks:setImage(a.id, 4570)
+T.truthy("and so is taking it all away", looks:update(a.id, withDrawn()).image.stale)
+local plain = looks:update(a.id, withDrawn({ custom = { size = 100, x = 0, y = 0, unknown = "kept?" } }))
+T.eq("the picture's own size and place, and keys the driver doesn't know, are no customization", plain.custom, nil)
+local extra = looks:update(
+  a.id,
+  withDrawn({
+    custom = {
+      size = 90,
+      shadow = "none",
+      badge = { text = "1", place = "Under", color = "#FFFFFF", background = "None", font = "x" },
+    },
+  })
+)
+T.eq(
+  "unknown keys are dropped",
+  extra.custom,
+  { size = 90, badge = { text = "1", place = "Under", color = "#FFFFFF", background = "None" } }
+)
+for _, ok in ipairs({ 50, 100 }) do
+  T.truthy("a size of " .. ok .. " is taken", looks:update(a.id, withDrawn({ custom = { size = ok } })) ~= nil)
+end
+for _, bad in ipairs({ 49, 101, 75.5, "80" }) do
+  local _, why = looks:update(a.id, withDrawn({ custom = { size = bad } }))
+  T.eq("a size of " .. tostring(bad) .. " is refused", why, "size is a whole percent from 50 to 100")
+end
+for _, ok in ipairs({ -10, 10 }) do
+  T.eq(
+    "a position of " .. ok .. " is taken",
+    looks:update(a.id, withDrawn({ custom = { x = ok, y = ok } })).custom,
+    { x = ok, y = ok }
+  )
+end
+for _, bad in ipairs({ -11, 11, 2.5, "4" }) do
+  local _, why = looks:update(a.id, withDrawn({ custom = { y = bad } }))
+  T.eq("a position of " .. tostring(bad) .. " is refused", why, "position is a whole percent from -10 to 10")
+end
+local _, colorWhy = looks:update(a.id, withDrawn({ custom = { tile = "green" } }))
+T.eq("a color that is not #RRGGBB is refused", colorWhy, "colors are #RRGGBB")
+local _, tableWhy = looks:update(a.id, withDrawn({ custom = "bright" }))
+T.eq("a customization that is not a table is refused", tableWhy, "a look's customization is a table")
+local function badgeWhy(b)
+  local _, why = looks:update(a.id, withDrawn({ custom = { badge = b } }))
+  return why
+end
+T.eq(
+  "five characters are a badge",
+  looks:update(
+    a.id,
+    withDrawn({ custom = { badge = { text = "HDMI1", place = "Top Right", color = "#FFFFFF", background = "None" } } })
+  ).custom.badge.text,
+  "HDMI1"
+)
+T.eq(
+  "counted as characters, not bytes",
+  looks:update(
+    a.id,
+    withDrawn({ custom = { badge = { text = "20°C", place = "Under", color = "#FFFFFF", background = "None" } } })
+  ).custom.badge.text,
+  "20°C"
+)
+T.eq(
+  "six are too many",
+  badgeWhy({ text = "HDMI12", place = "Under", color = "#FFFFFF", background = "None" }),
+  "a badge is 1 to 5 characters"
+)
+T.eq(
+  "an empty badge is refused",
+  badgeWhy({ text = "  ", place = "Under", color = "#FFFFFF", background = "None" }),
+  "a badge is 1 to 5 characters"
+)
+T.eq(
+  "so are control characters",
+  badgeWhy({ text = "a\nb", place = "Under", color = "#FFFFFF", background = "None" }),
+  "a badge can't hold control characters"
+)
+T.eq(
+  "and a place it can't sit",
+  badgeWhy({ text = "1", place = "Left", color = "#FFFFFF", background = "None" }),
+  "unknown badge place"
+)
+T.eq(
+  "and a background that is neither a color nor None",
+  badgeWhy({ text = "1", place = "Under", color = "#FFFFFF", background = "clear" }),
+  "a badge's colors are #RRGGBB, and its background can be None"
+)
+T.eq("a badge without its fields is refused", badgeWhy("50%"), "a badge needs its text, place and colors")
+looks:update(a.id, withDrawn())
+
 T.section("Programming labels")
 T.eq("a look is listed by name and id", Looks.label(looks:get(a.id)), "Full (1)")
 local unsaved = looks:get(a.id)
