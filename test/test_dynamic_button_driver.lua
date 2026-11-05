@@ -279,6 +279,24 @@ T.eq("the Look variable is empty", Variables["Look"], "")
 T.falsy("and the look left is marked as having no picture", H.state().looks[1].hasImage)
 H.tab("_DELETE_LOOK", { id = second })
 
+T.section("A look's glow and grayscale")
+local dimmedId = H.addLook("Dimmed")
+H.tab("_SAVE_LOOK", H.lookFields("Dimmed", { id = dimmedId, glow = 30, grayscale = true }))
+local function dimmedLook()
+  H.tab("_GET_STATE")
+  for _, look in ipairs(H.state().looks) do
+    if look.id == dimmedId then
+      return { look.glow, look.grayscale }
+    end
+  end
+end
+T.eq("the tab is sent them", dimmedLook(), { 30, true })
+H.restart()
+T.eq("they are kept across a Director restart", dimmedLook(), { 30, true })
+H.update()
+T.eq("and a driver update", dimmedLook(), { 30, true })
+H.tab("_DELETE_LOOK", { id = dimmedId })
+
 T.section("Reset Driver")
 H.addLook("Full")
 local lastId = H.addLook("Half")

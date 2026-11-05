@@ -127,6 +127,57 @@ T.truthy(
 )
 T.truthy("a look stored without the field is in it", Looks.inCycle({ id = 9, name = "Old" }))
 
+T.section("Glow and grayscale")
+T.eq("a look draws its picture's full glow unless the tab says otherwise", looks:get(a.id).glow, 100)
+T.falsy("and in color", looks:get(a.id).grayscale)
+T.eq("a look stored without the glow draws it in full", Looks.glow({ id = 9, name = "Old" }), 100)
+T.falsy("and in color", Looks.grayscale({ id = 9, name = "Old" }))
+local drawn = { iconColor = "#000000", tileShape = "Circle" }
+local function withDrawn(extra)
+  local fields = TableDeepCopy(drawn)
+  for k, v in pairs(extra or {}) do
+    fields[k] = v
+  end
+  return H.lookFields("Full", fields)
+end
+looks:setImage(a.id, 3456)
+local dimmed = looks:update(a.id, withDrawn({ glow = 40 }))
+T.eq("a glow is kept", dimmed.glow, 40)
+T.truthy("and is a change to the picture", dimmed.image.stale)
+looks:setImage(a.id, 3457)
+local gray = looks:update(a.id, withDrawn({ glow = 40, grayscale = true }))
+T.truthy("grayscale is kept", gray.grayscale)
+T.truthy("and is a change to the picture", gray.image.stale)
+T.eq("a grayscale look keeps its glow for when it is in color again", gray.glow, 40)
+T.eq("which it is again with grayscale off", looks:update(a.id, withDrawn({ glow = 40 })).glow, 40)
+for _, bad in ipairs({ -1, 101, 40.5, "40", true }) do
+  local _, why = looks:update(a.id, withDrawn({ glow = bad }))
+  T.eq("a glow of " .. tostring(bad) .. " is refused", why, "glow is a whole percent from 0 to 100")
+end
+for _, ok in ipairs({ 0, 100 }) do
+  T.eq("a glow of " .. ok .. " is taken", looks:update(a.id, withDrawn({ glow = ok })).glow, ok)
+end
+local _, grayWhy = looks:update(a.id, withDrawn({ grayscale = "yes" }))
+T.eq("grayscale must be on or off", grayWhy, "grayscale is on or off")
+local store2 = memoryStore()
+store2:set("Looks", {
+  nextId = 2,
+  list = {
+    {
+      id = 1,
+      name = "Old",
+      icon = H.lookFields("Old").icon,
+      iconColor = "#FFFFFF",
+      tileShape = "Circle",
+      tileColor = "#109EFF",
+      image = { bytes = 10 },
+    },
+  },
+})
+local old = Looks:new(store2):update(1, H.lookFields("Old", { tileShape = "Circle", tileColor = "#109EFF" }))
+T.falsy("saving a look stored before glow and grayscale, unchanged, keeps its picture current", old.image.stale)
+looks:update(a.id, withDrawn())
+
 T.section("Programming labels")
 T.eq("a look is listed by name and id", Looks.label(looks:get(a.id)), "Full (1)")
 local unsaved = looks:get(a.id)

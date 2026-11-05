@@ -20,6 +20,8 @@ local log = require("lib.logging")
 --- @field tileShape string The shape behind the icon, one of `Looks.SHAPES`.
 --- @field tileColor string The tile's color, `#RRGGBB`.
 --- @field inCycle? boolean False for a look the cycle skips; a look without the field is in it.
+--- @field glow? integer How much of the picture's own glow is drawn, 0 to 100; 100 without the field.
+--- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
 --- @field image? { bytes: integer, stale?: boolean } The drawn picture, once the Button tab has sent it;
 --- stale while the look's fields have changed since it was drawn.
 
@@ -36,6 +38,9 @@ Looks.MAX_NAME = 40
 
 --- The fields a look's picture is drawn from.
 local DRAWN_FIELDS = { "iconColor", "tileShape", "tileColor" }
+
+--- The glow a look draws when it does not say.
+Looks.FULL_GLOW = 100
 
 --- The shapes a look's tile can take.
 Looks.SHAPES = { "None", "Circle", "Rounded Square", "Square" }
@@ -187,6 +192,16 @@ function Looks:_check(fields, exceptId)
   if not knownShape(fields.tileShape) then
     return nil, "unknown tile shape"
   end
+  local glow = fields.glow
+  if glow == nil then
+    glow = Looks.FULL_GLOW
+  end
+  if type(glow) ~= "number" or glow ~= math.floor(glow) or glow < 0 or glow > Looks.FULL_GLOW then
+    return nil, "glow is a whole percent from 0 to 100"
+  end
+  if fields.grayscale ~= nil and type(fields.grayscale) ~= "boolean" then
+    return nil, "grayscale is on or off"
+  end
   return {
     name = name,
     icon = {
@@ -201,7 +216,21 @@ function Looks:_check(fields, exceptId)
     tileShape = fields.tileShape,
     tileColor = tileColor,
     inCycle = fields.inCycle ~= false,
+    glow = glow,
+    grayscale = fields.grayscale == true,
   }
+end
+
+--- @param look Look
+--- @return integer glow How much of its picture's glow the look draws, 0 to 100.
+function Looks.glow(look)
+  return tonumber(look.glow) or Looks.FULL_GLOW
+end
+
+--- @param look Look
+--- @return boolean grayscale Whether the look is drawn in grays.
+function Looks.grayscale(look)
+  return look.grayscale == true
 end
 
 --- Whether stepping through the cycle can land on a look.
@@ -272,7 +301,7 @@ function Looks._drawnDiffers(a, b)
       return true
     end
   end
-  return false
+  return Looks.glow(a) ~= Looks.glow(b) or Looks.grayscale(a) ~= Looks.grayscale(b)
 end
 
 --- Record that a look's picture arrived, or with nil that it is gone.
