@@ -200,12 +200,13 @@ one applies. They work with no internet.
 
 <img alt="Button tab - Properties" src="./images/ui-properties.png" width="640"/>
 
-1. **Groups** - the driver's [properties](#driver-properties) under the same
-   headings as Composer's "Properties" tab. Look Control and the shown look are
-   in the Shown now card.
-1. **Read-only properties** - grayed out: the driver sets them.
-1. **Settings** - a change applies at once, and shows in Composer's "Properties"
-   tab too. A change made there shows here.
+1. **Cloud Settings** - the driver's [properties](#driver-properties) under the
+   same headings as Composer's "Properties" tab. Look Control and the shown look
+   are in the Shown now card.
+1. **Driver Status** - grayed out, as every read-only property is: the driver
+   sets it.
+1. **Log Level** - a change applies at once, and shows in Composer's
+   "Properties" tab too. A change made there shows here.
 
 ## Cycling Through Looks
 
