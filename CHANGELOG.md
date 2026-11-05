@@ -36,3 +36,7 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   look that presses and both commands pass over when it is off
 - Added an event for each look, named for the look, that fires when it becomes
   the shown look
+- Added three icon packs with the same 100 subjects in each, picked from the
+  Button tab's Icon packs view: Classic Device and Classic Tile, which match the
+  OS 3 look, and Modern, which matches the X4 look, with on, off and alert
+  pictures where a subject has states

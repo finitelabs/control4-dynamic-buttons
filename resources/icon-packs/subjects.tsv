@@ -1,0 +1,162 @@
+# The Dynamic Button icon packs: one picture per row, the same subjects in each pack.
+# state: on, off, alert or none. tile: the Material Design Icons glyph on the Classic Tile.
+# modern: a glyph (lib:name), battery:<level>[:charging|:low], or frame:<lib>:<name> for a sensor.
+# device: the glyph the Classic Device art is drawn from, or ours when it is drawn by hand.
+# Rebuild the tab with tools/icon_packs.py after editing; tools/icon_packs.py fetch adds new glyphs.
+id	subject	category	label	state	tile	modern	device
+battery-0	battery	Battery	Battery 0%	none	mdi:battery-outline	battery:0	ours
+battery-10	battery	Battery	Battery 10%	none	mdi:battery-10	battery:10	ours
+battery-20	battery	Battery	Battery 20%	none	mdi:battery-20	battery:20	ours
+battery-30	battery	Battery	Battery 30%	none	mdi:battery-30	battery:30	ours
+battery-40	battery	Battery	Battery 40%	none	mdi:battery-40	battery:40	ours
+battery-50	battery	Battery	Battery 50%	none	mdi:battery-50	battery:50	ours
+battery-60	battery	Battery	Battery 60%	none	mdi:battery-60	battery:60	ours
+battery-70	battery	Battery	Battery 70%	none	mdi:battery-70	battery:70	ours
+battery-80	battery	Battery	Battery 80%	none	mdi:battery-80	battery:80	ours
+battery-90	battery	Battery	Battery 90%	none	mdi:battery-90	battery:90	ours
+battery-100	battery	Battery	Battery 100%	none	mdi:battery	battery:100	ours
+battery-charging	battery-charging	Battery	Battery Charging	on	mdi:battery-charging-60	battery:60:charging	mdi:flash
+battery-low	battery-low	Battery	Battery Low	alert	mdi:battery-alert-variant-outline	battery:10:low	ours
+power-on	power	Power and Plugs	Power On	on	mdi:power	mdi:power	mdi:power
+power-off	power	Power and Plugs	Power Off	off	mdi:power	lucide:power	mdi:power
+plug-on	plug	Power and Plugs	Plug On	on	mdi:power-plug	mdi:power-plug	ours
+plug-off	plug	Power and Plugs	Plug Off	off	mdi:power-plug-off	lucide:plug	ours
+outlet-on	outlet	Power and Plugs	Outlet On	on	mdi:power-socket-us	mdi:power-socket-us	ours
+outlet-off	outlet	Power and Plugs	Outlet Off	off	mdi:power-socket-us	tabler:plug	ours
+switch-on	switch	Power and Plugs	Switch On	on	mdi:toggle-switch	mdi:toggle-switch	mdi:toggle-switch
+switch-off	switch	Power and Plugs	Switch Off	off	mdi:toggle-switch-off	lucide:toggle-left	mdi:toggle-switch-off
+energy-use	energy-use	Power and Plugs	Energy Use	none	mdi:lightning-bolt	lucide:zap	mdi:lightning-bolt
+power-outage	power-outage	Power and Plugs	Power Outage	alert	mdi:flash-off	mdi:flash-off	mdi:flash-off
+solar-on	solar	Energy and Solar	Solar Producing	on	mdi:solar-panel	mdi:solar-panel	ours
+solar-off	solar	Energy and Solar	Solar Idle	off	mdi:solar-panel	tabler:solar-panel	ours
+grid	grid	Energy and Solar	Grid	none	mdi:transmission-tower	lucide:utility-pole	mdi:transmission-tower
+meter	meter	Energy and Solar	Energy Meter	none	mdi:meter-electric	lucide:gauge	mdi:meter-electric
+home-battery-on	home-battery	Energy and Solar	Home Battery Charging	on	mdi:home-battery	mdi:home-battery	mdi:home-battery
+home-battery-off	home-battery	Energy and Solar	Home Battery Idle	off	mdi:home-battery-outline	tabler:home-bolt	mdi:home-battery
+savings	savings	Energy and Solar	Energy Savings	none	mdi:leaf	lucide:leaf	mdi:leaf
+energy-cost	energy-cost	Energy and Solar	Energy Cost	none	mdi:currency-usd	lucide:circle-dollar-sign	mdi:currency-usd
+ev-charger-on	ev-charger	EV Charging	EV Charging	on	mdi:ev-station	mdi:ev-station	mdi:flash
+ev-charger-off	ev-charger	EV Charging	EV Charger Idle	off	mdi:ev-station	tabler:charging-pile	mdi:flash
+ev-charger-alert	ev-charger	EV Charging	EV Charger Fault	alert	mdi:ev-station	tabler:charging-pile	mdi:flash
+electric-car	electric-car	EV Charging	Electric Car	none	mdi:car-electric	lucide:car	mdi:car-electric
+ev-plug	ev-plug	EV Charging	EV Plug	none	mdi:ev-plug-type1	lucide:plug-zap	mdi:ev-plug-type1
+leak-dry	leak-sensor	Water and Leaks	Leak Sensor Dry	off	mdi:water-outline	frame:lucide:droplet	mdi:water
+leak-wet	leak-sensor	Water and Leaks	Leak Detected	alert	mdi:water-alert	frame:lucide:droplet	mdi:water
+water	water	Water and Leaks	Water	none	mdi:water	lucide:droplet	mdi:water
+water-valve-open	water-valve	Water and Leaks	Water Valve Open	on	mdi:valve-open	mdi:valve-open	mdi:valve-open
+water-valve-closed	water-valve	Water and Leaks	Water Valve Closed	off	mdi:valve-closed	mdi:valve-closed	mdi:valve-closed
+water-meter	water-meter	Water and Leaks	Water Meter	none	mdi:gauge	lucide:gauge	mdi:water
+water-heater-on	water-heater	Water and Leaks	Water Heater On	on	mdi:water-boiler	mdi:water-boiler	mdi:water-boiler
+water-heater-off	water-heater	Water and Leaks	Water Heater Off	off	mdi:water-boiler-off	mdi:water-boiler-off	mdi:water-boiler
+tank-level	tank-level	Water and Leaks	Tank Level	none	mdi:propane-tank-outline	lucide:cylinder	mdi:propane-tank
+air-good	air-quality	Air Quality	Air Quality Good	on	mdi:air-filter	lucide:wind	ours
+air-poor	air-quality	Air Quality	Air Quality Poor	alert	mdi:air-filter	lucide:wind	ours
+co2	co2	Air Quality	Carbon Dioxide	none	mdi:molecule-co2	mdi:molecule-co2	mdi:molecule-co2
+purifier-on	purifier	Air Quality	Air Purifier On	on	mdi:air-purifier	mdi:air-purifier	mdi:air-purifier
+purifier-off	purifier	Air Quality	Air Purifier Off	off	mdi:air-purifier-off	lucide:fan	mdi:air-purifier
+dust	dust	Air Quality	Dust	none	mdi:weather-dust	lucide:cloud-fog	mdi:weather-dust
+network-online	network	Network	Network Online	on	mdi:wifi	mdi:wifi	mdi:wifi
+network-offline	network	Network	Network Offline	off	mdi:wifi-off	lucide:wifi-off	mdi:wifi-off
+router	router	Network	Router	none	mdi:router-wireless	lucide:router	ours
+signal-low	signal	Network	Signal Low	none	mdi:signal-cellular-1	lucide:signal-low	mdi:signal-cellular-1
+signal-medium	signal	Network	Signal Medium	none	mdi:signal-cellular-2	lucide:signal-medium	mdi:signal-cellular-2
+signal-high	signal	Network	Signal High	none	mdi:signal-cellular-3	lucide:signal-high	mdi:signal-cellular-3
+ethernet	ethernet	Network	Ethernet	none	mdi:lan	lucide:network	mdi:lan
+cloud-online	cloud	Network	Cloud Connected	on	mdi:cloud	mdi:cloud	mdi:cloud
+cloud-offline	cloud	Network	Cloud Disconnected	off	mdi:cloud-off-outline	lucide:cloud-off	mdi:cloud-off-outline
+internet	internet	Network	Internet	none	mdi:web	lucide:globe	mdi:web
+generator-on	generator	Generators	Generator Running	on	mdi:generator-stationary	mdi:generator-stationary	ours
+generator-off	generator	Generators	Generator Off	off	mdi:generator-stationary	tabler:engine	ours
+generator-alert	generator	Generators	Generator Fault	alert	mdi:generator-stationary	tabler:engine	ours
+fuel	fuel	Generators	Fuel Level	none	mdi:fuel	lucide:fuel	mdi:fuel
+propane	propane	Generators	Propane Tank	none	mdi:propane-tank	lucide:cylinder	mdi:propane-tank
+transfer-switch-on	transfer-switch	Generators	Transfer Switch On	on	mdi:electric-switch-closed	mdi:electric-switch-closed	mdi:electric-switch-closed
+transfer-switch-off	transfer-switch	Generators	Transfer Switch Off	off	mdi:electric-switch	mdi:electric-switch	mdi:electric-switch
+pump-on	pump	Pumps and Irrigation	Pump On	on	mdi:pump	mdi:pump	mdi:pump
+pump-off	pump	Pumps and Irrigation	Pump Off	off	mdi:pump-off	mdi:pump-off	mdi:pump
+sump-pump-alert	sump-pump	Pumps and Irrigation	Sump Pump Alert	alert	mdi:water-pump	mdi:water-pump	mdi:water-pump
+pressure	pressure	Pumps and Irrigation	Pressure	none	mdi:gauge	lucide:gauge	mdi:gauge
+sprinkler-on	sprinkler	Pumps and Irrigation	Sprinkler On	on	mdi:sprinkler-variant	mdi:sprinkler-variant	mdi:sprinkler-variant
+sprinkler-off	sprinkler	Pumps and Irrigation	Sprinkler Off	off	mdi:sprinkler	mdi:sprinkler	mdi:sprinkler
+irrigation-valve-open	irrigation-valve	Pumps and Irrigation	Irrigation Valve Open	on	mdi:pipe-valve	mdi:pipe-valve	mdi:pipe-valve
+irrigation-valve-closed	irrigation-valve	Pumps and Irrigation	Irrigation Valve Closed	off	mdi:pipe-valve	mdi:pipe-valve	mdi:pipe-valve
+rain	rain-sensor	Pumps and Irrigation	Rain	none	mdi:weather-pouring	lucide:cloud-rain	mdi:weather-pouring
+soil-moisture	soil-moisture	Pumps and Irrigation	Soil Moisture	none	mdi:sprout	lucide:sprout	mdi:sprout
+pool	pool	Pool and Spa	Pool	none	mdi:pool	lucide:waves	mdi:pool
+pool-temperature	pool-temperature	Pool and Spa	Pool Temperature	none	mdi:pool-thermometer	lucide:thermometer	mdi:pool-thermometer
+spa-on	spa	Pool and Spa	Spa On	on	mdi:hot-tub	mdi:hot-tub	mdi:hot-tub
+spa-off	spa	Pool and Spa	Spa Off	off	mdi:hot-tub	lucide:bath	mdi:hot-tub
+pool-heater-on	pool-heater	Pool and Spa	Pool Heater On	on	mdi:fire	mdi:fire	mdi:fire
+pool-heater-off	pool-heater	Pool and Spa	Pool Heater Off	off	mdi:fire-off	lucide:flame	mdi:fire
+pool-chemistry	pool-chemistry	Pool and Spa	Pool Chemistry	none	mdi:test-tube	lucide:test-tube	mdi:test-tube
+pool-light-on	pool-light	Pool and Spa	Pool Light On	on	mdi:lightbulb	mdi:lightbulb	mdi:lightbulb
+pool-light-off	pool-light	Pool and Spa	Pool Light Off	off	mdi:lightbulb-outline	lucide:lightbulb-off	mdi:lightbulb
+temperature	temperature	Temperature and Humidity	Temperature	none	mdi:thermometer	lucide:thermometer	mdi:thermometer
+heating	heating	Temperature and Humidity	Heating	on	mdi:fire	mdi:fire	mdi:fire
+cooling	cooling	Temperature and Humidity	Cooling	on	mdi:snowflake	mdi:snowflake	mdi:snowflake
+humidity	humidity	Temperature and Humidity	Humidity	none	mdi:water-percent	lucide:droplets	mdi:water-percent
+freezer-alert	freezer	Temperature and Humidity	Freezer Too Warm	alert	mdi:fridge-alert	mdi:fridge-alert	mdi:fridge
+light-on	light	Devices	Light On	on	mdi:lightbulb	mdi:lightbulb	mdi:lightbulb
+light-off	light	Devices	Light Off	off	mdi:lightbulb-outline	lucide:lightbulb	mdi:lightbulb
+fan-on	fan	Devices	Fan On	on	mdi:fan	mdi:fan	mdi:fan
+fan-off	fan	Devices	Fan Off	off	mdi:fan-off	lucide:fan	mdi:fan
+door-open	door	Devices	Door Open	on	mdi:door-open	mdi:door-open	mdi:door-open
+door-closed	door	Devices	Door Closed	off	mdi:door-closed	lucide:door-closed	mdi:door-closed
+lock-locked	lock	Devices	Locked	on	mdi:lock	mdi:lock	mdi:lock
+lock-unlocked	lock	Devices	Unlocked	off	mdi:lock-open-variant	lucide:lock-open	mdi:lock-open-variant
+garage-open	garage	Devices	Garage Open	on	mdi:garage-open	mdi:garage-open	mdi:garage-open
+garage-closed	garage	Devices	Garage Closed	off	mdi:garage	lucide:warehouse	mdi:garage
+shade-open	shade	Devices	Shade Open	on	mdi:blinds-open	mdi:blinds-open	mdi:blinds-open
+shade-closed	shade	Devices	Shade Closed	off	mdi:blinds	lucide:blinds	mdi:blinds
+alarm-armed	alarm	Devices	Alarm Armed	on	mdi:shield-home	mdi:shield-home	mdi:shield-home
+alarm-disarmed	alarm	Devices	Alarm Disarmed	off	mdi:shield-off-outline	lucide:shield-off	mdi:shield-home
+alarm-alert	alarm	Devices	Alarm	alert	mdi:shield-alert	mdi:shield-alert	mdi:shield-alert
+motion-on	motion	Devices	Motion	on	mdi:motion-sensor	frame:lucide:activity	mdi:motion-sensor
+motion-off	motion	Devices	No Motion	off	mdi:motion-sensor-off	frame:lucide:activity	mdi:motion-sensor
+smoke-alert	smoke	Devices	Smoke Detected	alert	mdi:smoke-detector-alert	frame:lucide:flame	mdi:smoke-detector-alert
+smoke-clear	smoke	Devices	Smoke Clear	off	mdi:smoke-detector	frame:lucide:flame	mdi:smoke-detector
+window-open	window	Devices	Window Open	on	mdi:window-open-variant	mdi:window-open-variant	mdi:window-open-variant
+window-closed	window	Devices	Window Closed	off	mdi:window-closed-variant	lucide:app-window	mdi:window-closed-variant
+camera	camera	Devices	Camera	none	mdi:cctv	lucide:cctv	mdi:cctv
+doorbell-on	doorbell	Devices	Doorbell Ringing	on	mdi:bell-ring	mdi:bell-ring	mdi:bell-ring
+doorbell-off	doorbell	Devices	Doorbell	off	mdi:bell-outline	lucide:bell	mdi:bell
+washer-on	washer	Appliances	Washer Running	on	mdi:washing-machine	mdi:washing-machine	mdi:washing-machine
+washer-off	washer	Appliances	Washer Off	off	mdi:washing-machine-off	lucide:washing-machine	mdi:washing-machine
+dryer-on	dryer	Appliances	Dryer Running	on	mdi:tumble-dryer	mdi:tumble-dryer	mdi:tumble-dryer
+dryer-off	dryer	Appliances	Dryer Off	off	mdi:tumble-dryer-off	mdi:tumble-dryer-off	mdi:tumble-dryer
+dishwasher-on	dishwasher	Appliances	Dishwasher Running	on	mdi:dishwasher	mdi:dishwasher	mdi:dishwasher
+dishwasher-off	dishwasher	Appliances	Dishwasher Off	off	mdi:dishwasher-off	mdi:dishwasher-off	mdi:dishwasher
+oven-on	oven	Appliances	Oven On	on	mdi:stove	mdi:stove	mdi:stove
+oven-off	oven	Appliances	Oven Off	off	mdi:stove	lucide:cooking-pot	mdi:stove
+refrigerator	refrigerator	Appliances	Refrigerator	none	mdi:fridge	lucide:refrigerator	mdi:fridge
+vacuum-on	robot-vacuum	Appliances	Robot Vacuum Cleaning	on	mdi:robot-vacuum	mdi:robot-vacuum	mdi:robot-vacuum
+vacuum-off	robot-vacuum	Appliances	Robot Vacuum Docked	off	mdi:robot-vacuum-off	mdi:robot-vacuum-off	mdi:robot-vacuum
+tv-on	tv	Appliances	TV On	on	mdi:television	mdi:television	mdi:television
+tv-off	tv	Appliances	TV Off	off	mdi:television-off	lucide:tv	mdi:television
+speaker-on	speaker	Appliances	Speaker Playing	on	mdi:speaker	mdi:speaker	mdi:speaker
+speaker-off	speaker	Appliances	Speaker Off	off	mdi:speaker-off	lucide:speaker	mdi:speaker
+sunny	sunny	Weather	Sunny	none	mdi:weather-sunny	lucide:sun	mdi:weather-sunny
+cloudy	cloudy	Weather	Cloudy	none	mdi:weather-cloudy	lucide:cloud	mdi:weather-cloudy
+snow	snow	Weather	Snow	none	mdi:weather-snowy	lucide:cloud-snow	mdi:weather-snowy
+wind	wind	Weather	Wind	none	mdi:weather-windy	lucide:wind	mdi:weather-windy
+storm	storm	Weather	Storm	alert	mdi:weather-lightning	lucide:cloud-lightning	mdi:weather-lightning
+notify-on	notification	Status	Notifications On	on	mdi:bell	mdi:bell	mdi:bell
+notify-off	notification	Status	Notifications Off	off	mdi:bell-off	lucide:bell-off	mdi:bell-off
+warning	warning	Status	Warning	alert	mdi:alert	mdi:alert	mdi:alert
+ok	ok	Status	OK	on	mdi:check-circle	mdi:check-circle	mdi:check-circle
+unknown	unknown	Status	Unknown	none	mdi:help-circle	lucide:circle-help	mdi:help-circle
+timer	timer	Status	Timer	none	mdi:timer-outline	lucide:timer	mdi:timer-outline
+schedule	schedule	Status	Schedule	none	mdi:calendar	lucide:calendar	mdi:calendar
+home	home	Home Modes	Home	on	mdi:home	mdi:home	mdi:home
+away	away	Home Modes	Away	off	mdi:home-export-outline	lucide:log-out	mdi:home-export-outline
+sleep	sleep	Home Modes	Sleep	none	mdi:weather-night	lucide:moon	mdi:weather-night
+vacation	vacation	Home Modes	Vacation	none	mdi:airplane	lucide:plane	mdi:airplane
+party	party	Home Modes	Party	none	mdi:party-popper	lucide:party-popper	mdi:party-popper
+christmas	christmas	Holidays	Christmas	none	mdi:pine-tree	lucide:tree-pine	mdi:pine-tree
+halloween	halloween	Holidays	Halloween	none	mdi:halloween	lucide:ghost	mdi:halloween
+fourth-of-july	fourth-of-july	Holidays	Fourth of July	none	mdi:firework	lucide:sparkles	mdi:firework
+thanksgiving	thanksgiving	Holidays	Thanksgiving	none	mdi:turkey	lucide:drumstick	mdi:turkey
+new-year	new-year	Holidays	New Year	none	mdi:glass-cocktail	lucide:wine	mdi:glass-cocktail
+valentines-day	valentines-day	Holidays	Valentine's Day	none	mdi:heart	lucide:heart	mdi:heart
+easter	easter	Holidays	Easter	none	mdi:egg-easter	lucide:egg	mdi:egg-easter
+st-patricks-day	st-patricks-day	Holidays	St. Patrick's Day	none	mdi:clover	lucide:clover	mdi:clover

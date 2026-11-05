@@ -1,9 +1,18 @@
-The Dynamic Button driver's Button tab includes icons from two icon collections, listed
+The Dynamic Button driver's Button tab includes icons from four icon collections, listed
 below with their licenses. They are stored as SVG path data in
-drivers/dynamic_button/www/html/index.html, written by tools/bundle_icons.py from the
-names in tools/bundled-icons.txt, unmodified apart from their color.
+drivers/dynamic_button/www/html/index.html:
 
-The driver carries these two notices, with the text of the Apache License 2.0, in
+- The included icons, written by tools/bundle_icons.py from the names in
+  tools/bundled-icons.txt, unmodified apart from their color.
+- The three icon packs, written by tools/icon_packs.py from resources/icon-packs. The
+  Classic Tile and Modern pictures place the collections' symbols, kept in
+  resources/icon-packs/glyphs with each collection's license file, on a tile or in a frame
+  and color them. The Classic Device pictures in resources/icon-packs/classic-device are
+  Finite Labs' own drawings, most built around a Material Design Icons symbol; the list in
+  resources/icon-packs/subjects.tsv names the symbol each picture uses.
+
+The driver carries these five notices, with the texts of the Apache License 2.0, the ISC
+License and the MIT License, in
 drivers/dynamic_button/www/LICENSES.txt.
 
 -------------------------------------------------------------------------------
@@ -27,6 +36,33 @@ https://github.com/google/material-design-icons/blob/master/LICENSE
 
 -------------------------------------------------------------------------------
 
+Lucide
+https://github.com/lucide-icons/lucide
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather
+(MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022. Released
+under the ISC License.
+https://github.com/lucide-icons/lucide/blob/main/LICENSE
+
+-------------------------------------------------------------------------------
+
+Feather (portions of Lucide)
+https://github.com/feathericons/feather
+
+Copyright (c) 2013-present Cole Bemis. Lucide's icons that come from Feather are released
+under the MIT License.
+https://github.com/feathericons/feather/blob/main/LICENSE
+
+-------------------------------------------------------------------------------
+
+Tabler Icons
+https://github.com/tabler/tabler-icons
+
+Copyright (c) 2020-2024 Paweł Kuna. Released under the MIT License.
+https://github.com/tabler/tabler-icons/blob/main/LICENSE
+
+-------------------------------------------------------------------------------
+
 The Button tab can also search icon packs through Iconify's public API
 (https://iconify.design). It offers only packs whose licenses allow use without credit
 on each icon, and records each picked icon's pack and license with the look:
@@ -36,5 +72,5 @@ Icons (MIT), Phosphor (MIT), Tabler Icons (MIT), MingCute (Apache-2.0), Carbon
 (Apache-2.0), Bootstrap Icons (MIT), Lucide (ISC), Iconoir (MIT), Ionicons (MIT),
 Heroicons (MIT), Meteocons (MIT), Weather Icons (OFL-1.1).
 
-Apart from the two collections above, no icon from these packs ships with the driver;
+Apart from the collections above, no icon from these packs ships with the driver;
 an icon is fetched only when an installer picks it.

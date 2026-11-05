@@ -29,6 +29,7 @@ the programming you attach to it.
   - [The Button Tab](#the-button-tab)
     - [Looks](#looks)
     - [Look Editor](#look-editor)
+    - [Icon Packs](#icon-packs)
     - [Icon Search](#icon-search)
   - [Cycling Through Looks](#cycling-through-looks)
   - [Driver Setup](#driver-setup)
@@ -58,6 +59,9 @@ the programming you attach to it.
   colors and tile shape you pick
 - About 280 included icons that work with no internet, and a search across
   fourteen free icon packs
+- Three icon packs of 100 subjects each: Classic Device and Classic Tile, which
+  match the OS 3 look, and Modern, which matches the X4 look, with on, off and
+  alert pictures where a subject has states
 - Look Control: each press shows the next look in the cycle, or the look changes
   only from programming
 - Show Look, Next Look and Previous Look programming commands, a Look variable,
@@ -133,9 +137,10 @@ the button's looks.
 1. **Tile color** - the color of the tile behind the icon.
 1. **In cycle** - when off, presses, Next Look and Previous Look pass over the
    look. Show Look can still show it.
-1. **Included icons / Search online** - picks from the icons included with the
-   driver, which work with no internet, or from the free icon packs online. See
-   [Icon Search](#icon-search).
+1. **Included icons / Icon packs / Search online** - picks from the icons
+   included with the driver, which work with no internet, from the driver's
+   three icon packs (see [Icon Packs](#icon-packs)), or from the free icon packs
+   online (see [Icon Search](#icon-search)).
 1. **All categories / Filter by name** - narrow the included icons by category
    and by name.
 1. **Icons** - select one to use it for the look.
@@ -145,6 +150,31 @@ the button's looks.
 1. **Save Look / Cancel** - `Save Look` saves the look and sends its picture to
    the driver. A look renamed without other changes keeps its picture. The
    button's first look shows as soon as its picture arrives.
+
+### Icon Packs
+
+<img alt="Button tab - Icon Packs" src="./images/ui-icon-packs.png" width="640"/>
+
+The driver includes three icon packs with the same 100 subjects in each: battery
+levels every 10%, power and plugs, energy and solar, EV charging, water and
+leaks, air quality, network, generators, pumps and irrigation, pool and spa,
+temperature and humidity, devices, appliances, status, home modes, holidays and
+weather. A subject with states has a picture for each: on, off and alert where
+one applies. They work with no internet.
+
+1. **Icon packs** - shows the packs instead of the included icons.
+1. **Classic Device / Classic Tile / Modern** - the pack to show.
+   `Classic Device` is shaded device pictures and `Classic Tile` is a white
+   symbol on a colored tile, both matching the OS 3 look. `Modern` is outline
+   icons when off and filled, colored icons when on, matching the X4 look.
+1. **All categories** - narrows the pictures to one subject group.
+1. **Filter by name** - narrows the pictures by name.
+1. **Pictures** - select one to use it for the look. The look is named after it
+   when the name is empty.
+1. **Pack note** - what the chosen pack looks like.
+1. **Picture** - a pack picture keeps its own colors, so `Tile shape`,
+   `Icon color` and `Tile color` do not apply to it, and the picture shows on a
+   dark background. The Classic packs add the soft shadow the OS 3 look has.
 
 ### Icon Search
 
@@ -293,16 +323,20 @@ and Previous Look work whatever Look Control is set to.
 
 # <span style="color:#109EFF">Icon Licenses</span>
 
-The included icons come from two collections, both under the
-[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0):
+The included icons and the icon packs are drawn from these collections:
 
-- [Material Design Icons](https://github.com/Templarian/MaterialDesign),
-  copyright Pictogrammers
-- [Material Symbols](https://github.com/google/material-design-icons), copyright
-  Google LLC
+| Collection                                                            | License                                                                                                                                                                    |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Material Design Icons](https://github.com/Templarian/MaterialDesign) | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)                                                                                                                  |
+| [Material Symbols](https://github.com/google/material-design-icons)   | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)                                                                                                                  |
+| [Lucide](https://github.com/lucide-icons/lucide)                      | [ISC](https://github.com/lucide-icons/lucide/blob/main/LICENSE), and [MIT](https://github.com/feathericons/feather/blob/main/LICENSE) for its icons that come from Feather |
+| [Tabler Icons](https://github.com/tabler/tabler-icons)                | [MIT](https://github.com/tabler/tabler-icons/blob/main/LICENSE)                                                                                                            |
 
-The driver includes these notices and the full license text in its
-`LICENSES.txt` file.
+The Classic Device pictures are our own drawings, most built around a Material
+Design Icons symbol. The Classic Tile pictures use Material Design Icons
+symbols, and the Modern pictures use Lucide, Tabler Icons and Material Design
+Icons symbols. The driver includes these notices and the full license texts in
+its `LICENSES.txt` file.
 
 **Search online** uses the free [Iconify](https://iconify.design) service and
 offers only these packs, whose licenses allow their icons to be used without
@@ -374,3 +408,7 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   look that presses and both commands pass over when it is off
 - Added an event for each look, named for the look, that fires when it becomes
   the shown look
+- Added three icon packs with the same 100 subjects in each, picked from the
+  Button tab's Icon packs view: Classic Device and Classic Tile, which match the
+  OS 3 look, and Modern, which matches the X4 look, with on, off and alert
+  pictures where a subject has states
