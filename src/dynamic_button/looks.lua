@@ -225,7 +225,7 @@ function Looks:_check(fields, exceptId)
 end
 
 --- @param look Look
---- @return integer glow How much of its picture's glow the look draws, 0 to 100.
+--- @return integer glow How much of its picture's glow the look draws, 0 to 200.
 function Looks.glow(look)
   return tonumber(look.glow) or Looks.FULL_GLOW
 end
