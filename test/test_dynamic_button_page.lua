@@ -408,6 +408,68 @@ T.truthy(
   has("// A live badge's text, and what stops it reading.\nfunction badgeLines(l) {")
 )
 
+T.section("Copy To, Export and Import")
+T.truthy(
+  "the Looks card offers all three beside Add Look",
+  has('id="copy-to" type="button" disabled>Copy To&hellip;')
+    and has('id="export-looks" type="button" disabled>Export')
+    and has('id="import-looks" type="button">Import&hellip;')
+)
+T.truthy(
+  "Copy To is off with no looks or no other Dynamic Button",
+  has("$('copy-to').disabled = gApplying || !n || !others;")
+)
+T.truthy("and asks the driver for the other buttons once the state is in", has("sendCommand('_GET_BUTTONS')"))
+T.truthy(
+  "one routine gives looks to any button, this one too",
+  has("async function applyLooks(link, name, items, replace, say)")
+)
+T.truthy(
+  "another button answers on a subscription of its own on the same socket",
+  has("'/api/v1/items/' + id + '/datatoui?SubscriptionClient=' + engine.id")
+    and has("gSocket.emit('startSubscription', ev);")
+)
+T.truthy("which ends when the copy does", has("finally { link.close(); }") and has("gSocket.off(ev)"))
+T.truthy(
+  "and its commands go through the one sender",
+  has("send: function(cmd, params) { return sendCommandTo(id, cmd, params); }")
+)
+local drawAt = page:find(
+  "var dataUrl = await lookDataUrl(Object.assign({}, look, { custom: custom, badgeNow: null }), 300);",
+  1,
+  true
+)
+local swapAt = page:find("look.icon = Object.assign({}, look.icon, { id: given[pic.key], stored: true }", 1, true)
+T.truthy(
+  "a look is drawn under the id it came with, before the target's id replaces it",
+  drawAt and swapAt and drawAt < swapAt
+)
+T.truthy("Replace brings the default along, Add leaves the target's", has("isDefault: !!(replace && item.isDefault)"))
+T.truthy("a target's looks that don't fit are counted", has("leftOut = items.length - taking.length"))
+T.truthy(
+  "the file names its format and version",
+  has("LOOKS_FORMAT = 'finitelabs.dynamic-buttons.looks', LOOKS_VERSION = 1")
+)
+T.truthy("and downloads under the button's name", has("a.download = base + '.dynamic-button.json';"))
+T.truthy(
+  "an imported SVG goes through the pasted SVG's checks, a raster through the upload's",
+  has("pictureFromSvg(new TextDecoder().decode(bytes), name) : await pictureFromRaster(new Blob([bytes]), name)")
+)
+T.truthy("an imported icon's markup is cleaned afresh, not looked up by its id", has("cleanBody(icon.body)"))
+T.falsy("never through the cache keyed by id", has("cleanIcon(id, icon.body)"))
+T.truthy(
+  "the file's own names can't reach an object's built-in fields",
+  has("pictures = Object.create(null)") and has("if (!own.call(source, key))")
+)
+T.truthy(
+  "a file's names and text are escaped",
+  has("esc(it.look.name)") and has("esc(im.fileName)") and has("esc(im.from)")
+)
+T.truthy(
+  "an unknown version from a newer driver says so",
+  has("That file comes from a newer Dynamic Buttons driver. Update this one first.")
+)
+
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
