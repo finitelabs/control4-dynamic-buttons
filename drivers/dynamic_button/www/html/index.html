@@ -71,7 +71,7 @@
 
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field label, .flabel { font-size: 11px; color: var(--text-muted); font-weight: 500; }
-  select, input[type="text"], input[type="search"] { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
+  select, input[type="text"], input[type="search"], textarea { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
   input[type="color"] { width: 44px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
   .colorrow { display: flex; align-items: center; gap: 8px; }
   .colorrow code { font-size: 12px; color: var(--text-muted); }
@@ -89,6 +89,25 @@
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .control select { width: auto; min-width: 110px; }
+  #f-when { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; flex: 1; min-width: 0; resize: vertical; }
+  .whenbox { align-items: flex-start; }
+  .whenpreview { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 22px; font-size: 11px; color: var(--text-muted); }
+  .whenpreview .bad { color: var(--danger); font-weight: 500; }
+  .lookrow .sub.bad { color: var(--danger); }
+  .varbrowser { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; min-width: 0; }
+  .vartree { max-height: 220px; overflow-y: auto; margin-top: 6px; }
+  .troom { padding: 8px 4px 2px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+  .tsection { padding: 4px 22px 0; font-size: 10.5px; color: var(--text-muted); }
+  .tdev { display: flex; align-items: center; gap: 6px; padding: 3px 4px; font-weight: 500; cursor: pointer; border-radius: 4px; }
+  .tdev:hover { background: var(--surface-hover); }
+  .tdev .chev { color: var(--text-muted); font-size: 10px; width: 10px; }
+  .tvar { display: flex; align-items: center; gap: 8px; width: 100%; padding: 3px 4px 3px 22px; background: none; border: 0; font: inherit; text-align: left; color: inherit; cursor: pointer; border-radius: 4px; }
+  .tvar:hover { background: var(--surface-hover); }
+  .tvar .vname { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tvar .vval { max-width: 40%; color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tvar .ins { visibility: hidden; color: var(--accent); font-size: 11px; font-weight: 600; }
+  .tvar:hover .ins { visibility: visible; }
+  .tloading { padding: 4px 22px; font-size: 11px; color: var(--text-muted); font-style: italic; }
   .pgroup { font-size: 11px; font-weight: 600; color: var(--text); margin: 12px 0 6px; }
   .pgroup:first-of-type { margin-top: 0; }
   .props-note { margin: -2px 0 12px; }
@@ -204,6 +223,28 @@
           <div class="frow" id="fld-cycle">
             <label for="f-in-cycle">Cycle</label>
             <div class="fctl"><label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label></div>
+          </div>
+          <div class="frow" id="fld-when" hidden>
+            <label for="f-when">Show when</label>
+            <div class="fctl whenbox">
+              <textarea id="f-when" rows="2" maxlength="2000" spellcheck="false" placeholder="PARAM{device,variable} > 50"></textarea>
+              <button class="btn btn-secondary sm" id="when-insert" type="button">Insert Variable</button>
+            </div>
+          </div>
+          <div class="frow" id="fld-when-browser" hidden>
+            <span></span>
+            <div class="varbrowser">
+              <input type="search" id="var-search" placeholder="Search rooms, devices, variables" aria-label="Search rooms, devices, variables">
+              <div class="vartree" id="var-tree"></div>
+            </div>
+          </div>
+          <div class="frow" id="fld-when-preview" hidden>
+            <span></span>
+            <div class="whenpreview" id="when-preview"></div>
+          </div>
+          <div class="frow" id="fld-default" hidden>
+            <label for="f-default">Default look</label>
+            <div class="fctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> Show this look when no Show when is true</label></div>
           </div>
         </div>
         <div class="lookform picker" id="pick-form">
@@ -463,6 +504,9 @@ function handleDriverData(cmd, params) {
     }
     if (cmd === 'SHOWN') onShown(params);
     if (cmd === 'ICONIFY') onIconify(params);
+    if (cmd === 'EVAL_RESULT') onEvalResult(params);
+    if (cmd === 'DEVICES_DATA') onDevices(JSON.parse(params.devices || '[]'));
+    if (cmd === 'DEVICE_VARIABLES_DATA') onDeviceVariables(params.deviceId, JSON.parse(params.variables || '[]'));
     if (gWaiters[cmd]) gWaiters[cmd](params);
   } catch (e) { console.error('handleDriverData error:', cmd, e); }
 }
@@ -1006,7 +1050,8 @@ var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', ma
 
 function onState(state) {
   var packs = gState.packs.join(',');
-  gState = Object.assign(gState, state || {});
+  // The driver leaves these out when it has none, so the last state's can't carry over.
+  gState = Object.assign(gState, { shown: null, defaultLook: null, matched: null }, state || {});
   gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
   renderList();
@@ -1024,7 +1069,8 @@ function shownLook() {
 // What a press of the button does, by Look Control.
 var CONTROL_NOTES = {
   'On Select': 'Each press shows the next look in the cycle.',
-  'Manual': 'A press leaves the look as it is: programming changes it.'
+  'Manual': 'A press leaves the look as it is: programming changes it.',
+  'By Value': 'The first look whose Show when is true shows.'
 };
 function renderControl() {
   var mode = CONTROL_NOTES[gState.lookControl] ? gState.lookControl : 'Manual';
@@ -1098,6 +1144,7 @@ async function renderList() {
   $('shown-pill').innerHTML = shown ? '<span class="pill online">' + esc(shown.name) + '</span>' + (shown.stale ? ' ' + STALE_PILL : '') : '<span class="pill info">Driver icon</span>';
   navTile($('shown-tile'), shown);
   renderControl();
+  syncWhenRows();
   renderProps();
   var el = $('look-list');
   if (!list.length) {
@@ -1108,10 +1155,12 @@ async function renderList() {
     var id = Number(l.id);
     var badges = (id === gState.shown ? ' <span class="pill online">Shown</span>' : '') +
       (!l.hasImage ? ' <span class="pill pending">No picture yet</span>' : (l.stale ? ' ' + STALE_PILL : '')) +
-      (l.inCycle === false ? ' <span class="pill info" title="Presses, Next Look and Previous Look pass over this look.">Not in cycle</span>' : '');
+      (l.inCycle === false ? ' <span class="pill info" title="Presses, Next Look and Previous Look pass over this look.">Not in cycle</span>' : '') +
+      (byValue() && id === gState.defaultLook ? ' <span class="pill info" title="Shows when no Show when is true.">Default</span>' : '') +
+      (byValue() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the values call for a different look.">Matched</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
-      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div></div>' +
+      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div>' + whenLines(l) + '</div>' +
       '<div class="acts">' +
         '<button class="btn btn-secondary sm" type="button" data-act="show" data-id="' + id + '"' + (l.hasImage && id !== gState.shown ? '' : ' disabled') + '>Show</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
@@ -1755,6 +1804,11 @@ function openEditor(look) {
   $('f-in-cycle').checked = gEditor.look.inCycle !== false;
   $('f-glow').value = gEditor.look.glow;
   $('f-grayscale').checked = gEditor.look.grayscale;
+  gEditor.look.isDefault = !!look && gState.defaultLook === look.id;
+  $('f-when').value = gEditor.look.showWhen || '';
+  $('f-default').checked = gEditor.look.isDefault;
+  $('fld-when-browser').hidden = true;
+  requestPreview();
   renderShapes();
   renderPicker();
   markPicked();
@@ -1804,7 +1858,7 @@ async function saveLook() {
     }
     var icon = l.icon && savedIcon(l.icon);
     var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
-      glow: savedGlow(l), grayscale: !!l.grayscale };
+      glow: savedGlow(l), grayscale: !!l.grayscale, showWhen: l.showWhen || '', isDefault: !!l.isDefault };
     if (custom) fields.custom = custom;
     if (!gApiHost) {
       demoSave(fields);
@@ -1866,14 +1920,167 @@ async function sendPicture(lookId, name, b64) {
 
 function demoSave(fields) {
   var existing = gState.looks.find(function(x) { return x.id === fields.id; });
+  var id = fields.id;
   if (existing) Object.assign(existing, fields, { custom: fields.custom, hasImage: true, stale: false });
   else {
-    var id = gState.looks.reduce(function(m, x) { return Math.max(m, x.id); }, 0) + 1;
-    gState.looks.push(Object.assign({}, fields, { id: id, hasImage: true, stale: false }));
+    id = gState.looks.reduce(function(m, x) { return Math.max(m, x.id); }, 0) + 1;
+    gState.looks.push(existing = Object.assign({}, fields, { id: id, hasImage: true, stale: false }));
     if (!gState.shown) gState.shown = id;
   }
+  existing.showWhenText = demoRendered(fields.showWhen);
+  if (fields.isDefault) gState.defaultLook = id;
+  else if (gState.defaultLook === id) gState.defaultLook = null;
   gState.looks.forEach(withIconBody);
   renderList();
+}
+
+// ============================================================
+// Show when: what By Value reads for each look
+// ============================================================
+var gDevices = [], gVarsByDevice = {}, gExpanded = {}, gRequestedVars = {}, gEvalSeq = 0, gEvalTimer = null;
+
+function byValue() { return gState.lookControl === 'By Value'; }
+
+// These only apply under By Value, so they're hidden otherwise.
+function syncWhenRows() {
+  ['fld-when', 'fld-when-preview', 'fld-default'].forEach(function(id) { $(id).hidden = !byValue(); });
+  if (!byValue()) $('fld-when-browser').hidden = true;
+}
+
+function whenLines(l) {
+  if (!byValue()) return '';
+  var text = l.showWhen ? l.showWhenText || l.showWhen : '';
+  return '<div class="sub" title="' + esc(text) + '">' + (text ? 'Show when ' + esc(text) : 'No Show when') + '</div>' +
+    (l.whenError ? '<div class="sub bad" title="' + esc(l.whenError) + '">' + esc(l.whenError) + '</div>' : '');
+}
+
+function requestPreview() {
+  clearTimeout(gEvalTimer);
+  gEvalSeq++;
+  var text = $('f-when').value.trim();
+  if (!text || !byValue()) { $('when-preview').textContent = 'Preview appears as you type.'; return; }
+  gEvalTimer = setTimeout(function() {
+    if (!gApiHost) { onEvalResult(Object.assign({ id: String(gEvalSeq) }, demoEval(text))); return; }
+    sendCommand('_EVAL_EXPRESSION', { id: String(gEvalSeq), expression: text });
+  }, 350);
+}
+
+function onEvalResult(p) {
+  if (String(p.id) !== String(gEvalSeq)) return; // an answer to earlier text
+  var verdict = p.error
+    ? '<span class="bad">' + esc(p.error) + '</span>'
+    : '<span class="pill ' + (p.result === 'true' ? 'online' : 'info') + '">' + (p.result === 'true' ? 'True now' : 'False now') + '</span>';
+  $('when-preview').innerHTML = verdict + '<span>' + esc(p.rendered || '') + '</span>';
+}
+
+$('f-when').addEventListener('input', function() {
+  gEditor.look.showWhen = $('f-when').value;
+  requestPreview();
+});
+$('f-default').addEventListener('change', function() { gEditor.look.isDefault = $('f-default').checked; });
+
+$('when-insert').addEventListener('click', function() {
+  var browser = $('fld-when-browser');
+  browser.hidden = !browser.hidden;
+  if (browser.hidden) return;
+  if (!gApiHost) { onDevices(DEMO_DEVICES); return; }
+  // Each opening asks again: devices and values change.
+  sendCommand('_GET_DEVICES');
+  renderVarTree();
+});
+
+function onDevices(devices) {
+  gDevices = devices || [];
+  gVarsByDevice = {};
+  gRequestedVars = {};
+  renderVarTree();
+}
+
+function onDeviceVariables(deviceId, variables) {
+  gVarsByDevice[String(deviceId)] = variables || [];
+  renderVarTree();
+}
+
+function fetchVars(id) {
+  var key = String(id);
+  if (gRequestedVars[key]) return;
+  gRequestedVars[key] = true;
+  if (!gApiHost) { gVarsByDevice[key] = DEMO_VARIABLES[key] || []; return; }
+  sendCommand('_GET_DEVICE_VARIABLES', { deviceId: Number(id) });
+}
+
+function renderVarTree() {
+  var q = $('var-search').value.trim().toLowerCase();
+  var has = function(text) { return String(text || '').toLowerCase().indexOf(q) >= 0; };
+  var lastRoom = null, html = '';
+  gDevices.forEach(function(d) {
+    var room = d.roomName || 'No Room', key = String(d.id), vars = gVarsByDevice[key];
+    var deviceHits = !q || has(room) || has(d.name);
+    // A search reads the names of the variables already loaded.
+    var varHits = q && !deviceHits && vars ? vars.filter(function(v) { return has(v.name); }) : null;
+    if (!deviceHits && !(varHits && varHits.length)) return;
+    if (room !== lastRoom) { html += '<div class="troom">' + esc(room) + '</div>'; lastRoom = room; }
+    var open = gExpanded[key] || !!varHits;
+    html += '<div class="tdev" data-device="' + Number(d.id) + '"><span class="chev">' + (open ? '&#9662;' : '&#9656;') + '</span>' + esc(d.name) + '</div>';
+    if (!open) return;
+    if (!vars) { fetchVars(d.id); vars = gVarsByDevice[key]; }
+    if (!vars) { html += '<div class="tloading">Loading variables…</div>'; return; }
+    var list = varHits || vars, section = null;
+    if (!list.length) html += '<div class="tloading">No variables</div>';
+    list.forEach(function(v) {
+      // An entry can span a driver and the proxies restating it: a token names the one owning the variable.
+      if (v.section && v.section !== section) { html += '<div class="tsection">' + esc(v.section) + '</div>'; section = v.section; }
+      var owner = v.deviceId != null ? v.deviceId : d.id;
+      html += '<button type="button" class="tvar" data-token="PARAM{' + Number(owner) + ',' + Number(v.id) + '}" title="' + esc(d.name) + ' > ' + esc(v.name) + '">' +
+        '<span class="vname">' + esc(v.name) + '</span><span class="vval">' + esc(v.value == null ? '' : v.value) + '</span><span class="ins">Insert</span></button>';
+    });
+  });
+  $('var-tree').innerHTML = html || '<div class="tloading">' + (gDevices.length ? 'No matches' : 'Loading devices…') + '</div>';
+}
+$('var-search').addEventListener('input', renderVarTree);
+
+$('var-tree').addEventListener('click', function(e) {
+  var device = e.target.closest('[data-device]'), token = e.target.closest('[data-token]');
+  if (device) {
+    var key = device.dataset.device;
+    if (gExpanded[key]) delete gExpanded[key]; else gExpanded[key] = true;
+    renderVarTree();
+  } else if (token) {
+    var box = $('f-when'), start = box.selectionStart, end = box.selectionEnd, text = token.dataset.token;
+    box.value = box.value.slice(0, start) + text + box.value.slice(end);
+    box.focus();
+    box.setSelectionRange(start + text.length, start + text.length);
+    gEditor.look.showWhen = box.value;
+    requestPreview();
+  }
+});
+
+// Opened outside Composer: a made-up device stands in for the project's.
+var DEMO_DEVICES = [{ id: 9001, name: 'Sample Battery', roomName: 'Demo Room' }];
+var DEMO_VARIABLES = { 9001: [
+  { id: 1, deviceId: 9001, section: 'Device', name: 'LEVEL', type: 'NUMBER', value: '62' },
+  { id: 2, deviceId: 9001, section: 'Device', name: 'STATE', type: 'STRING', value: 'Charging' }
+] };
+
+function demoVariable(id) {
+  return DEMO_VARIABLES[9001].find(function(v) { return v.id === Number(id); });
+}
+
+function demoRendered(text) {
+  return String(text || '').replace(/PARAM\{\s*9001\s*,\s*(\d+)\s*\}/g, function(m, id) {
+    var v = demoVariable(id);
+    return v ? '[Sample Battery > ' + v.name + ']' : m;
+  });
+}
+
+// A variable compared with one value is all an example needs: the driver evaluates the real thing.
+function demoEval(text) {
+  var m = /^PARAM\{\s*9001\s*,\s*(\d+)\s*\}\s*(==|~=|>=|<=|>|<)\s*("([^"]*)"|-?[\d.]+)$/.exec(text);
+  var v = m && demoVariable(m[1]);
+  if (!v) return { rendered: demoRendered(text), result: '', error: 'Opened outside Composer, the preview only compares a variable with one value.' };
+  var a = m[3].charAt(0) === '"' ? v.value : Number(v.value), b = m[3].charAt(0) === '"' ? m[4] : Number(m[3]);
+  var result = { '==': a === b, '~=': a !== b, '>=': a >= b, '<=': a <= b, '>': a > b, '<': a < b }[m[2]];
+  return { rendered: demoRendered(text), result: String(result), error: '' };
 }
 
 // ============================================================
@@ -1918,6 +2125,11 @@ function initTabs() {
     }).filter(function(l) { return l.icon; });
     gState.shown = gState.looks.length ? 1 : null;
     gState.lookControl = 'On Select';
+    [['Full', 'PARAM{9001,1} >= 80'], ['Low', 'PARAM{9001,1} < 20'], ['Charging', 'PARAM{9001,2} == "Charging"']].forEach(function(d) {
+      var look = gState.looks.find(function(l) { return l.name === d[0]; });
+      if (look) { look.showWhen = d[1]; look.showWhenText = demoRendered(d[1]); }
+    });
+    gState.defaultLook = 1;
     gState.properties = [
       // #ifdef DRIVERCENTRAL
       ['Cloud Settings', 'Cloud Status', 'License Activated'],
@@ -1933,7 +2145,7 @@ function initTabs() {
       // #ifdef DRIVERCENTRAL
       ['Driver Settings', 'Cloud Monitoring', 'Enabled', ['Disabled', 'Enabled']],
       // #endif
-      ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual']],
+      ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual', 'By Value']],
       ['Button Settings', 'Shown Look', 'Full']
     ].map(function(d) { return { group: d[0], name: d[1], value: d[2], choices: d[3], readonly: !d[3] }; });
     renderList();

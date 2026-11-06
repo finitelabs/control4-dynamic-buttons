@@ -44,6 +44,24 @@ T.falsy("nothing reads an answer from a REST reply", has("applyReply") or has("r
 T.falsy("nothing reads the state right after asking for it", has("await refresh()"))
 T.truthy("what needs the state now waits for its push", has("call('_GET_STATE', {}, 'STATE'"))
 
+T.section("Show when")
+T.truthy("its rows start hidden", has('id="fld-when" hidden') and has('id="fld-default" hidden'))
+T.truthy("and the preview's", has('id="fld-when-preview" hidden') and has('id="fld-when-browser" hidden'))
+T.truthy("only By Value shows them", has("$(id).hidden = !byValue();"))
+T.truthy("By Value is how the page knows", has("return gState.lookControl === 'By Value';"))
+T.truthy("the list follows the same rule", has("if (!byValue()) return '';"))
+T.truthy("a variable goes in as a token", has('data-token="PARAM{'))
+T.truthy("the save sends the expression and the default", has("showWhen: l.showWhen || '', isDefault: !!l.isDefault"))
+T.truthy("a default or match that's gone doesn't carry over", has("{ shown: null, defaultLook: null, matched: null }"))
+T.truthy("an answer to earlier text is dropped", has("if (String(p.id) !== String(gEvalSeq)) return;"))
+T.truthy("from the moment the text changes", has("clearTimeout(gEvalTimer);\n  gEvalSeq++;"))
+
+T.section("Every command goes through sendCommand, which wraps it")
+local _, posts = page:gsub("api%('POST'", "")
+T.eq("one place sends commands", posts, 1)
+T.truthy("the preview uses it", has("sendCommand('_EVAL_EXPRESSION'"))
+T.truthy("and the browser", has("sendCommand('_GET_DEVICES')") and has("sendCommand('_GET_DEVICE_VARIABLES'"))
+
 T.section("Which look is shown")
 T.truthy("the page takes the small message", has("if (cmd === 'SHOWN') onShown(params);"))
 
