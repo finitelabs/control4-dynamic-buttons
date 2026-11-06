@@ -4,7 +4,6 @@
 
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
-local Png = require("dynamic_button.png")
 
 --- @class Picture
 --- @field id string `mine:p<n>`, unique for the life of the button.
@@ -15,7 +14,7 @@ local Png = require("dynamic_button.png")
 --- @field name string Its file name, or a web address's last part.
 --- @field added number When it was added, in seconds.
 --- @field every? integer For a picture that refreshes: how often, in seconds, one of `Pictures.EVERY`.
---- @field source? string For a picture that refreshes: its bytes' CRC32 and length, which name them.
+--- @field source? string For a picture that refreshes: names its bytes, a new one each time they change.
 --- @field fetchedAt? number For a picture that refreshes: when its bytes last changed, in seconds.
 
 --- @class Pictures
@@ -148,7 +147,11 @@ local MAX_HOPS = 5
 local TOO_LARGE = "The picture at that address is larger than 2 MB."
 local NOT_A_PICTURE = "The address didn't answer with a PNG, JPEG, GIF, WebP or SVG picture."
 
---- A name to keep: a web address is cut to its last part, so no login, query or token in it is kept.
+--- The name of a picture whose name would otherwise come from its web address.
+Pictures.WEB_NAME = "Web picture"
+
+--- A name to keep: a web address is cut to its last part, so no login, query or token in it is kept,
+--- and one with no path is named nothing from the address.
 --- @param raw any
 --- @return string name
 function Pictures.safeName(raw)
@@ -157,9 +160,8 @@ function Pictures.safeName(raw)
   if not rest then
     return name
   end
-  local authority, path = rest:match("^([^/?#]*)(.*)$")
-  local last = path:gsub("[?#].*$", ""):match("([^/]+)/*$")
-  return last or (authority:gsub("^.*@", ""):gsub(":%d*$", ""))
+  local path = rest:match("^[^/?#]*(.*)$")
+  return path:gsub("[?#].*$", ""):match("([^/]+)/*$") or Pictures.WEB_NAME
 end
 
 --- @param data string
@@ -218,13 +220,6 @@ function Pictures.checkEvery(value)
     end
   end
   return nil
-end
-
---- What names a refreshing picture's bytes: the same bytes, the same name.
---- @param data string
---- @return string source
-function Pictures.source(data)
-  return string.format("%08x-%d", Png.crc32(data), #data)
 end
 
 --- A web address the controller fetches: http or https, with no spaces.
@@ -482,10 +477,12 @@ function Pictures:addWeb(data, url, every)
     kind = kind,
     width = width,
     height = height,
-    name = address,
+    -- Not from the address: the list is traced at Trace, and any part of an address can be a token.
+    -- The Button tab names it from the address it's sent.
+    name = Pictures.WEB_NAME,
     url = address,
     every = every,
-    source = Pictures.source(data),
+    source = "1",
     fetchedAt = self._now(),
   })
 end
@@ -611,7 +608,7 @@ function Pictures:replace(id, data)
       Images.deleteFile("SANDBOX", DIR, was)
     end
     picture.kind, picture.width, picture.height, picture.bytes = kind, width, height, #data
-    picture.source, picture.fetchedAt = Pictures.source(data), self._now()
+    picture.source, picture.fetchedAt = tostring((tonumber(picture.source) or 0) + 1), self._now()
   end)
 end
 
@@ -624,7 +621,6 @@ function Pictures:setAddress(id, address)
     if not picture.every then
       return false
     end
-    picture.name = Pictures.safeName(address):sub(1, MAX_NAME)
     picture.fetchedAt = nil
     self:_setAddresses(function(addresses)
       addresses[picture.id] = address

@@ -105,7 +105,11 @@ T.eq(
   Pictures.safeName("http://admin:secret@camera.local/cgi/snapshot.jpg?token=abc#x"),
   "snapshot.jpg"
 )
-T.eq("or its host when it has no path", Pictures.safeName("https://user:pw@host.example:8443/?t=1"), "host.example")
+T.eq(
+  "and nothing from the address when it has no path",
+  Pictures.safeName("https://user:pw@host.example:8443/?t=1"),
+  "Web picture"
+)
 T.eq(
   "a picture added under an address keeps only that",
   (library()):add(H.png("n"), { width = 1, height = 1, name = "http://a:b@c.local/x.png?key=1" }).name,

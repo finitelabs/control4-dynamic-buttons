@@ -15,7 +15,6 @@ local Pictures = require("dynamic_button.pictures")
 --- @field _setTimer fun(name: string, ms: number, fn: function)
 --- @field _cancelTimer fun(name: string)
 --- @field _watched integer|nil The shown look, while its picture refreshes.
---- @field _serving boolean A look's copy is being brought up to date, which shows it again.
 --- @field _fetching table<string, boolean> Pictures with a fetch under way.
 --- @field _tried table<string, number> When each picture's last fetch ended, in seconds.
 --- @field _good table<string, number> When each picture's last fetch succeeded, in seconds.
@@ -24,6 +23,8 @@ local WebPictures = {}
 WebPictures.__index = WebPictures
 
 local TIMER = "WebPictureRefresh"
+
+local MISSING_ADDRESS = "The controller lost this picture's web address. Fetch it again in the Button tab."
 
 --- @param opts { pictures: Pictures, looks: Looks, arrived: fun(lookId: integer, data: string, source: string), changed: fun(), allowed: fun(): boolean, now?: fun(): number, fetch?: fun(address: string, done: function), setTimer?: fun(name: string, ms: number, fn: function), cancelTimer?: fun(name: string) }
 --- @return WebPictures refresher
@@ -42,7 +43,6 @@ function WebPictures:new(opts)
   instance._cancelTimer = opts.cancelTimer or function(name)
     CancelTimer(name)
   end
-  instance._serving = false
   instance._fetching, instance._tried, instance._good, instance._failed = {}, {}, {}, {}
   return instance
 end
@@ -67,16 +67,19 @@ function WebPictures:watch(look)
     return
   end
   self._watched = look.id
-  -- A look sharing its picture with another can hold older bytes than the picture has now.
-  if not self._serving and look.image and look.image.source ~= picture.source then
-    local data = self._pictures:load(picture.id)
-    if data then
-      self._serving = true
-      self._arrived(look.id, data, picture.source)
-      self._serving = false
-    end
-  end
   self:_schedule()
+end
+
+--- A look sharing its picture with another can hold older bytes than the picture has now.
+--- @param look Look
+--- @return string|nil data The picture's bytes, when the look's copy is older.
+--- @return string|nil source What names them.
+function WebPictures:newer(look)
+  local picture = self:_pictureOf(look)
+  if not (picture and look.image and look.image.source ~= picture.source) then
+    return nil, nil
+  end
+  return self._pictures:load(picture.id), picture.source
 end
 
 --- Arm the timer for the shown look's next fetch, or fetch now when it's due.
@@ -131,6 +134,11 @@ function WebPictures:refreshPicture(id)
   end
   local address = self._pictures:address(id)
   if not address then
+    if not self._failed[id] then
+      log:warn("Picture %s has no web address to refresh from", id)
+    end
+    self._failed[id] = { error = MISSING_ADDRESS, at = self._now() }
+    self._changed()
     return false, "that picture has no web address"
   end
   self._fetching[id] = true
@@ -174,7 +182,7 @@ function WebPictures:_fetched(id, address, body, err)
   end
   if err then
     if not self._failed[id] then
-      log:warn("Picture %s (%s) didn't refresh: %s", picture.name, id, err)
+      log:warn("Picture %s didn't refresh: %s", id, err)
     end
     self._failed[id] = { error = err, at = now }
     self._changed()
@@ -184,19 +192,17 @@ function WebPictures:_fetched(id, address, body, err)
   local recovered = self._failed[id] ~= nil
   self._failed[id], self._good[id] = nil, now
   if recovered then
-    log:info("Picture %s (%s) refreshes again", picture.name, id)
+    log:info("Picture %s refreshes again", id)
   end
-  local source = Pictures.source(body)
-  if source ~= picture.source then
+  -- The same length first, so most new pictures are told apart without reading the stored one.
+  if not (#body == picture.bytes and body == self._pictures:load(id)) then
     local kept = self._pictures:replace(id, body)
     if not kept then
-      log:warn("Picture %s (%s): the controller could not store its new bytes", picture.name, id)
+      log:warn("Picture %s: the controller could not store its new bytes", id)
     else
       local look = self._watched and self._looks:get(self._watched)
       if look and look.icon.id == id then
-        self._serving = true
         self._arrived(look.id, body, kept.source)
-        self._serving = false
       end
     end
     self._changed()

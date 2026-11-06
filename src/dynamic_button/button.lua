@@ -36,6 +36,26 @@ function Button:new(opts)
   return instance
 end
 
+--- A look's stored picture to serve. A look sharing a refreshing picture with another can hold
+--- older bytes than the picture has now: those are brought up to date first, under a new version,
+--- so the proxy hears of the look once, with its current picture.
+--- @private
+--- @param look Look
+--- @return Look look As it is after any update.
+--- @return string|nil png
+function Button:_current(look)
+  local data, source
+  if self.refresher then
+    data, source = self.refresher:newer(look)
+  end
+  if data and self.images:save(look.id, data) then
+    self.looks:setImage(look.id, #data, self:_nextVersion(), source)
+    self.images:unserve(self.deviceId, look.id)
+    return self.looks:get(look.id), data
+  end
+  return look, self.images:load(look.id)
+end
+
 --- Tell what watches the shown look which one it is now, or nil for none.
 --- @private
 --- @param look Look|nil
@@ -112,7 +132,8 @@ function Button:show(id, again)
   if previous == look.id and not again then
     return true
   end
-  local png = self.images:load(look.id)
+  local png
+  look, png = self:_current(look)
   if not png then
     self:_lostPicture(look)
     return false, "the look's picture is missing"
@@ -249,7 +270,7 @@ function Button:restore()
   end
   local png
   while look do
-    png = self.images:load(look.id)
+    look, png = self:_current(look)
     if png then
       break
     end

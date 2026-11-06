@@ -294,7 +294,8 @@ local function tabState()
     }
     if picture.every then
       local status = refresher and refresher:status(picture.id) or {}
-      entry.url, entry.every = pictures:address(picture.id), picture.every
+      -- The source changes with the bytes, so the tab knows to ask for them again.
+      entry.url, entry.every, entry.source = pictures:address(picture.id), picture.every, picture.source
       entry.refreshedAt, entry.error = status.refreshedAt, status.error
     end
     table.insert(own, entry)
@@ -817,6 +818,8 @@ function UIR._SAVE_LOOK(tParams)
       return pushError(string.format("the picture for %s could not be kept", look.name))
     end
     announceShown(before and before.id or nil)
+    -- By Value saw the look before it had a picture, so it couldn't show it then.
+    follow:evaluate()
     look = looks:get(look.id)
   end
   local shown = button:shown()

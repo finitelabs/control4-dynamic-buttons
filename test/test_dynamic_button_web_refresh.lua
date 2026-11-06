@@ -96,6 +96,7 @@ end
 local function setup()
   local s = { clock = 1000, fetches = {}, timers = {}, arrived = {}, changed = 0, allowed = true }
   local store = memoryStore()
+  s.store = store
   local looks
   s.pictures = Pictures:new({
     store = store,
@@ -174,10 +175,10 @@ do
   local s = setup()
   local picture, err = s.pictures:addWeb(jpeg(640, 400, "a"), ADDRESS, 300)
   T.truthy("a JPEG is kept", picture)
-  T.eq("named by its address's last part, with no login or token", picture.name, "snap.jpg")
+  T.eq("named nothing from its address, any part of which can be a token", picture.name, "Web picture")
   T.eq("with the address it refreshes from", s.pictures:address(picture.id), ADDRESS)
   T.eq("its size from its header", { picture.width, picture.height }, { 640, 400 })
-  T.eq("and a name for its bytes", picture.source, Pictures.source(jpeg(640, 400, "a")))
+  T.eq("and a name for its bytes", picture.source, "1")
   picture, err = s.pictures:addWeb(png(300, 300, "a"), ADDRESS, 60)
   T.truthy("a PNG is kept", picture)
   picture, err = s.pictures:addWeb(SVG, ADDRESS, 300)
@@ -270,7 +271,7 @@ do
   T.eq("as the site sent them", s.arrived[1].data, jpeg(640, 400, "b"))
   T.eq("to the shown look", s.arrived[1].id, driveway.id)
   T.eq("the picture keeps them", s.pictures:load(picture.id), jpeg(640, 400, "b"))
-  T.eq("under their name", s.pictures:get(picture.id).source, Pictures.source(jpeg(640, 400, "b")))
+  T.eq("under a new name", s.pictures:get(picture.id).source, "2")
   T.eq("the tab is told", s.changed, 1)
   s.clock = s.clock + 300
   s.timer().fn()
@@ -334,7 +335,7 @@ do
   s.refresher:refresh()
   s.pictures:setAddress(picture.id, "http://camera.local/other.jpg")
   s.refresher:forget(picture.id)
-  T.eq("the name follows the address", s.pictures:get(picture.id).name, "other.jpg")
+  T.eq("its name still comes from nothing in an address", s.pictures:get(picture.id).name, "Web picture")
   s.answer(jpeg(640, 400, "old"))
   T.eq("the old address's answer is dropped", #s.arrived, 0)
   T.eq("and the new address is fetched at once", s.fetches[1].address, "http://camera.local/other.jpg")
@@ -342,7 +343,7 @@ do
   T.eq("its answer is served", s.arrived[1].data, jpeg(640, 400, "new"))
 end
 
-T.section("A look sharing a picture catches up when it's shown")
+T.section("A look sharing a picture is handed the newer bytes")
 do
   local s = setup()
   local driveway, picture = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
@@ -352,10 +353,41 @@ do
   s.clock = s.clock + 300
   s.timer().fn()
   s.answer(jpeg(640, 400, "b"))
+  local data, source = s.refresher:newer(s.looks:get(copy.id))
+  T.eq("the copy's older bytes are behind: the picture's latest are handed over", data, jpeg(640, 400, "b"))
+  T.eq("named as the picture names them now", source, s.pictures:get(picture.id).source)
+  T.eq("the shown look is up to date", s.refresher:newer(s.looks:get(driveway.id)), nil)
   s.refresher:watch(s.looks:get(copy.id))
-  T.eq("the copy is served the picture's latest bytes", s.arrived[2].data, jpeg(640, 400, "b"))
-  T.eq("to the copy", s.arrived[2].id, copy.id)
-  T.eq("without a fetch, since they're fresh", #s.fetches, 0)
+  T.eq("watching the copy serves nothing itself", #s.arrived, 1)
+  T.eq("and fetches nothing, since the bytes are fresh", #s.fetches, 0)
+end
+
+T.section("A clock set back waits one refresh, no more")
+do
+  local s = setup()
+  local driveway = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  s.clock = s.clock - 5000
+  s.refresher:watch(driveway)
+  T.eq("the wait is the refresh itself", s.timer().ms, 300 * 1000)
+  T.eq("and nothing is fetched at once", #s.fetches, 0)
+end
+
+T.section("A picture whose address is gone says so, once")
+do
+  local s = setup()
+  local driveway, picture = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  -- The encrypted address didn't read back.
+  s.store:set("PictureAddresses", {}, true)
+  local lines, restore = captureLog()
+  s.clock = s.clock + 300
+  s.refresher:watch(driveway)
+  s.refresher:refresh()
+  restore()
+  T.eq("one warning", #lines.warn, 1)
+  T.contains("naming the picture by its id", lines.warn[1], picture.id)
+  T.contains("the tab shows why", s.refresher:status(picture.id).error, "lost this picture's web address")
+  T.truthy("and is told", s.changed > 0)
+  T.eq("nothing is fetched", #s.fetches, 0)
 end
 
 --------------------------------------------------------------------------------
@@ -399,7 +431,8 @@ for _, p in ipairs(H.state().pictures) do
 end
 T.eq("the tab sees how often it refreshes", entry.every, 300)
 T.eq("and its address, to show in the editor", entry.url, ADDRESS)
-T.eq("named with no login or token", entry.name, "snap.jpg")
+T.eq("named nothing from its address", entry.name, "Web picture")
+T.eq("with its bytes' source, so the tab knows when they change", entry.source, "1")
 T.truthy("and when it last refreshed", entry.refreshedAt)
 T.contains("a refresh not on the list is refused", addWeb(ADDRESS, 30).error, "every minute")
 answer = { headers = { ["Content-Type"] = "image/gif" }, body = "GIF89a......" }
@@ -428,6 +461,12 @@ EC.Refresh_Web_Picture()
 local icon = H.lastIcon()
 T.truthy("new bytes are shown under a new address", icon)
 T.eq("and served as they came", H.served()[driveway .. ".png"], JPEG_B)
+for _, p in ipairs(H.state().pictures) do
+  if p.id == webId then
+    entry = p
+  end
+end
+T.eq("the tab is sent their new source", entry.source, "2")
 
 T.section("Set Web Address")
 local logo = H.addLook("Logo")
@@ -446,7 +485,7 @@ for _, p in ipairs(H.state().pictures) do
     entry = p
   end
 end
-T.eq("and named for it", entry.name, "b.jpg")
+T.eq("the tab is sent the new address", entry.url, "http://camera.local/b.jpg")
 T.eq(
   "Set Web Address lists only the looks that refresh",
   GCPL.Set_Web_Address("Look"),
@@ -458,13 +497,55 @@ EC.Show_Look({ Look = "Logo (" .. logo .. ")" })
 T.eq("another look stops it", Timer.WebPictureRefresh, nil)
 EC.Show_Look({ Look = "Driveway (" .. driveway .. ")" })
 T.truthy("showing it again arms it", Timer.WebPictureRefresh)
-OnDriverRemovedFromProject()
-T.eq("removing the driver stops it", Timer.WebPictureRefresh, nil)
 H.restart()
-T.truthy("a restart arms it again for the shown look", Timer.WebPictureRefresh or #H.fetched > 0)
+T.truthy("a restart arms it again for the shown look", Timer.WebPictureRefresh)
+local licenseGate = require("lib.drivercentral")
+licenseGate:_set(false)
+T.eq("losing the license stops it", Timer.WebPictureRefresh, nil)
+fetchedBefore = #H.fetched
+EC.Refresh_Web_Picture()
+T.eq("and nothing refreshes then", #H.fetched, fetchedBefore)
+licenseGate:_set(true)
+T.truthy("the license back arms it again", Timer.WebPictureRefresh)
 EC.Reset_Driver({ ["Are You Sure?"] = "Yes" })
 T.eq("a reset stops it", Timer.WebPictureRefresh, nil)
 T.eq("and keeps no picture", #H.state().pictures, 0)
+local again = saveOn("Driveway", addWeb(ADDRESS, 300).picture)
+T.truthy("a new refreshing look arms it", Timer.WebPictureRefresh and again)
+OnDriverRemovedFromProject()
+T.eq("removing the driver stops it", Timer.WebPictureRefresh, nil)
+
+T.section("By Value shows a new refreshing look as soon as it's saved")
+H.restart()
+EC.Reset_Driver({ ["Are You Sure?"] = "Yes" })
+H.addLook("Logo")
+Properties["Look Control"] = "By Value"
+OnPropertyChanged("Look Control")
+T.eq("Logo shows", Properties["Shown Look"], "Logo")
+local porchPicture = addWeb("http://camera.local/porch.jpg", 300).picture
+local porch = saveOn("Porch", porchPicture, { showWhen = "true" })
+T.eq("the look whose Show when is true shows at once", Properties["Shown Look"], "Porch")
+T.truthy("with its picture on the button", H.lastIcon().params.icon:find("/" .. porch .. ".png", 1, true))
+
+T.section("Two looks sharing one picture: the other shows its current bytes, told once")
+Properties["Look Control"] = "Manual"
+OnPropertyChanged("Look Control")
+local porch2 = saveOn("Porch 2", porchPicture)
+answer = { headers = { ["Content-Type"] = "image/jpeg" }, body = jpeg(640, 400, "porch-new") }
+EC.Show_Look({ Look = "Porch (" .. porch .. ")" })
+EC.Refresh_Web_Picture()
+T.eq("the shown look has the new bytes", H.served()[porch .. ".png"], jpeg(640, 400, "porch-new"))
+H.mark()
+EC.Show_Look({ Look = "Porch 2 (" .. porch2 .. ")" })
+local told = 0
+for _, sent in ipairs(H.proxy) do
+  if sent.command == "ICON_CHANGED" then
+    told = told + 1
+  end
+end
+T.eq("the proxy hears of the other look once", told, 1)
+T.eq("and it serves the current bytes, not its older copy", H.served()[porch2 .. ".png"], jpeg(640, 400, "porch-new"))
+answer = { headers = { ["Content-Type"] = "image/jpeg" }, body = JPEG_A }
 
 T.section("The address is in no log line, at any level")
 H.restart()
@@ -504,6 +585,22 @@ ExecuteCommand(
   "Set Web Address",
   { Look = "Gate (" .. gate .. ")", Address = "http://user:secret@camera.local/c.jpg?token=abc" }
 )
+answer = { code = 500, headers = {}, body = "" }
+ExecuteCommand("Refresh Web Picture", {})
+answer = { headers = { ["Content-Type"] = "image/jpeg" }, body = JPEG_A }
+-- An address with no path, and one whose last part is itself the token.
+for i, address in ipairs({ "http://user:secret@camera.local/", "http://camera.local/api/snapshot/SECRETTOKEN123" }) do
+  tabRequest("_FETCH_PICTURE", { request = "fp" .. i, url = address })
+  tabRequest("_ADD_WEB_PICTURE", { request = "wp" .. i, url = address, every = 60 })
+  local more = H.lookFields("Gate " .. i)
+  more.icon = { id = H.lastUi("PICTURE_STORED").picture, stored = true, width = 640, height = 400 }
+  tabRequest("_SAVE_LOOK", more)
+  ExecuteCommand("Show Look", { Look = "Gate " .. i .. " (" .. H.lastUi("SAVED").look .. ")" })
+  answer = { code = 500, headers = {}, body = "" }
+  ExecuteCommand("Refresh Web Picture", {})
+  answer = { headers = { ["Content-Type"] = "image/jpeg" }, body = jpeg(640, 400, "x" .. i) }
+  ExecuteCommand("Refresh Web Picture", {})
+end
 tabRequest("_GET_STATE", {})
 print, C4.DebugLog, C4.ErrorLog = wasPrint, wasDebug, wasError
 DEBUGPRINT = false
@@ -513,7 +610,12 @@ log:setLogLevel("3 - Info")
 T.truthy("the run logged", #logged > 10)
 local leaks = {}
 for _, line in ipairs(logged) do
-  if line:find("secret", 1, true) or line:find("token=", 1, true) or line:find("camera.local", 1, true) then
+  if
+    line:find("secret", 1, true)
+    or line:find("token=", 1, true)
+    or line:find("camera.local", 1, true)
+    or line:find("SECRETTOKEN", 1, true)
+  then
     table.insert(leaks, line)
   end
 end
