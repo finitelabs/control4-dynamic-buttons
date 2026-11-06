@@ -225,6 +225,25 @@ for _ in page:gmatch("await loadImage%(svgUrl%(") do
 end
 T.eq("both of drawLook's pictures load that way", loaded, 2)
 
+T.section("The page's own color picker")
+local colorInputs = 0
+for _ in page:gmatch('<input type="color"') do
+  colorInputs = colorInputs + 1
+end
+T.eq("the look editor has its nine color boxes", colorInputs, 9)
+T.truthy(
+  "each gets the page's picker",
+  has("document.querySelectorAll('input[type=\"color\"]').forEach(attachColorPicker)")
+)
+T.truthy("and Edge's own picker never opens: the input hides", has("input.hidden = true;"))
+T.truthy("and its label opens the page's picker", has("label.htmlFor = btn.id;"))
+T.truthy(
+  "a value the page sets in code shows on the swatch",
+  has("set: function(v) { INPUT_VALUE.set.call(this, v); paintSwatch(this); }")
+)
+T.truthy("Escape puts the color back", has("if (e.key === 'Escape') { e.preventDefault(); closeColorPicker(false); }"))
+T.truthy("recent colors survive a browser that refuses storage", has("try { localStorage.setItem(RECENT_COLORS_KEY"))
+
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))

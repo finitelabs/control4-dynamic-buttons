@@ -45,6 +45,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Glow and Grayscale to each look: Glow sets a Classic Device picture's
   glow from none to twice its own, and Grayscale draws any picture in grays with
   no glow, its gray version beside the packs' own on and off pictures
+- Added a color picker for every color: the look's own colors and recent colors
+  as swatches, a hex box, and hue, saturation and lightness sliders
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick
