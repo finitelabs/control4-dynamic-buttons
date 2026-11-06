@@ -134,6 +134,9 @@ the button's looks.
 1. **Show** - shows the look now. It is off for the shown look and for a look
    with no picture.
 1. **Edit** - opens the look in the editor.
+1. **Duplicate** - opens the editor on a copy of the look, named with the next
+   number, and `Save Look` adds it as a new look. It is off when the button has
+   eight looks.
 1. **↑ / ↓** - moves the look up or down. The button cycles through the looks in
    this order, and programming lists them in it.
 1. **Delete** - deletes the look, its picture, and its `Shown` event with the
@@ -565,6 +568,7 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Glow and Grayscale to each look: Glow sets a Classic Device picture's
   glow from none to twice its own, and Grayscale draws any picture in grays with
   no glow, its gray version beside the packs' own on and off pictures
+- Added Duplicate to each look, which opens a copy of it in the editor
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick

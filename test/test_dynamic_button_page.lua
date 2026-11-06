@@ -225,6 +225,14 @@ for _ in page:gmatch("await loadImage%(svgUrl%(") do
 end
 T.eq("both of drawLook's pictures load that way", loaded, 2)
 
+T.section("Duplicate")
+T.truthy("each look's row has Duplicate", has('data-act="copy"'))
+T.truthy("which is off at the most looks a button has", has("(list.length >= gState.max ? ' disabled"))
+T.truthy(
+  "and opens the editor on a copy with no id, which saves as a new look",
+  has("{ id: null, name: copyName(look.name) }")
+)
+
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
