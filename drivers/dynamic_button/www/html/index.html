@@ -1816,7 +1816,7 @@ $('o-grid').addEventListener('click', function(e) {
 // ============================================================
 // The page keeps a picture's source once it has it: the driver sends each on request, and a new
 // one stays here until Save Look keeps it on the controller.
-var MINE_SIDE = 600, MINE_SVG_MAX = 64 * 1024, MINE_FILE_MAX = 20 * 1024 * 1024;
+var MINE_SIDE = 600, MINE_SVG_MAX = 64 * 1024, MINE_SVG_READ = 1024 * 1024, MINE_FILE_MAX = 20 * 1024 * 1024;
 var gSources = {}, gNewPictures = [], gNewSeq = 0, gMineHow = 'upload', gPieces = {}, gFetch = null;
 
 function isPicture(icon) { return !!icon && /^mine:/.test(String(icon.id)); }
@@ -1842,7 +1842,8 @@ function base64FromUtf8(text) {
   return btoa(bin);
 }
 function setSource(id, kind, b64) {
-  gSources[id] = { kind: kind, b64: b64, body: pictureBody(kind, b64) };
+  var rec = pictureRecord(id);
+  gSources[id] = { kind: kind, b64: b64, body: pictureBody(kind, b64), name: rec ? rec.name : '' };
   sourcesChanged(id);
 }
 // The icon a look uses for a picture: kept ones go by id, a new one until Save Look keeps it.
@@ -1896,19 +1897,26 @@ function sourcesChanged(id) {
 var SVG_DROP = ['script', 'foreignObject', 'iframe', 'object', 'embed', 'audio', 'video', 'canvas', 'animate',
   'animateMotion', 'animateTransform', 'set', 'discard', 'handler', 'listener'];
 var SAFE_IMAGE = /^\s*data:image\/(png|jpe?g|gif|webp);/i;
-// Stylesheets keep their rules, but load nothing: no imports, no addresses but the drawing's own.
-function safeCss(css) {
-  return String(css || '').replace(/@import[^;]*;?/gi, '')
-    .replace(/url\(\s*(['"]?)(?!#|data:image\/(?:png|jpe?g|gif|webp);)[^)]*\)/gi, 'none');
+// CSS that could reach outside the drawing however it's written: an escape can spell url( or
+// @import, and image-set or a url( left open loads what the rule below can't see.
+function cssUnsafe(v) {
+  v = String(v || '');
+  return /\\|@import|image-set\s*\(/i.test(v) || (v.match(/url\s*\(/gi) || []).length !== (v.match(/url\s*\([^)]*\)/gi) || []).length;
 }
+// A url() that isn't one of the drawing's own parts loads nothing.
+function safeCss(css) {
+  return String(css || '').replace(/url\s*\((?!\s*['"]?\s*#)[^)]*\)/gi, 'none');
+}
+// Every attribute: no event handlers, links only to the drawing's own parts or a picture in it, and
+// a url() in any of them, a fill, a filter or a style alike, only to the drawing's own parts.
 function cleanSvgAttrs(el) {
   Array.prototype.slice.call(el.attributes).forEach(function(a) {
     var name = a.localName.toLowerCase();
     if (name.indexOf('on') === 0) { el.removeAttributeNode(a); return; }
-    if (name === 'href' && !(/^\s*#/.test(a.value) || SAFE_IMAGE.test(a.value))) { el.removeAttributeNode(a); return; }
-    if (name === 'style') a.value = safeCss(a.value);
+    if (name === 'href') { if (!(/^\s*#/.test(a.value) || SAFE_IMAGE.test(a.value))) el.removeAttributeNode(a); return; }
+    if (cssUnsafe(a.value)) { el.removeAttributeNode(a); return; }
+    if (/url\s*\(/i.test(a.value)) a.value = safeCss(a.value);
   });
-  if (el.localName === 'style') el.textContent = safeCss(el.textContent);
 }
 // The SVG's root, cut down to what draws: nothing that runs, embeds a page or loads from elsewhere.
 function cleanSvg(text) {
@@ -1919,6 +1927,10 @@ function cleanSvg(text) {
     Array.prototype.slice.call(el.childNodes).forEach(function(c) {
       if (c.nodeType === 1) {
         if (c.namespaceURI !== SVG_NS || SVG_DROP.indexOf(c.localName) >= 0) { c.remove(); return; }
+        if (c.localName === 'style') {
+          if (cssUnsafe(c.textContent)) { c.remove(); return; }
+          c.textContent = safeCss(c.textContent);
+        }
         cleanSvgAttrs(c);
         walk(c);
       } else if (c.nodeType !== 3 && c.nodeType !== 4) {
@@ -1985,7 +1997,7 @@ function setOneColor(root, paints) {
 }
 // Pasted or fetched SVG as the button keeps it.
 function pictureFromSvg(text, name) {
-  if (new Blob([text]).size > MINE_SVG_MAX) throw new Error('An SVG can be at most 64 KB.');
+  if (new Blob([text]).size > MINE_SVG_READ) throw new Error('That SVG is larger than 1 MB.');
   var root = cleanSvg(text);
   if (!root) throw new Error('That isn’t SVG markup the page can read.');
   var vb = String(root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
@@ -2003,6 +2015,7 @@ function pictureFromSvg(text, name) {
   root.removeAttribute('y');
   var oneColor = setOneColor(root, svgPaints(root));
   var markup = new XMLSerializer().serializeToString(root);
+  if (new Blob([markup]).size > MINE_SVG_MAX) throw new Error('An SVG can be at most 64 KB.');
   return { kind: 'svg', width: w, height: h, name: name, b64: base64FromUtf8(markup), oneColor: oneColor };
 }
 // A raster at most 600 px on its long side: JPEG when it's opaque, PNG when it has see-through parts.
@@ -2029,6 +2042,14 @@ async function pictureFromBlob(blob, name) {
   if (/^﻿?\s*</.test(head) && /<svg[\s>]/i.test(await blob.slice(0, 4096).text())) return pictureFromSvg(await blob.text(), name);
   return pictureFromRaster(blob, name);
 }
+// A web address's name as the button keeps it: its last part, or its host, never its login, query or fragment.
+function nameFromUrl(url) {
+  try {
+    var u = new URL(url), last = u.pathname.split('/').filter(Boolean).pop() || '';
+    try { last = decodeURIComponent(last); } catch (e) {}
+    return last || u.hostname || 'Picture';
+  } catch (e) { return 'Picture'; }
+}
 // A look's name from a file's name or an address's last part.
 function nameFromFile(name) {
   var base = String(name || '').split(/[\\/?#]/).filter(Boolean).pop() || '';
@@ -2044,10 +2065,11 @@ function mineMessage(text, bad) {
   $('fld-mine-msg').hidden = !text || pickerSource() !== SOURCE_MINE;
 }
 function addNewPicture(p) {
+  if (!gEditor.look) return;
   var id = 'mine:new-' + (++gNewSeq);
   var rec = { id: id, kind: p.kind, width: p.width, height: p.height, name: p.name };
   gNewPictures.push(rec);
-  gSources[id] = { kind: p.kind, b64: p.b64, body: pictureBody(p.kind, p.b64) };
+  gSources[id] = { kind: p.kind, b64: p.b64, body: pictureBody(p.kind, p.b64), name: p.name };
   pickIcon(pictureIcon(rec));
   renderMine();
   mineMessage(p.kind === 'svg' ? (p.oneColor ? 'One color, so Icon color applies.' : 'Its own colors stay.') : '');
@@ -2056,8 +2078,11 @@ async function addPictureFile(file) {
   if (!file) return;
   if (file.size > MINE_FILE_MAX) { mineMessage('That file is larger than 20 MB.', true); return; }
   mineMessage('Reading the picture…');
-  try { addNewPicture(await pictureFromBlob(file, file.name)); }
-  catch (e) { mineMessage(e.message, true); }
+  var look = gEditor.look;
+  try {
+    var p = await pictureFromBlob(file, file.name);
+    if (gEditor.look === look) addNewPicture(p);
+  } catch (e) { mineMessage(e.message, true); }
 }
 function renderMine() {
   ['upload', 'svg', 'web'].forEach(function(how) { $('fld-mine-' + how).hidden = gMineHow !== how; });
@@ -2142,8 +2167,9 @@ function fetchPicture() {
   var url = $('mi-url').value.trim();
   if (!/^https?:\/\/\S+$/i.test(url)) { mineMessage('Enter an http or https address.', true); return; }
   if (!gApiHost) { mineMessage('Opened outside Composer, there is no controller to fetch the address.', true); return; }
-  var request = String(Date.now()) + Math.random().toString(36).slice(2, 6);
-  gFetch = { request: request, url: url };
+  // A letter first: an id of digits alone reaches the page as a number.
+  var request = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  gFetch = { request: request, url: url, look: gEditor.look };
   mineMessage('Fetching…');
   $('mi-fetch').disabled = true;
   sendCommand('_FETCH_PICTURE', { request: request, url: url });
@@ -2153,7 +2179,9 @@ function fetchPicture() {
 }
 async function onFetched(params) {
   if (!gFetch || String(params.request) !== gFetch.request) return;
-  var url = gFetch.url;
+  // An answer for an editor that closed, or moved to another look, is dropped.
+  if (!gEditor.look || gEditor.look !== gFetch.look) { delete gPieces['fetch ' + gFetch.request]; gFetch = null; $('mi-fetch').disabled = false; return; }
+  var url = gFetch.url, look = gFetch.look;
   if (params.error) { gFetch = null; $('mi-fetch').disabled = false; mineMessage(params.error, true); return; }
   var b64 = joinPieces('fetch ' + params.request, params);
   if (b64 == null) return;
@@ -2162,16 +2190,19 @@ async function onFetched(params) {
   try {
     var bin = atob(b64), bytes = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    addNewPicture(await pictureFromBlob(new Blob([bytes]), url));
+    var p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));
+    if (gEditor.look === look) addNewPicture(p);
   } catch (e) { mineMessage(e.message, true); }
 }
 $('mi-fetch').addEventListener('click', fetchPicture);
 $('mi-url').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); fetchPicture(); } });
 
 // Save Look keeps a new picture on the controller first, so the look can name it by its id.
+// A kept picture the driver has since deleted is sent again from the page's copy, under a new id.
 async function keepPicture(icon) {
-  var rec = pictureRecord(icon.id), src = gSources[icon.id];
-  if (!rec || !src || !src.b64) return null;
+  var src = gSources[icon.id];
+  var rec = pictureRecord(icon.id) || (src && { id: icon.id, kind: src.kind, width: icon.width, height: icon.height, name: src.name || icon.label || 'Picture' });
+  if (!rec || !src || !src.b64) { setStatus('This button no longer has that picture. Pick another.', true); return null; }
   if (!gApiHost) {
     var n = (gState.pictures || []).reduce(function(m, p) { return Math.max(m, Number(String(p.id).split(':p')[1]) || 0); }, 0) + 1;
     var kept = Object.assign({}, rec, { id: 'mine:p' + n });
@@ -2556,7 +2587,8 @@ async function saveLook() {
       b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
       if (b64.length * 3 / 4 > gState.maxBytes) { setStatus('The picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB.', true); return; }
     }
-    if (l.icon && isPicture(l.icon) && !l.icon.stored) {
+    var keptHere = l.icon && l.icon.stored && (gState.pictures || []).some(function(p) { return p.id === l.icon.id; });
+    if (l.icon && isPicture(l.icon) && !keptHere) {
       setStatus('Sending your picture…');
       var keptId = await keepPicture(l.icon);
       if (!keptId) return;

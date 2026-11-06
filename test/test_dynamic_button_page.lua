@@ -275,17 +275,28 @@ T.truthy("and every event handler", has("if (name.indexOf('on') === 0) { el.remo
 T.truthy(
   "and every link but its own parts and pictures in it",
   has(
-    [[if (name === 'href' && !(/^\s*#/.test(a.value) || SAFE_IMAGE.test(a.value))) { el.removeAttributeNode(a); return; }]]
+    [[if (name === 'href') { if (!(/^\s*#/.test(a.value) || SAFE_IMAGE.test(a.value))) el.removeAttributeNode(a); return; }]]
   )
 )
 T.truthy(
-  "a picture in it may be a PNG, JPEG, GIF or WebP only",
-  has([[var SAFE_IMAGE = /^\s*data:image\/(png|jpe?g|gif|webp);/i;]])
+  "CSS that could load from elsewhere however it's written is unsafe: an escape, an import, image-set or an open url(",
+  has(
+    [[return /\\|@import|image-set\s*\(/i.test(v) || (v.match(/url\s*\(/gi) || []).length !== (v.match(/url\s*\([^)]*\)/gi) || []).length;]]
+  )
 )
-T.truthy("its styles import nothing", has("return String(css || '').replace(/@import[^;]*;?/gi, '')"))
+T.truthy("any attribute holding it goes", has("if (cssUnsafe(a.value)) { el.removeAttributeNode(a); return; }"))
+T.truthy("as does a stylesheet", has("if (cssUnsafe(c.textContent)) { c.remove(); return; }"))
 T.truthy(
-  "and load nothing from an address",
-  has([[.replace(/url\(\s*(['"]?)(?!#|data:image\/(?:png|jpe?g|gif|webp);)[^)]*\)/gi, 'none');]])
+  "and a url() in any attribute is checked, a fill or a filter as much as a style",
+  has([[if (/url\s*\(/i.test(a.value)) a.value = safeCss(a.value);]])
+)
+T.truthy(
+  "so it reaches only the drawing's own parts",
+  has([[return String(css || '').replace(/url\s*\((?!\s*['"]?\s*#)[^)]*\)/gi, 'none');]])
+)
+T.truthy(
+  "the 64 KB limit is on the SVG as kept",
+  has("if (new Blob([markup]).size > MINE_SVG_MAX) throw new Error('An SVG can be at most 64 KB.');")
 )
 T.truthy(
   "one color takes the icon color",
@@ -302,6 +313,28 @@ T.truthy(
 )
 T.truthy("a raster is kept at most 600 px on its long side", has("var MINE_SIDE = 600"))
 T.truthy("as a JPEG when opaque and a PNG otherwise", has("c.toDataURL(opaque ? 'image/jpeg' : 'image/png', 0.9)"))
+T.truthy(
+  "a fetch's request starts with a letter, so it never arrives as a number",
+  has("var request = 'f' + Date.now()")
+)
+T.truthy(
+  "a fetched picture is named by its address's last part",
+  has("var p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));")
+)
+T.truthy(
+  "never by its login, query or fragment",
+  has("var u = new URL(url), last = u.pathname.split('/').filter(Boolean).pop() || '';")
+)
+T.truthy(
+  "an answer for an editor that closed or moved on is dropped",
+  has("if (!gEditor.look || gEditor.look !== gFetch.look)")
+)
+T.truthy(
+  "a kept picture the driver no longer lists is sent again",
+  has(
+    "var keptHere = l.icon && l.icon.stored && (gState.pictures || []).some(function(p) { return p.id === l.icon.id; });"
+  ) and has("if (l.icon && isPicture(l.icon) && !keptHere) {")
+)
 T.truthy(
   "a message in pieces drops its line breaks",
   has([[p.parts[index - 1] = String(params.data || '').replace(/\s+/g, '');]])
