@@ -96,8 +96,7 @@ function Button:show(id, changed)
   return true
 end
 
---- Draw the shown look's live badge again and serve it. The picture is the look's own, so the
---- version stays: a text seen before goes by the same address, which the app has already loaded.
+--- Draw the shown look's live badge again and serve it, under the same version.
 function Button:redrawBadge()
   local look = self:shown()
   local png = look and self.images:load(look.id)
@@ -230,8 +229,10 @@ function Button:restore()
     end
   end
   if look and self.badges:holding(look) and self.images:served(self.deviceId, look.id) then
-    -- The proxy keeps the last address, so the picture stays until the variable comes.
+    -- The picture from before stays until the variable comes.
     self.store:set(SHOWN_PERSIST_KEY, look.id)
+    self._badgeKey = nil
+    self:_tell(look)
     self.badges:watch(look)
     return
   end

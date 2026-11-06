@@ -193,14 +193,14 @@ end
 
 --- @param text string
 --- @return integer count Characters, as the tab counts them: UTF-8 continuation bytes don't count.
-local function characters(text)
+function Looks.characters(text)
   return #text:gsub("[\128-\191]", "")
 end
 
 --- @param text string
 --- @return boolean live The badge's text holds a variable.
 function Looks.isLiveText(text)
-  return text:find("PARAM%s*{") ~= nil
+  return text:find("PARAM%s*{[^,}]*,[^}]*}") ~= nil
 end
 
 --- @param look Look
@@ -231,7 +231,7 @@ local function checkBadge(raw)
   if live and #text > Looks.MAX_LIVE_BADGE then
     return nil, string.format("a badge with a variable is at most %d characters", Looks.MAX_LIVE_BADGE)
   end
-  if text == "" or (not live and characters(text) > Looks.MAX_BADGE) then
+  if text == "" or (not live and Looks.characters(text) > Looks.MAX_BADGE) then
     return nil, string.format("a badge is 1 to %d characters", Looks.MAX_BADGE)
   end
   if text:find("%c") then
@@ -347,7 +347,7 @@ function Looks:_check(fields, exceptId)
     return nil, "a look needs a name"
   end
   -- Characters, as the tab counts them: UTF-8 continuation bytes don't count.
-  if characters(name) > Looks.MAX_NAME then
+  if Looks.characters(name) > Looks.MAX_NAME then
     return nil, string.format("a look's name can be at most %d characters", Looks.MAX_NAME)
   end
   if name:find(",", 1, true) then

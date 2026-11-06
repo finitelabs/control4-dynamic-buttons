@@ -199,6 +199,12 @@ for _, seconds in ipairs(Looks.BADGE_EVERY) do
   T.truthy("the Update list offers " .. seconds .. " seconds", has(string.format('<option value="%d">', seconds)))
 end
 T.truthy("and it starts where the driver does", has(string.format("var BADGE_EVERY = %d;", Looks.DEFAULT_BADGE_EVERY)))
+T.truthy("Show when's count reads its own box, whichever box the list last served", has("usedTokens('f-when')"))
+T.truthy("the list marks what its own box reads", has("used = usedTokens(gVarBox)"))
+T.truthy(
+  "a push under another Look Control leaves the badge's list open",
+  has("if (gVarBox === 'f-when') $('fld-when-browser').hidden = true;")
+)
 T.truthy(
   "a live look's picture is stored without its badge",
   has("lookDataUrl(Object.assign({}, drawn, { badgeNow: null }), 300)")

@@ -203,6 +203,7 @@ for _, case in ipairs({
   { "\194\176\194\176\194\176\194\176\194\176\194\176", "\194\176\194\176\194\176\194\176\194\176" },
   { "On", "On" },
   { "", "" },
+  { "K\195\188che", "Kche" },
 }) do
   T.eq("'" .. case[1] .. "' fits as '" .. case[2] .. "'", LiveBadges.fit(case[1]), case[2])
 end
@@ -276,6 +277,43 @@ saveBadge(battery, "Battery", live(LEVEL .. "%"))
 T.section("A save that changes only the choice sends no new picture")
 T.falsy("the picture isn't stale", stateLook(battery).stale)
 
+T.section("A save that changes the picture leaves the drawing to the new picture")
+clock = clock + 3600
+H.mark()
+local cacheBefore = cached(battery)
+saveBadge(battery, "Battery", live(LEVEL .. " V"))
+T.eq("nothing is drawn from the old picture", told(), 0)
+T.eq("nor kept from it", cached(battery), cacheBefore)
+H.sendImage(battery, realPng(70))
+T.eq("the new picture draws it", told(), 1)
+saveBadge(battery, "Battery", live(LEVEL .. "%"))
+H.sendImage(battery, realPng(70))
+
+T.section("Text that only looks like a variable")
+local function unfinished(text)
+  local fields = H.lookFields("Battery")
+  fields.id = battery
+  fields.custom = live(text)
+  H.mark()
+  H.tab("_SAVE_LOOK", fields)
+  return tostring(H.lastUi("ERROR") and H.lastUi("ERROR").message)
+end
+T.contains("an unfinished one is plain text, and too long", unfinished("PARAM{"), "1 to 5")
+T.contains("so is one with no variable named", unfinished("PARAM{100}"), "1 to 5")
+T.falsy("neither counts as live", Looks.isLiveText("PARAM{100}"))
+T.truthy("a whole one does", Looks.isLiveText("PARAM{ 100 , LEVEL }%"))
+
+T.section("A clock set back")
+clock = clock + 3600
+setLevel("72")
+clock = clock - 86400
+H.mark()
+setLevel("73")
+T.eq("a change waits as usual", told(), 0)
+clock = clock + 60
+settle()
+T.eq("and no longer", told(), 1)
+
 T.section("A plain badge is the tab's to draw")
 H.mark()
 local plain = addLook("Plain", live("ON"))
@@ -325,8 +363,9 @@ hasLevel = false
 setDevices()
 H.mark()
 H.restart()
-T.eq("with the variable not there yet, the proxy keeps the address it has", told(), 0)
-T.eq("and the picture stays", served(battery), beforeRestart)
+T.eq("with the variable not there yet, the proxy still hears of the look", told(), 1)
+T.eq("and the picture from before stays", served(battery), beforeRestart)
+H.mark()
 hasLevel = true
 level = "33"
 setDevices()
@@ -335,6 +374,71 @@ T.eq("when it comes, the badge draws", stateLook(battery).badgeNow, "33%")
 T.eq("once", told(), 1)
 T.contains("under the shown look", address(), "/" .. battery .. ".png")
 
+T.section("A restart where the first value isn't the real one")
+saveBadge(battery, "Battery", live(LEVEL .. "%", { every = 3600 }))
+-- The shim fires every timer at once, and this one ends the starting window.
+local realSetTimer = SetTimer
+SetTimer = function(name, ...)
+  if name ~= "LiveBadgeBootWait" then
+    return realSetTimer(name, ...)
+  end
+end
+H.restart()
+settle()
+H.mark()
+clock = clock + 10
+setLevel("44")
+T.eq("the wait while starting is short, whatever the look's choice", told(), 0)
+clock = clock + 20
+settle()
+T.eq("so the real value soon shows", told(), 1)
+SetTimer = realSetTimer
+saveBadge(battery, "Battery", live(LEVEL .. "%"))
+H.restart()
+settle()
+
+T.section("A variable that comes back")
+clock = clock + 3600
+hasLevel = false
+setDevices()
+OnWatchedVariableChanged(BATTERY, 1002, "Idle")
+Properties["Look Control"] = "Manual"
+saveBadge(battery, "Battery", live(LEVEL .. "%", { every = 3600 }))
+settle()
+T.eq("while it's gone there's no badge", painted(served(battery)), 0)
+hasLevel = true
+level = "45"
+setDevices()
+H.mark()
+OnWatchedVariableChanged(BATTERY, 1001, level)
+settle()
+T.eq("when it's back the badge shows at once, whatever the look's choice", told(), 1)
+T.truthy("drawn", painted(served(battery)) > 0)
+saveBadge(battery, "Battery", live(LEVEL .. "%"))
+
+T.section("A variable that comes in the gap before By Value starts")
+hasLevel = false
+setDevices()
+SetTimer = function(name, ...)
+  if name ~= "LiveBadgeBootWait" then
+    return realSetTimer(name, ...)
+  end
+end
+H.restart()
+T.falsy("the address has no text in it yet", address():match("%-%x+$"))
+hasLevel = true
+level = "46"
+setDevices()
+Properties["Look Control"] = "By Value"
+OnPropertyChanged("Look Control")
+settle()
+T.truthy("the badge's own retry still finds it and draws", address():match("%-%x+$"))
+SetTimer = realSetTimer
+Properties["Look Control"] = "Manual"
+OnPropertyChanged("Look Control")
+H.restart()
+settle()
+
 T.section("A restart where the variable never comes")
 hasLevel = false
 setDevices()
@@ -342,7 +446,7 @@ H.mark()
 H.restart()
 settle()
 T.eq("once the wait is over the badge goes", painted(served(battery)), 0)
-T.eq("the proxy hears", told(), 1)
+T.eq("the proxy hears of the look, and again when the badge goes", told(), 2)
 T.contains("the tab hears why", stateLook(battery).badgeError, "not found")
 T.eq("the tab has nothing to draw", stateLook(battery).badgeNow, nil)
 hasLevel = true

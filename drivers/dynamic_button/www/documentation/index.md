@@ -278,8 +278,9 @@ that has a badge.
    means no badge. `Browse Variables` picks a variable. The controller draws a
    badge with a variable on the shown look and keeps it current. A number gives
    up decimals to fit the 5 characters, and then the end of the text is cut.
-   While a variable is missing, the look shows no badge, and this note and the
-   look's row say why.
+   Only English letters, digits, punctuation and the degree sign draw, and other
+   characters are left out. While a variable is missing, the look shows no
+   badge, and this note and the look's row say why.
 1. **Update** - shows when the text holds a variable: `Every 30 seconds`,
    `Every minute`, `Every 5 minutes`, `Every 15 minutes` or `Every hour`. The
    badge changes at most this often, and a change after a quiet spell shows at

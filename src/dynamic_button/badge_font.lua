@@ -122,6 +122,32 @@ local function addLine(totals, width, height, x0, y0, x1, y1)
   end
 end
 
+--- @param text string UTF-8.
+--- @return integer[] codes The character codes the face has.
+--- @return string kept The text with only those characters.
+function BadgeFont.characters(text)
+  local codes, kept = {}, {}
+  for char in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+    local first = char:byte(1)
+    local code = first
+    if first >= 240 then
+      code = first % 8
+    elseif first >= 224 then
+      code = first % 16
+    elseif first >= 194 then
+      code = first % 32
+    end
+    for i = 2, #char do
+      code = code * 64 + char:byte(i) % 64
+    end
+    if font()[code] then
+      codes[#codes + 1] = code
+      kept[#kept + 1] = char
+    end
+  end
+  return codes, table.concat(kept)
+end
+
 --- @param code integer A character code.
 --- @param fontSize number In pixels.
 --- @return number|nil advance How far the character moves the pen, or nil if the face hasn't it.

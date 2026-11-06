@@ -266,7 +266,6 @@ local function tabState()
     max = Looks.MAX,
     maxChunk = Images.MAX_CHUNK,
     maxBytes = Images.MAX_BYTES,
-    maxLiveBadge = Looks.MAX_LIVE_BADGE,
     packs = Iconify.PACKS,
   }
 end
@@ -724,7 +723,10 @@ function UIR._SAVE_LOOK(tParams)
   local shown = button:shown()
   if shown and shown.id == look.id then
     badges:watch(look)
-    badges:check()
+    -- A stale picture is about to be replaced, and showing the new one draws the badge.
+    if not (look.image and look.image.stale) then
+      badges:check()
+    end
   end
   return reply("SAVED", { look = tostring(look.id) })
 end

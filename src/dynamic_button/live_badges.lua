@@ -4,13 +4,14 @@
 local log = require("lib.logging")
 local Expressions = require("lib.expressions")
 local BadgeArt = require("dynamic_button.badge_art")
+local BadgeFont = require("dynamic_button.badge_font")
 local Looks = require("dynamic_button.looks")
 local Png = require("dynamic_button.png")
 
 --- @class LiveBadges
 --- @field _looks Looks
 --- @field _images Images
---- @field _engine Expressions Shared with By Value, since a variable has one listener in a driver.
+--- @field _engine Expressions
 --- @field _redraw fun() Draws the shown look's badge again and serves it.
 --- @field _changed fun() Tells the Button tab what changed.
 --- @field _allowed fun(): boolean False while nothing may change the picture.
@@ -29,11 +30,9 @@ LiveBadges.EXPRESSION = "badge"
 local DRAW_TIMER = "LiveBadgeDraw"
 local BOOT_TIMER = "LiveBadgeBootWait"
 
---- @param text string
---- @return integer count Characters, not bytes.
-local function characters(text)
-  return #text:gsub("[\128-\191]", "")
-end
+--- The longest a change waits while the project starts, in seconds: a variable's first value may
+--- be its driver's default, with the real one moments later.
+local BOOT_EVERY = 30
 
 --- @param text string
 --- @param count integer
@@ -50,19 +49,21 @@ local function firstCharacters(text, count)
   return table.concat(out)
 end
 
---- A badge's text cut to what fits: a number gives up decimals first, then the end goes.
+--- A badge's text as it will draw: only the characters the face has, cut to what fits. A number
+--- gives up decimals first, then the end goes.
 --- @param text string
 --- @return string text
 function LiveBadges.fit(text)
-  text = text:match("^%s*(.-)%s*$")
-  if characters(text) <= Looks.MAX_BADGE then
+  local _, kept = BadgeFont.characters(text)
+  text = kept:match("^%s*(.-)%s*$")
+  if Looks.characters(text) <= Looks.MAX_BADGE then
     return text
   end
   local before, number, after = text:match("^(.-)(%-?%d+%.%d+)(.*)$")
   if number then
     for places = #number:match("%.(%d+)$") - 1, 0, -1 do
       local shorter = before .. string.format("%." .. places .. "f", tonumber(number)) .. after
-      if characters(shorter) <= Looks.MAX_BADGE then
+      if Looks.characters(shorter) <= Looks.MAX_BADGE then
         return shorter
       end
       text = shorter
@@ -114,8 +115,7 @@ function LiveBadges:expressions()
   return { [LiveBadges.EXPRESSION] = { template = badge.text, mode = "string", auto = true } }
 end
 
---- Start as a load does. Other drivers add their variables as they start, so for as long as the
---- engine keeps looking for them, a badge waiting for one keeps the picture it has.
+--- Start as a load does, with the wait for other drivers' variables that `Follow:start` has.
 function LiveBadges:boot()
   self._booting = true
   SetTimer(BOOT_TIMER, Expressions.RETRY_MS * Expressions.RETRY_ATTEMPTS, function()
@@ -212,7 +212,8 @@ function LiveBadges:picture(look, png)
     drawn, err = self:_draw(look, badge, png, text)
   end
   self:_note(look, err)
-  self._drawnText, self._drawnAt = text, self._now()
+  -- Only a badge starts the wait, so one that comes back shows at once.
+  self._drawnText, self._drawnAt = text, drawn and self._now() or nil
   return drawn or png, addressKey(drawn and text or nil)
 end
 
@@ -233,7 +234,15 @@ function LiveBadges:check()
   if text == self._drawnText then
     return
   end
-  local wait = self._drawnAt and Looks.badgeEvery(badge) - (self._now() - self._drawnAt) or 0
+  local now, every = self._now(), Looks.badgeEvery(badge)
+  if self._booting then
+    every = math.min(every, BOOT_EVERY)
+  end
+  -- A clock set back would otherwise stretch the wait by as much.
+  if self._drawnAt and now < self._drawnAt then
+    self._drawnAt = now
+  end
+  local wait = self._drawnAt and every - (now - self._drawnAt) or 0
   if wait > 0 then
     SetTimer(DRAW_TIMER, wait * 1000, function()
       self:check()

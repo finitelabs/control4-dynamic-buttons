@@ -124,30 +124,6 @@ local function fillPill(rows, firstRow, canvas, x, y, width, height, color)
   end
 end
 
---- @param text string UTF-8.
---- @return integer[] codes The characters the face has.
-local function characters(text)
-  local codes = {}
-  for char in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
-    local first = char:byte(1)
-    local code = first
-    if first >= 240 then
-      code = first % 8
-    elseif first >= 224 then
-      code = first % 16
-    elseif first >= 194 then
-      code = first % 32
-    end
-    for i = 2, #char do
-      code = code * 64 + char:byte(i) % 64
-    end
-    if BadgeFont.advance(code, 1) then
-      codes[#codes + 1] = code
-    end
-  end
-  return codes
-end
-
 --- @param codes integer[]
 --- @param fontSize number
 --- @return number width
@@ -167,7 +143,7 @@ end
 --- @param text string What it says now.
 function BadgeArt.draw(rows, firstRow, canvas, badge, text)
   local height = pillHeight(badge, canvas)
-  local codes = characters(text)
+  local codes = BadgeFont.characters(text)
   local fontSize = floor(height * 0.68 + 0.5)
   local measured = textWidth(codes, fontSize)
   local width = min(canvas * 0.94, max(height, measured + height * 0.7))

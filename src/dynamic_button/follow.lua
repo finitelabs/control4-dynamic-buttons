@@ -10,7 +10,7 @@ local Expressions = require("lib.expressions")
 --- @field _show fun(id: integer): boolean, string|nil Shows a look the way programming's Show Look does.
 --- @field _changed fun() Tells the Button tab what changed.
 --- @field _allowed fun(): boolean False while nothing may change the look.
---- @field _engine Expressions Shared with the live badges, since a variable has one listener in a driver.
+--- @field _engine Expressions
 --- @field _active boolean Look Control is By Value.
 --- @field _booting boolean A variable another driver hasn't added yet may still come.
 --- @field _matched integer|nil The look the values call for.
@@ -64,6 +64,14 @@ function Follow:expressions()
   return expressions
 end
 
+--- Watch the Show whens. The engine's other names aren't this to restart.
+--- @private
+function Follow:_subscribe()
+  for name in pairs(self:expressions()) do
+    self._engine:subscribeExpression(name)
+  end
+end
+
 --- @return integer|nil id The look the values call for.
 function Follow:matched()
   return self._matched
@@ -88,7 +96,7 @@ function Follow:start(active)
     self._booting = false
     self:evaluate()
   end)
-  self._engine:resubscribeAll()
+  self:_subscribe()
   self:evaluate()
 end
 
@@ -103,7 +111,7 @@ function Follow:setActive(active)
     return
   end
   self._active = true
-  self._engine:resubscribeAll()
+  self:_subscribe()
   self:evaluate()
 end
 

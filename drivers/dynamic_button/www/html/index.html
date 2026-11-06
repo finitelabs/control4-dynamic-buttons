@@ -1738,7 +1738,7 @@ var CUSTOM_COLORS = ['color', 'body', 'tile', 'symbol', 'glowColor'];
 var BADGE_PLACES = ['Top Right', 'Bottom Right', 'Under'];
 var BADGE_MAX = 5;
 var BADGE_EVERY = 60;
-function isLiveText(text) { return /PARAM\s*\{/.test(String(text || '')); }
+function isLiveText(text) { return /PARAM\s*\{[^,}]*,[^}]*\}/.test(String(text || '')); }
 function customOf(l) { return l.custom || (l.custom = {}); }
 // The colors the pickers show: the look's own, else the picture's, with a glow that follows Color.
 function shownColors(l) {
@@ -2138,7 +2138,8 @@ function syncWhenRows() {
   var wasHidden = $('fld-when').hidden;
   ['fld-when', 'fld-when-preview', 'fld-default'].forEach(function(id) { $(id).hidden = !byValue(); });
   if (!byValue()) {
-    $('fld-when-browser').hidden = true;
+    // The list may be the badge's, which stays open under any Look Control.
+    if (gVarBox === 'f-when') $('fld-when-browser').hidden = true;
     setHelpOpen(false);
   } else if (wasHidden) {
     syncWhen(); // a hidden box had no height to measure
@@ -2184,15 +2185,15 @@ function syncHighlight() {
   box.style.height = Math.max(64, box.scrollHeight) + 'px';
 }
 
-// The variables the text reads, by "device:variable" as it writes them.
-function usedTokens() {
+// The variables a box's text reads, by "device:variable" as it writes them.
+function usedTokens(boxId) {
   var used = {}, re = /PARAM\s*\{\s*([^,}]*?)\s*,\s*([^}]*?)\s*\}/g, m;
-  while ((m = re.exec($(gVarBox).value)) !== null) used[m[1] + ':' + m[2]] = true;
+  while ((m = re.exec($(boxId).value)) !== null) used[m[1] + ':' + m[2]] = true;
   return used;
 }
 
 function updateWatchCount() {
-  var n = Object.keys(usedTokens()).length;
+  var n = Object.keys(usedTokens('f-when')).length;
   $('when-watch').hidden = !n;
   $('when-watch').textContent = 'Watching ' + n + ' reference' + (n === 1 ? '' : 's');
 }
@@ -2402,7 +2403,7 @@ function fetchVars(id) {
 }
 
 function renderVarTree() {
-  var q = $('var-search').value.trim().toLowerCase(), used = usedTokens();
+  var q = $('var-search').value.trim().toLowerCase(), used = usedTokens(gVarBox);
   var has = function(text) { return String(text || '').toLowerCase().indexOf(q) >= 0; };
   var lastRoom = null, html = '';
   gDevices.forEach(function(d) {
