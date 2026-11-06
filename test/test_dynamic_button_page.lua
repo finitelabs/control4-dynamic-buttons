@@ -305,7 +305,7 @@ T.truthy(
 T.truthy("and the editor says so", has("'One color, so Icon color applies.'"))
 T.truthy(
   "Icon color shows for a picture only when it's one color",
-  has("$('fld-icon-color').hidden = whole || (isPicture(l.icon) && !pictureOneColor(l.icon));")
+  has("$('fld-icon-color').hidden = whole || !!every || (isPicture(l.icon) && !pictureOneColor(l.icon));")
 )
 T.truthy(
   "an SVG is at most what the driver keeps",
@@ -319,7 +319,7 @@ T.truthy(
 )
 T.truthy(
   "a fetched picture is named by its address's last part",
-  has("var p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));")
+  has("p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));")
 )
 T.truthy(
   "never by its login, query or fragment",
@@ -345,6 +345,55 @@ T.truthy(
   "a look names a kept picture by id alone",
   has("    delete out.body;\n    delete out.carried;\n    out.stored = true;")
 )
+
+T.section("A picture from a web address that refreshes")
+local refreshOptions = page:match('<select id="mi%-every">(.-)</select>') or ""
+T.contains("the Refresh row offers Once first", refreshOptions, '<option value="0">Once, when saved</option>')
+for _, choice in ipairs({ '60">Every minute', '300">Every 5 minutes', '900">Every 15 minutes', '3600">Every hour' }) do
+  T.contains("and " .. choice:match(">(.*)$"), refreshOptions, choice)
+end
+T.truthy("it shows with the Web address panel", has("$('fld-mine-every').hidden = !mine || gMineHow !== 'web';"))
+T.truthy(
+  "and says why less often is better",
+  has("Each refresh writes to the controller’s storage, so less often is better.")
+)
+T.truthy("only a PNG or JPEG refreshes", has("mineMessage('A picture that refreshes has to be a PNG or JPEG.', true)"))
+T.truthy(
+  "kept as fetched, not redrawn",
+  has("p = { kind: kind, b64: b64, width: pic.width, height: pic.height, name: nameFromUrl(url), every: every };")
+)
+T.truthy(
+  "the tile, its colors, Icon and Badge hide for it",
+  has("$('fld-shape').hidden = whole || !!every;")
+    and has("$('customize').hidden = !l.icon || !!every;")
+    and has("$('badge-section').hidden = !l.icon || !!every;")
+)
+T.truthy(
+  "its preview is the picture fitted whole, nothing drawn on it",
+  has("ctx.drawImage(shot, (size - w) / 2, (size - h) / 2, w, h);")
+)
+T.truthy(
+  "Save Look draws and sends no picture for it",
+  has("if (!every && (!before || !before.hasImage || before.stale")
+)
+T.truthy(
+  "the controller fetches it again to keep it",
+  has("sendCommand('_ADD_WEB_PICTURE', { request: request, url: rec.url, every: rec.every });")
+)
+T.truthy(
+  "a kept one gone from the button is fetched again, not uploaded",
+  has("if (rec && rec.every) return keepWebPicture(rec, src);")
+)
+T.truthy(
+  "opening its look restores Address and Refresh",
+  has("$('mi-url').value = opened.url || '';") and has("$('mi-every').value = String(opened.every);")
+)
+T.truthy("the grid tags it with how often", has("tag.textContent = rec.every ? REFRESH_TAGS[rec.every] || '' : 'SVG';"))
+T.truthy(
+  "the picked line says how often and how its last refresh went",
+  has("', refreshed ' + esc(REFRESH_WORDS[every] || '')")
+)
+T.truthy("the list shows a failed refresh", has("function refreshLines(l) {"))
 
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))

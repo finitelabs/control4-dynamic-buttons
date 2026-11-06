@@ -410,6 +410,19 @@
             </div>
             <div class="fnote">Fetched by the controller, so an address on the home network works.</div>
           </div>
+          <div class="frow" id="fld-mine-every" hidden>
+            <label for="mi-every">Refresh</label>
+            <div class="fctl">
+              <select id="mi-every">
+                <option value="0">Once, when saved</option>
+                <option value="60">Every minute</option>
+                <option value="300">Every 5 minutes</option>
+                <option value="900">Every 15 minutes</option>
+                <option value="3600">Every hour</option>
+              </select>
+            </div>
+            <div class="fnote">Once: drawn like an upload, with its tile, size and badge. Refreshed: shown as the site sends it, with no tile, size or badge. Each refresh writes to the controller’s storage, so less often is better.</div>
+          </div>
           <div class="frow" id="fld-mine-msg" hidden>
             <span></span>
             <div class="mi-msg" id="mi-msg" role="status"></div>
@@ -1098,6 +1111,17 @@ async function drawLook(canvas, look) {
   var size = canvas.width, ctx = canvas.getContext('2d');
   var turn = canvas.drawTurn = (canvas.drawTurn || 0) + 1;
   if (!look.icon || look.icon.missing) { ctx.clearRect(0, 0, size, size); return; }
+  if (pictureEvery(look.icon)) {
+    // As the site sends it, fitted whole into the tile's picture: nothing drawn on or around it.
+    var web = gSources[look.icon.id];
+    if (!web || !web.b64) { ctx.clearRect(0, 0, size, size); return; }
+    var shot = await loadImage('data:image/' + web.kind + ';base64,' + web.b64);
+    if (turn !== canvas.drawTurn) return;
+    var fit = Math.min(size / shot.width, size / shot.height), w = shot.width * fit, h = shot.height * fit;
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(shot, (size - w) / 2, (size - h) / 2, w, h);
+    return;
+  }
   var c = look.custom || {}, badge = c.badge && c.badge.text ? c.badge : null;
   // A live badge draws what it reads now, and nothing until that is known.
   if (badge && isLiveText(badge.text)) badge = look.badgeNow ? Object.assign({}, badge, { text: look.badgeNow }) : null;
@@ -1385,7 +1409,7 @@ async function renderList() {
       (byValue() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the values call for a different look.">Matched</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
-      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(iconName(l.icon)) + ' · ' + esc(l.tileShape) + '</div>' + whenLines(l) + badgeLines(l) + '</div>' +
+      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(iconName(l.icon)) + ' · ' + esc(pictureEvery(l.icon) ? 'Refreshed ' + REFRESH_WORDS[pictureEvery(l.icon)] : l.tileShape) + '</div>' + refreshLines(l) + whenLines(l) + badgeLines(l) + '</div>' +
       '<div class="acts">' +
         '<button class="btn btn-secondary sm" type="button" data-act="show" data-id="' + id + '"' + (l.hasImage && id !== gState.shown ? '' : ' disabled') + '>Show</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
@@ -1584,6 +1608,7 @@ function renderPicker() {
   $('fld-mine-how').hidden = !mine;
   $('fld-mine-msg').hidden = !mine || !$('mi-msg').textContent;
   ['upload', 'svg', 'web'].forEach(function(how) { $('fld-mine-' + how).hidden = !mine || gMineHow !== how; });
+  $('fld-mine-every').hidden = !mine || gMineHow !== 'web';
   $('pk-q').placeholder = online ? 'Search free icon libraries' : 'Search pictures';
   if (mine) { renderMine(); return; }
   if (online) return;
@@ -1820,6 +1845,19 @@ var MINE_SIDE = 600, MINE_SVG_MAX = 64 * 1024, MINE_SVG_READ = 1024 * 1024, MINE
 var gSources = {}, gNewPictures = [], gNewSeq = 0, gMineHow = 'upload', gPieces = {}, gFetch = null;
 
 function isPicture(icon) { return !!icon && /^mine:/.test(String(icon.id)); }
+// A picture from a web address that refreshes is shown as the site sends it: these say how often.
+var REFRESH_TAGS = { 60: '1 min', 300: '5 min', 900: '15 min', 3600: '1 hr' };
+var REFRESH_WORDS = { 60: 'every minute', 300: 'every 5 minutes', 900: 'every 15 minutes', 3600: 'every hour' };
+function pictureEvery(icon) {
+  var rec = isPicture(icon) && pictureRecord(icon.id);
+  return rec && rec.every ? Number(rec.every) : 0;
+}
+// When a refreshing picture last refreshed, or why its last refresh failed, as a sentence.
+function refreshStatus(rec) {
+  if (!rec || !rec.every) return '';
+  if (rec.error) return 'Last refresh failed: ' + rec.error;
+  return rec.refreshedAt ? 'Last refreshed ' + new Date(rec.refreshedAt * 1000).toLocaleString() + '.' : '';
+}
 function pictureRecord(id) {
   return (gState.pictures || []).concat(gNewPictures).find(function(p) { return p.id === id; }) || null;
 }
@@ -1843,7 +1881,7 @@ function base64FromUtf8(text) {
 }
 function setSource(id, kind, b64) {
   var rec = pictureRecord(id);
-  gSources[id] = { kind: kind, b64: b64, body: pictureBody(kind, b64), name: rec ? rec.name : '' };
+  gSources[id] = { kind: kind, b64: b64, body: pictureBody(kind, b64), name: rec ? rec.name : '', url: rec && rec.url, every: rec && rec.every };
   sourcesChanged(id);
 }
 // The icon a look uses for a picture: kept ones go by id, a new one until Save Look keeps it.
@@ -2067,12 +2105,13 @@ function mineMessage(text, bad) {
 function addNewPicture(p) {
   if (!gEditor.look) return;
   var id = 'mine:new-' + (++gNewSeq);
-  var rec = { id: id, kind: p.kind, width: p.width, height: p.height, name: p.name };
+  var rec = { id: id, kind: p.kind, width: p.width, height: p.height, name: p.name, url: p.url, every: p.every };
   gNewPictures.push(rec);
-  gSources[id] = { kind: p.kind, b64: p.b64, body: pictureBody(p.kind, p.b64), name: p.name };
+  gSources[id] = { kind: p.kind, b64: p.b64, body: pictureBody(p.kind, p.b64), name: p.name, url: p.url, every: p.every };
   pickIcon(pictureIcon(rec));
   renderMine();
-  mineMessage(p.kind === 'svg' ? (p.oneColor ? 'One color, so Icon color applies.' : 'Its own colors stay.') : '');
+  mineMessage(p.every ? 'Shown as the site sends it, refreshed ' + REFRESH_WORDS[p.every] + '.'
+    : p.kind === 'svg' ? (p.oneColor ? 'One color, so Icon color applies.' : 'Its own colors stay.') : '');
 }
 async function addPictureFile(file) {
   if (!file) return;
@@ -2086,6 +2125,7 @@ async function addPictureFile(file) {
 }
 function renderMine() {
   ['upload', 'svg', 'web'].forEach(function(how) { $('fld-mine-' + how).hidden = gMineHow !== how; });
+  $('fld-mine-every').hidden = gMineHow !== 'web';
   document.querySelectorAll('#mi-how button').forEach(function(b) { b.classList.toggle('on', b.dataset.how === gMineHow); });
   var used = {};
   gState.looks.forEach(function(l) { if (l.icon) used[l.icon.id] = true; });
@@ -2109,10 +2149,10 @@ function renderMine() {
       t.textContent = src && src.gone ? 'Gone' : '…';
       b.appendChild(t);
     }
-    if (rec.kind === 'svg') {
+    if (rec.kind === 'svg' || rec.every) {
       var tag = document.createElement('span');
       tag.className = 'mi-tag';
-      tag.textContent = 'SVG';
+      tag.textContent = rec.every ? REFRESH_TAGS[rec.every] || '' : 'SVG';
       b.appendChild(tag);
     }
     return b;
@@ -2169,7 +2209,7 @@ function fetchPicture() {
   if (!gApiHost) { mineMessage('Opened outside Composer, there is no controller to fetch the address.', true); return; }
   // A letter first: an id of digits alone reaches the page as a number.
   var request = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  gFetch = { request: request, url: url, look: gEditor.look };
+  gFetch = { request: request, url: url, look: gEditor.look, every: Number($('mi-every').value) || 0 };
   mineMessage('Fetching…');
   $('mi-fetch').disabled = true;
   sendCommand('_FETCH_PICTURE', { request: request, url: url });
@@ -2181,7 +2221,7 @@ async function onFetched(params) {
   if (!gFetch || String(params.request) !== gFetch.request) return;
   // An answer for an editor that closed, or moved to another look, is dropped.
   if (!gEditor.look || gEditor.look !== gFetch.look) { delete gPieces['fetch ' + gFetch.request]; gFetch = null; $('mi-fetch').disabled = false; return; }
-  var url = gFetch.url, look = gFetch.look;
+  var url = gFetch.url, look = gFetch.look, every = gFetch.every;
   if (params.error) { gFetch = null; $('mi-fetch').disabled = false; mineMessage(params.error, true); return; }
   var b64 = joinPieces('fetch ' + params.request, params);
   if (b64 == null) return;
@@ -2190,10 +2230,26 @@ async function onFetched(params) {
   try {
     var bin = atob(b64), bytes = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    var p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));
+    var p;
+    if (every) {
+      // Kept as the site sends it, so only what the Control4 app shows as it is: a PNG or JPEG.
+      var kind = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47 ? 'png'
+        : bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF ? 'jpeg' : null;
+      if (!kind) { mineMessage('A picture that refreshes has to be a PNG or JPEG.', true); return; }
+      var pic = await loadImage('data:image/' + kind + ';base64,' + b64);
+      p = { kind: kind, b64: b64, width: pic.width, height: pic.height, name: nameFromUrl(url), every: every };
+    } else {
+      p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));
+    }
+    p.url = url;
     if (gEditor.look === look) addNewPicture(p);
   } catch (e) { mineMessage(e.message, true); }
 }
+// A new refresh for the picture fetched from the address in the box fetches it again, kept the new way.
+$('mi-every').addEventListener('change', function() {
+  var url = $('mi-url').value.trim(), icon = gEditor.look && gEditor.look.icon, src = icon && gSources[icon.id];
+  if (url && src && src.url === url) fetchPicture();
+});
 $('mi-fetch').addEventListener('click', fetchPicture);
 $('mi-url').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); fetchPicture(); } });
 
@@ -2201,7 +2257,8 @@ $('mi-url').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e
 // A kept picture the driver has since deleted is sent again from the page's copy, under a new id.
 async function keepPicture(icon) {
   var src = gSources[icon.id];
-  var rec = pictureRecord(icon.id) || (src && { id: icon.id, kind: src.kind, width: icon.width, height: icon.height, name: src.name || icon.label || 'Picture' });
+  var rec = pictureRecord(icon.id) || (src && { id: icon.id, kind: src.kind, width: icon.width, height: icon.height, name: src.name || icon.label || 'Picture', url: src.url, every: src.every });
+  if (rec && rec.every) return keepWebPicture(rec, src);
   if (!rec || !src || !src.b64) { setStatus('This button no longer has that picture. Pick another.', true); return null; }
   if (!gApiHost) {
     var n = (gState.pictures || []).reduce(function(m, p) { return Math.max(m, Number(String(p.id).split(':p')[1]) || 0); }, 0) + 1;
@@ -2225,6 +2282,28 @@ async function keepPicture(icon) {
   var done = await stored;
   if (!done || done.error || !done.picture) { setStatus('Your picture was not kept' + (done && done.error ? ': ' + done.error : '.'), true); return null; }
   gSources[done.picture] = src;
+  gNewPictures = gNewPictures.filter(function(p) { return p.id !== rec.id; });
+  return String(done.picture);
+}
+
+// A picture that refreshes is kept as the site sends it, so the controller fetches it itself rather
+// than the page sending back what it fetched.
+async function keepWebPicture(rec, src) {
+  if (!rec.url) { setStatus('Fetch the address again.', true); return null; }
+  if (!gApiHost) {
+    var n = (gState.pictures || []).reduce(function(m, p) { return Math.max(m, Number(String(p.id).split(':p')[1]) || 0); }, 0) + 1;
+    var kept = Object.assign({}, rec, { id: 'mine:p' + n, refreshedAt: Math.floor(Date.now() / 1000) });
+    gState.pictures = (gState.pictures || []).concat([kept]);
+    if (src) gSources[kept.id] = src;
+    gNewPictures = gNewPictures.filter(function(p) { return p.id !== rec.id; });
+    return kept.id;
+  }
+  setStatus('The controller is fetching your picture…');
+  var request = 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  var stored = waitFor('PICTURE_STORED', 60000);
+  sendCommand('_ADD_WEB_PICTURE', { request: request, url: rec.url, every: rec.every });
+  var done = await stored;
+  if (!done || done.error || !done.picture) { setStatus('Your picture was not kept' + (done && done.error ? ': ' + done.error : '.'), true); return null; }
   gNewPictures = gNewPictures.filter(function(p) { return p.id !== rec.id; });
   return String(done.picture);
 }
@@ -2467,16 +2546,16 @@ function titleCase(s) {
 }
 
 function preview() {
-  var l = gEditor.look, whole = !!packOf(l.icon);
-  // Only the rows the picked picture can use are shown.
+  var l = gEditor.look, whole = !!packOf(l.icon), every = pictureEvery(l.icon);
+  // Only the rows the picked picture can use are shown: none for one shown as its site sends it.
   var tiled = l.tileShape && l.tileShape !== 'None';
-  $('fld-shape').hidden = whole;
-  $('fld-icon-color').hidden = whole || (isPicture(l.icon) && !pictureOneColor(l.icon));
-  $('fld-tile-color').hidden = whole || !tiled;
+  $('fld-shape').hidden = whole || !!every;
+  $('fld-icon-color').hidden = whole || !!every || (isPicture(l.icon) && !pictureOneColor(l.icon));
+  $('fld-tile-color').hidden = whole || !!every || !tiled;
   $('fld-glow').hidden = !hasGlow(l.icon) || !!l.grayscale;
   var keys = customKeysFor(l.icon), badgeOn = !!String(badgeOf(l).text || '').trim();
-  $('customize').hidden = !l.icon;
-  $('badge-section').hidden = !l.icon;
+  $('customize').hidden = !l.icon || !!every;
+  $('badge-section').hidden = !l.icon || !!every;
   ['color', 'body', 'tile', 'symbol'].forEach(function(key) { $('fld-c-' + key).hidden = keys.indexOf(key) < 0; });
   $('fld-c-glowcolor').hidden = keys.indexOf('glowColor') < 0 || !!l.grayscale;
   $('c-glow-note').hidden = !pictureKind(l.icon).glowFollows;
@@ -2486,7 +2565,8 @@ function preview() {
   $('f-icon-color-v').textContent = l.iconColor;
   $('f-tile-color-v').textContent = l.tileColor;
   $('picked').innerHTML = !gEditor.icon ? 'No icon picked.'
-    : isPicture(gEditor.icon) ? 'Your picture: <b>' + esc(iconName(gEditor.icon)) + '</b>'
+    : isPicture(gEditor.icon) ? 'Your picture: <b>' + esc(iconName(gEditor.icon)) + '</b>' + (every ? ', refreshed ' + esc(REFRESH_WORDS[every] || '') +
+      (refreshStatus(pictureRecord(gEditor.icon.id)) ? '. <span class="lic">' + esc(refreshStatus(pictureRecord(gEditor.icon.id))) + '</span>' : '') : '')
     : 'Icon: <b>' + esc(gEditor.icon.id) + '</b> <span class="lic">(' + esc(gEditor.icon.license || 'license unknown') + ')</span>';
   // Drawn as it will be saved: only what the picture can use, and nothing for its own look.
   var drawn = Object.assign({}, l, { custom: cleanCustom(l.icon, l.custom) });
@@ -2522,6 +2602,14 @@ function openEditor(look, title) {
   gNewPictures = [];
   mineMessage('');
   if (isPicture(gEditor.look.icon)) $('pk-src').value = SOURCE_MINE;
+  var opened = isPicture(gEditor.look.icon) && pictureRecord(gEditor.look.icon.id);
+  if (opened && opened.every) {
+    gMineHow = 'web';
+    $('mi-url').value = opened.url || '';
+    $('mi-every').value = String(opened.every);
+  } else {
+    $('mi-every').value = '0';
+  }
   $('editor-title').textContent = title || (look ? 'Edit ' + look.name : 'New look');
   $('f-name').value = gEditor.look.name;
   $('f-icon-color').value = gEditor.look.iconColor.toLowerCase();
@@ -2578,9 +2666,12 @@ async function saveLook() {
   $('save').disabled = true;
   try {
     var before = l.id != null ? gState.looks.find(function(o) { return o.id === l.id; }) : null;
-    var custom = cleanCustom(l.icon, l.custom), drawn = Object.assign({}, l, { custom: custom });
+    // A picture that refreshes is served as its site sends it: the controller has it, so nothing is drawn.
+    var every = pictureEvery(l.icon);
+    if (every) Object.assign(l, { tileShape: 'None', glow: 100, grayscale: false, custom: {} });
+    var custom = every ? null : cleanCustom(l.icon, l.custom), drawn = Object.assign({}, l, { custom: custom });
     var b64 = null;
-    if (!before || !before.hasImage || before.stale || !sameDrawing(before, drawn)) {
+    if (!every && (!before || !before.hasImage || before.stale || !sameDrawing(before, drawn))) {
       setStatus('Drawing the picture…');
       // The picture a live badge goes on is stored without it: the controller draws the badge.
       var dataUrl = await lookDataUrl(Object.assign({}, drawn, { badgeNow: null }), 300);
@@ -2853,6 +2944,10 @@ function friendlyError(raw, template, rendered) {
 }
 
 // A live badge's text, and what stops it reading.
+function refreshLines(l) {
+  var rec = pictureEvery(l.icon) && pictureRecord(l.icon.id);
+  return rec && rec.error ? '<div class="sub bad" title="' + esc(rec.error) + '">' + esc(refreshStatus(rec)) + '</div>' : '';
+}
 function badgeLines(l) {
   if (!l.badgeText) return '';
   return '<div class="sub" title="' + esc(l.badgeText) + '">Badge ' + esc(l.badgeText) + '</div>' +
