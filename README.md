@@ -35,6 +35,7 @@ the programming you attach to it.
     - [Icon Packs](#icon-packs)
     - [Free Icon Libraries](#free-icon-libraries)
     - [My Images](#my-images)
+    - [Copy To, Export and Import](#copy-to-export-and-import)
   - [Cycling Through Looks](#cycling-through-looks)
   - [Following a Value](#following-a-value)
     - [Show When Syntax](#show-when-syntax)
@@ -67,6 +68,8 @@ the programming you attach to it.
   fourteen free icon packs
 - Your own pictures: an uploaded file, pasted SVG, or a picture from a web
   address, kept as fetched or refreshed on a schedule
+- Looks copied to other Dynamic Buttons in the project, or exported to a file
+  and imported into a button in another project
 - Three icon packs of 100 subjects each: Classic Device and Classic Tile, which
   match the OS 3 look, and Modern, which matches the X4 look, with on, off and
   alert pictures where a subject has states
@@ -336,6 +339,37 @@ Except on a picture that refreshes, `Tile shape`, `Tile color`, `Grayscale`,
 `Save Look` sends a new picture to the controller before the look. Your pictures
 are kept with the button: one that no look uses is deleted 10 minutes after it
 was added, and all of them go when the button is deleted or reset.
+
+### Copy To, Export and Import
+
+<img alt="Button tab - Copy To" src="./images/ui-copy-looks.png" width="640"/>
+
+1. **Copy To…** - copies looks to other Dynamic Buttons in this project. It is
+   off when the button has no looks or the project has no other Dynamic Button.
+1. **Copy these looks** - the looks to copy. All of them are checked to start.
+1. **To these Dynamic Buttons** - the buttons to copy them to, by room and name.
+1. **Add to their looks / Replace their looks** - `Add` puts the looks after a
+   button's own, as many as fit in its eight. `Replace` deletes a button's looks
+   first, and the default look among the copies becomes its default.
+1. **Copy** - copies to one button after another and shows a line for each: how
+   many looks it got, how many didn't fit, and what stopped it.
+
+A copy brings everything a look has: its picture, colors, tile shape, `Cycle`,
+`Show when` and badge. Your own pictures go with the looks and are kept by the
+other button as its own, and a picture that refreshes is fetched by the other
+button from the same address. A look whose name the other button already uses
+gets the next number. A button without an active license keeps its looks and
+gets none.
+
+`Export` saves the button's looks and your own pictures in one file named after
+the button, ending in `.dynamic-button.json`.
+
+`Import…` opens such a file and lists its looks, with
+`Add to this button's looks` or `Replace this button's looks`. A picture in the
+file goes through the same checks as an uploaded file or pasted SVG, and a look
+that uses an icon this driver doesn't have is left out. `Show when` and badge
+text name devices by their id in the project the file came from, so check them
+after importing into another project.
 
 ## Cycling Through Looks
 
@@ -645,6 +679,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   again every minute, 5 minutes, 15 minutes or hour while its look shows, and
   shows it as the site sends it, with Refresh Web Picture and Set Web Address
   commands
+- Added Copy To, Export and Import to the Looks card: chosen looks, with their
+  own pictures, go to other Dynamic Buttons in the project, added to or
+  replacing theirs, or to a file that another button imports
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick
