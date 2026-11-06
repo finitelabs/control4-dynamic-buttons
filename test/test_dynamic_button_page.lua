@@ -394,6 +394,19 @@ T.truthy(
   has("', refreshed ' + esc(REFRESH_WORDS[every] || '')")
 )
 T.truthy("the list shows a failed refresh", has("function refreshLines(l) {"))
+T.truthy(
+  "a picture whose source changed is asked for again",
+  has("if (p.source && src && !src.pending && src.source !== p.source) {") and has("delete gSources[p.id];")
+)
+T.truthy(
+  "a refreshing picture is named here from its address, since the driver keeps no name from one",
+  has("function pictureName(rec) { return rec.every && rec.url ? nameFromUrl(rec.url) : rec.name; }")
+)
+T.truthy("an address with no path names nothing from the address", has("return last || 'Web picture';"))
+T.truthy(
+  "the badge's comment still sits over its lines",
+  has("// A live badge's text, and what stops it reading.\nfunction badgeLines(l) {")
+)
 
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))

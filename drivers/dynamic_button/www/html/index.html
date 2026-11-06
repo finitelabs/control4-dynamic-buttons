@@ -1294,6 +1294,14 @@ function onState(state) {
   // The driver leaves these out when it has none, so the last state's can't carry over.
   gState = Object.assign(gState, { shown: null, defaultLook: null, matched: null }, state || {});
   if (!Array.isArray(gState.pictures)) gState.pictures = [];
+  // A picture that refreshes has new bytes when its source changes: the next draw asks for them.
+  gState.pictures.forEach(function(p) {
+    var src = gSources[p.id];
+    if (p.source && src && !src.pending && src.source !== p.source) {
+      delete gSources[p.id];
+      if (gEditor.look && gEditor.look.icon && gEditor.look.icon.id === p.id) requestPicture(p.id);
+    }
+  });
   gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
   renderList();
@@ -1376,7 +1384,7 @@ $('control-mode').addEventListener('change', function(e) { setProperty(e.target)
 function iconName(icon) {
   if (!icon) return '';
   var rec = isPicture(icon) && pictureRecord(icon.id);
-  return rec ? rec.name : (isPicture(icon) ? 'Your picture' : icon.id);
+  return rec ? pictureName(rec) : (isPicture(icon) ? 'Your picture' : icon.id);
 }
 
 function deleteWarning(name) {
@@ -1845,6 +1853,9 @@ var MINE_SIDE = 600, MINE_SVG_MAX = 64 * 1024, MINE_SVG_READ = 1024 * 1024, MINE
 var gSources = {}, gNewPictures = [], gNewSeq = 0, gMineHow = 'upload', gPieces = {}, gFetch = null;
 
 function isPicture(icon) { return !!icon && /^mine:/.test(String(icon.id)); }
+// The driver keeps no name from a refreshing picture's address, which can hold a token: this one is
+// the address's last part.
+function pictureName(rec) { return rec.every && rec.url ? nameFromUrl(rec.url) : rec.name; }
 // A picture from a web address that refreshes is shown as the site sends it: these say how often.
 var REFRESH_TAGS = { 60: '1 min', 300: '5 min', 900: '15 min', 3600: '1 hr' };
 var REFRESH_WORDS = { 60: 'every minute', 300: 'every 5 minutes', 900: 'every 15 minutes', 3600: 'every hour' };
@@ -1881,14 +1892,14 @@ function base64FromUtf8(text) {
 }
 function setSource(id, kind, b64) {
   var rec = pictureRecord(id);
-  gSources[id] = { kind: kind, b64: b64, body: pictureBody(kind, b64), name: rec ? rec.name : '', url: rec && rec.url, every: rec && rec.every };
+  gSources[id] = { kind: kind, b64: b64, body: pictureBody(kind, b64), name: rec ? rec.name : '', url: rec && rec.url, every: rec && rec.every, source: rec && rec.source };
   sourcesChanged(id);
 }
 // The icon a look uses for a picture: kept ones go by id, a new one until Save Look keeps it.
 function pictureIcon(rec) {
   var src = gSources[rec.id];
   return { id: rec.id, stored: !/^mine:new-/.test(rec.id), width: rec.width, height: rec.height, license: '', licenseUrl: '',
-    label: nameFromFile(rec.name), body: src && src.body || '' };
+    label: nameFromFile(pictureName(rec)), body: src && src.body || '' };
 }
 function requestPicture(id) {
   if (gSources[id] || /^mine:new-/.test(id)) return;
@@ -2085,7 +2096,7 @@ function nameFromUrl(url) {
   try {
     var u = new URL(url), last = u.pathname.split('/').filter(Boolean).pop() || '';
     try { last = decodeURIComponent(last); } catch (e) {}
-    return last || u.hostname || 'Picture';
+    return last || 'Web picture';
   } catch (e) { return 'Picture'; }
 }
 // A look's name from a file's name or an address's last part.
@@ -2137,7 +2148,7 @@ function renderMine() {
     b.type = 'button';
     b.className = 'icon mi-cell' + (gEditor.icon && gEditor.icon.id === rec.id ? ' on' : '');
     b.dataset.id = rec.id;
-    b.title = rec.name;
+    b.title = pictureName(rec);
     if (src && src.b64) {
       var img = document.createElement('img');
       img.alt = '';
@@ -2943,11 +2954,13 @@ function friendlyError(raw, template, rendered) {
   return (m[1] === 'compile' ? friendlyCompile : friendlyRuntime)(m[2]).replace(/__p(\[\d+\])?/g, 'a variable');
 }
 
-// A live badge's text, and what stops it reading.
+// Why a look's picture from a web address didn't refresh.
 function refreshLines(l) {
   var rec = pictureEvery(l.icon) && pictureRecord(l.icon.id);
   return rec && rec.error ? '<div class="sub bad" title="' + esc(rec.error) + '">' + esc(refreshStatus(rec)) + '</div>' : '';
 }
+
+// A live badge's text, and what stops it reading.
 function badgeLines(l) {
   if (!l.badgeText) return '';
   return '<div class="sub" title="' + esc(l.badgeText) + '">Badge ' + esc(l.badgeText) + '</div>' +
