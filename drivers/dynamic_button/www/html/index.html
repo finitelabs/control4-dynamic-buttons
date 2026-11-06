@@ -2007,7 +2007,7 @@ function openEditor(look, title) {
   $('f-in-cycle').checked = gEditor.look.inCycle !== false;
   $('f-glow').value = gEditor.look.glow;
   $('f-grayscale').checked = gEditor.look.grayscale;
-  gEditor.look.isDefault = !!look && gState.defaultLook === look.id;
+  gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;
   $('f-when').value = gEditor.look.showWhen || '';
   $('f-default').checked = gEditor.look.isDefault;
   $('fld-when-browser').hidden = true;
