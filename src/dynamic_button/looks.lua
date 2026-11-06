@@ -25,8 +25,9 @@ local log = require("lib.logging")
 --- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
 --- @field custom? LookCustom How the look changes its picture; the picture as it comes without the field.
 --- @field showWhen? string When Look Control's By Value shows the look, an expression; never true without the field.
---- @field image? { bytes: integer, stale?: boolean } The drawn picture, once the Button tab has sent it;
---- stale while the look's fields have changed since it was drawn.
+--- @field image? { bytes: integer, stale?: boolean, version?: integer } The drawn picture, once the Button
+--- tab has sent it; stale while the look's fields have changed since it was drawn. Its version is the
+--- number it's served under.
 
 --- @class LookBadge
 --- @field text string Up to `Looks.MAX_BADGE` characters, or with a variable up to
@@ -543,13 +544,14 @@ end
 --- Record that a look's picture arrived, or with nil that it is gone.
 --- @param id integer
 --- @param bytes integer|nil
+--- @param version? integer The number it's served under (optional).
 --- @return Look|nil look
-function Looks:setImage(id, bytes)
+function Looks:setImage(id, bytes, version)
   id = tonumber(id)
   local data = self:_load()
   for _, look in ipairs(data.list) do
     if look.id == id then
-      look.image = bytes and { bytes = bytes } or nil
+      look.image = bytes and { bytes = bytes, version = version } or nil
       self:_save(data)
       return look
     end
