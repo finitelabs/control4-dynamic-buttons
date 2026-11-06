@@ -1002,24 +1002,21 @@ function UIR._GET_DEVICES()
 end
 
 --- The other Dynamic Buttons in the project, by room and name, for Copy To, and this one's own name
---- for an export's file. C4iNames lists every device of a driver alongside any ids asked for, so each
---- entry is checked as this driver's.
+--- for an export's file. Asked for no device ids, C4iNames lists only this driver's items.
 function UIR._GET_BUTTONS()
   log:trace("UIR._GET_BUTTONS()")
-  local own, file = tointeger(C4:GetDeviceID()), C4:GetDriverFileName()
+  local own = tointeger(C4:GetDeviceID())
   local buttons, self = {}, { id = own, name = "", roomName = "" }
-  for id, device in pairs(C4:GetDevices({ C4iNames = file }) or {}) do
-    if device.driverFileName == file then
-      local entry = {
-        id = tointeger(id),
-        name = tostring(device.deviceName or ("Dynamic Button " .. tostring(id))),
-        roomName = tostring(device.roomName or ""),
-      }
-      if entry.id == own then
-        self = entry
-      else
-        table.insert(buttons, entry)
-      end
+  for id, device in pairs(C4:GetDevices({ C4iNames = C4:GetDriverFileName() }) or {}) do
+    local entry = {
+      id = tointeger(id),
+      name = tostring(device.deviceName or ("Dynamic Button " .. tostring(id))),
+      roomName = tostring(device.roomName or ""),
+    }
+    if entry.id == own then
+      self = entry
+    else
+      table.insert(buttons, entry)
     end
   end
   table.sort(buttons, function(a, b)

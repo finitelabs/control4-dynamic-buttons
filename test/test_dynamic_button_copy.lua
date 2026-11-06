@@ -18,8 +18,6 @@ ShimSetDevices({
   [911] = { deviceName = "EV Charger", driverFileName = FILE, roomName = "Garage" },
   [912] = { deviceName = "Fan", driverFileName = FILE, roomName = "Family Room" },
   [913] = { deviceName = "Bench", driverFileName = FILE, roomName = "Family Room" },
-  [920] = { deviceName = "Porch Light", driverFileName = "light_v2.c4i", roomName = "Porch" },
-  [930] = { deviceName = "Family Room", driverFileName = "roomdevice.c4i" },
 })
 H.start()
 
@@ -30,11 +28,7 @@ local ids = {}
 for _, b in ipairs(buttons) do
   table.insert(ids, b.id)
 end
-T.eq(
-  "the other Dynamic Buttons by room, then name, without this one or another driver's items",
-  ids,
-  { 913, 912, 911, 910 }
-)
+T.eq("the other Dynamic Buttons by room, then name, without this one", ids, { 913, 912, 911, 910 })
 T.eq("each with its name and room", buttons[1], { id = 913, name = "Bench", roomName = "Family Room" })
 T.eq(
   "and this button's own name and room",
