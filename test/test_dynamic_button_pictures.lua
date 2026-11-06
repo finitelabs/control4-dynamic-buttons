@@ -70,6 +70,13 @@ T.eq("SVG markup, after an XML declaration", Pictures.kindOf(SVG), "svg")
 T.eq("SVG after a byte order mark", Pictures.kindOf("\239\187\191 <svg/>"), "svg")
 T.eq("text that isn't SVG is nothing", Pictures.kindOf("<html><body/></html>"), nil)
 T.eq("SVG with a NUL byte is nothing", Pictures.kindOf("<svg>\0</svg>"), nil)
+T.eq(
+  "SVG after comments and a doctype",
+  Pictures.kindOf('<!-- a --><!DOCTYPE svg PUBLIC "x" "y" [ <!ENTITY e "f"> ]>\n<svg/>'),
+  "svg"
+)
+T.eq("a page with SVG inside isn't SVG", Pictures.kindOf("<html><body><svg/></body></html>"), nil)
+T.eq("nor is an element named like it", Pictures.kindOf("<svgx/>"), nil)
 T.eq("a GIF is not kept as it is", Pictures.kindOf("GIF89a...."), nil)
 T.eq("but can be fetched for the tab to draw", Pictures.fetchedKind("GIF89a...."), "gif")
 T.eq("as can a WebP", Pictures.fetchedKind("RIFF\0\0\0\0WEBPVP8 "), "webp")
@@ -90,6 +97,32 @@ T.eq("the files are in the button's storage", ShimFiles("SANDBOX/pictures")["p2.
 T.eq("and load back", pictures:load("mine:p3"), SVG)
 T.eq("a picture it doesn't have loads nothing", pictures:load("mine:p99"), nil)
 T.eq("they list oldest first", #pictures:list(), 3)
+
+T.section("Names")
+T.eq("a file's name is kept", Pictures.safeName(" porch.png "), "porch.png")
+T.eq(
+  "an address keeps its last part, without login, query or fragment",
+  Pictures.safeName("http://admin:secret@camera.local/cgi/snapshot.jpg?token=abc#x"),
+  "snapshot.jpg"
+)
+T.eq("or its host when it has no path", Pictures.safeName("https://user:pw@host.example:8443/?t=1"), "host.example")
+T.eq(
+  "a picture added under an address keeps only that",
+  (library()):add(H.png("n"), { width = 1, height = 1, name = "http://a:b@c.local/x.png?key=1" }).name,
+  "x.png"
+)
+
+T.section("Where a redirect points")
+T.eq(
+  "an absolute address",
+  Pictures.resolve("http://a.local/x/y.png", "https://b.example/z.png"),
+  "https://b.example/z.png"
+)
+T.eq("from the host's root", Pictures.resolve("http://a.local/x/y.png?q=1", "/z.png"), "http://a.local/z.png")
+T.eq("beside the address", Pictures.resolve("http://a.local/x/y.png", "z.png"), "http://a.local/x/z.png")
+T.eq("on a bare host", Pictures.resolve("http://a.local", "z.png"), "http://a.local/z.png")
+T.eq("with the same scheme", Pictures.resolve("https://a.local/x", "//b.example/z.png"), "https://b.example/z.png")
+T.eq("nowhere", Pictures.resolve("http://a.local/x", ""), nil)
 
 T.section("Pictures refused")
 local _, err = pictures:add("<html/>", SIZE)
@@ -309,53 +342,121 @@ H.tab("_GET_PICTURE", { id = "mine:p99" })
 T.eq("one it doesn't have says so", H.lastUi("PICTURE"), { id = "mine:p99", error = "the picture is gone" })
 
 T.section("A picture from a web address")
+local MB2 = Pictures.MAX_FETCH
 local function fetch(url)
   H.mark()
+  H.transfers = {}
   H.tab("_FETCH_PICTURE", { request = "r1", url = url })
   return H.lastUi("FETCHED")
 end
+local function lastTransfer()
+  return H.transfers[#H.transfers]
+end
 H.urlAnswer = function(url)
   if url:find("missing") then
-    return { code = 404, body = "Not Found" }
+    return { code = 404, headers = { ["Content-Type"] = "text/html" }, body = "Not Found" }
   elseif url:find("page") then
-    return { headers = { ["Content-Type"] = "text/html" }, body = "<!doctype html><p>hi</p>" }
+    return { headers = { ["content-type"] = "text/html; charset=utf-8" }, body = "<!doctype html><p>hi</p>" }
+  elseif url:find("stream") then
+    return {
+      headers = { ["Content-Type"] = "multipart/x-mixed-replace; boundary=frame" },
+      body = string.rep("f", 4 * MB2),
+      chunk = 65536,
+    }
   elseif url:find("api") then
     return { headers = { ["Content-Type"] = "application/json" }, body = '{"a":1}' }
+  elseif url:find("declared") then
+    return {
+      headers = { ["Content-Length"] = tostring(MB2 + 1), ["Content-Type"] = "image/jpeg" },
+      body = JPEG .. string.rep("j", MB2),
+      chunk = 65536,
+    }
   elseif url:find("huge") then
-    return { body = JPEG .. string.rep("j", Pictures.MAX_FETCH) }
+    return { headers = { ["Content-Type"] = "image/jpeg" }, body = JPEG .. string.rep("j", 2 * MB2), chunk = 262144 }
+  elseif url:find("slow") then
+    return { timeout = true }
   elseif url:find("nowhere") then
     return { unreachable = true }
+  elseif url:find("github.example/org.png") then
+    return {
+      responses = {
+        { code = 302, headers = { Location = "https://avatars.example/u/1?v=4" }, body = "<a>moved</a>" },
+        { headers = { ["Content-Type"] = "image/png" }, body = H.png("avatar", 900) },
+      },
+    }
+  elseif url:find("handed%-back") then
+    return { code = 301, headers = { location = "/pictures/real.jpg" } }
+  elseif url:find("loop") then
+    return { code = 302, headers = { Location = "/loop" } }
   end
-  return { headers = { ["Content-Type"] = "image/jpeg" }, body = photo }
+  return {
+    headers = { ["Content-Type"] = "image/jpeg", ["Content-Length"] = tostring(#photo) },
+    body = photo,
+    chunk = 1000,
+  }
 end
 fetch("http://camera.local/snapshot.jpg")
 T.eq("the controller fetches it", H.fetched[#H.fetched], "http://camera.local/snapshot.jpg")
+T.eq(
+  "within 20 seconds, reading a refusal's body too",
+  { lastTransfer().options.timeout, lastTransfer().options.fail_on_error },
+  { 20, false }
+)
 got, longest = pieces("FETCHED")
-T.eq("and sends it whole", got, photo)
+T.eq("and sends it whole, from its chunks", got, photo)
 T.eq("in lines the broker can take", longest <= 76, true)
 T.eq("under the tab's request", H.lastUi("FETCHED").request, "r1")
 T.eq("an address that isn't http is refused", fetch("file:///etc/passwd").error, "Enter an http or https address.")
+T.eq("and never fetched", #H.transfers, 0)
 T.eq("a status is told", fetch("http://camera.local/missing.jpg").error, "The address answered with status 404.")
+T.eq("as soon as the headers say it", { lastTransfer().aborted, lastTransfer().chunks }, { true, 0 })
 T.eq(
   "a page isn't a picture",
   fetch("http://camera.local/page").error,
   "The address didn't answer with a PNG, JPEG, GIF, WebP or SVG picture."
 )
+T.eq("and is turned away by its headers", lastTransfer().chunks, 0)
+T.eq(
+  "nor is a camera's stream",
+  fetch("http://camera.local/stream").error,
+  "The address didn't answer with a PNG, JPEG, GIF, WebP or SVG picture."
+)
+T.eq("which is never read", { lastTransfer().aborted, lastTransfer().chunks }, { true, 0 })
 T.eq(
   "nor is a JSON answer",
   fetch("http://camera.local/api").error,
   "The address didn't answer with a PNG, JPEG, GIF, WebP or SVG picture."
 )
 T.eq(
-  "a picture over 2 MB is refused",
+  "a length over 2 MB is refused",
+  fetch("http://camera.local/declared.jpg").error,
+  "The picture at that address is larger than 2 MB."
+)
+T.eq("before any of it arrives", { lastTransfer().aborted, lastTransfer().chunks }, { true, 0 })
+T.eq(
+  "a body that grows past 2 MB is refused",
   fetch("http://camera.local/huge.jpg").error,
   "The picture at that address is larger than 2 MB."
 )
+T.eq("and stopped once it does, not read to the end", { lastTransfer().aborted, lastTransfer().chunks }, { true, 9 })
 T.eq(
   "an address it can't reach says so",
   fetch("http://nowhere.local/a.png").error,
   "The controller couldn't reach that address."
 )
+T.eq(
+  "one that takes too long says so",
+  fetch("http://camera.local/slow.jpg").error,
+  "The address took too long to answer."
+)
+fetch("https://github.example/org.png")
+T.eq("a redirect the controller follows brings the picture", (pieces("FETCHED")), H.png("avatar", 900))
+T.eq("without counting the redirect's own body", H.lastUi("FETCHED").error, nil)
+fetch("http://camera.local/handed-back")
+T.eq("a redirect handed back is followed", H.fetched[#H.fetched], "http://camera.local/pictures/real.jpg")
+T.eq("to the picture", (pieces("FETCHED")), photo)
+T.eq("a redirect loop stops", fetch("http://camera.local/loop").error, "The address answered with status 302.")
+T.eq("after 5 more tries", #H.transfers, 6)
 H.tab("_GET_STATE")
 T.eq("nothing fetched is kept until the tab sends it", #H.state().pictures, 2)
 H.urlAnswer = nil
@@ -379,12 +480,27 @@ H.mark()
 H.tab("_GET_PICTURE", { id = "mine:p2" })
 T.eq("and its file with it", (pieces("PICTURE")), H.png("big", 100 * 1024))
 
+T.section("Deleting a look")
+upload(H.png("doomed"), SIZE)
+local doomedId = H.lastUi("PICTURE_STORED").picture
+H.tab("_SAVE_LOOK", storedFields("Doomed", doomedId))
+local doomed = tonumber(H.lastUi("SAVED").look)
+clock = clock + Pictures.GRACE_SECONDS
+H.tab("_GET_STATE")
+T.eq("its picture stays while the look uses it", H.state().pictures[#H.state().pictures].id, doomedId)
+H.tab("_DELETE_LOOK", { id = doomed })
+local ids = {}
+for _, p in ipairs(H.state().pictures) do
+  ids[p.id] = true
+end
+T.eq("deleting the look deletes its picture, once its time is up", ids[doomedId], nil)
+
 T.section("Reset and removal")
 EC.Reset_Driver({ ["Are You Sure?"] = "Yes" })
 T.eq("Reset Driver deletes every picture", #H.state().pictures, 0)
 T.eq("and its file", next(ShimFiles("SANDBOX/pictures")), nil)
 upload(H.png("again"), SIZE)
-T.eq("ids go on after a reset", H.lastUi("PICTURE_STORED").picture, "mine:p4")
+T.eq("ids go on after a reset", H.lastUi("PICTURE_STORED").picture, "mine:p5")
 OnDriverRemovedFromProject()
 T.eq("removing the button deletes its pictures", next(ShimFiles("SANDBOX/pictures")), nil)
 

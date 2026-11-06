@@ -70,7 +70,9 @@ local pictures = Pictures:new({
   used = function()
     local used = {}
     for _, look in ipairs(looks:list()) do
-      used[look.icon.id] = true
+      if type(look.icon) == "table" then
+        used[look.icon.id] = true
+      end
     end
     return used
   end,
@@ -824,9 +826,9 @@ function UIR._PUT_PICTURE(tParams)
   end
   local picture, addErr = pictures:add(data, { width = params.width, height = params.height, name = params.name })
   if not picture then
-    return pushError(string.format("the picture was not kept: %s", addErr))
+    return pushError(addErr)
   end
-  log:info("Kept picture %s (%d bytes)", picture.name, picture.bytes)
+  log:info("Kept picture %s (%d bytes)", picture.id, picture.bytes)
   return reply("PICTURE_STORED", { picture = picture.id })
 end
 
@@ -853,16 +855,13 @@ function UIR._FETCH_PICTURE(tParams)
   if not address then
     return uiRespond("FETCHED", { request = request, error = err })
   end
-  http:get(address, nil, { timeout = 20 }):next(function(response)
-    local refused = Pictures.checkFetched(response.body)
-    if refused then
+  Pictures.fetch(address, function(body, refused)
+    if not body then
+      log:warn("Fetching a picture failed: %s", refused)
       C4:SendDataToUI("FETCHED", { request = request, error = refused })
       return
     end
-    sendPieces("FETCHED", { request = request }, response.body)
-  end, function(failure)
-    log:warn("Fetching a picture failed: %s", Select(failure, "error") or failure)
-    C4:SendDataToUI("FETCHED", { request = request, error = Pictures.fetchError(failure) })
+    sendPieces("FETCHED", { request = request }, body)
   end)
 end
 

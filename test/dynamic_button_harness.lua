@@ -113,35 +113,80 @@ end
 USER_AGENT = "test"
 H.fetched = {}
 H.iconifyBody = '{"icons":["mdi:battery"],"total":1}'
---- A web server's answer to a fetch, by address: { code, headers, body }, or { unreachable = true }; nil
---- answers as Iconify does.
+--- A web server's answer to a fetch, by address: { code, headers, body, chunk }, a list of them as
+--- { responses = {...} } when the transfer follows a redirect, or { unreachable = true } or
+--- { timeout = true }; nil answers as Iconify does. `chunk` is how many bytes each body chunk carries.
 --- @type fun(url: string): table|nil
 H.urlAnswer = nil
+--- Every transfer started, with its options, the chunks it took and whether a callback stopped it.
+H.transfers = {}
+
+-- C4:url() as the DriverWorks docs describe it: OnHeaders(transfer, response) for each response,
+-- then OnBodyChunk(transfer, response, chunk) for each chunk (the body then isn't kept) or the body
+-- in response.body, then OnBody, and OnDone(transfer, responses, errCode, errMsg) once. A callback
+-- returning true aborts, and OnDone gets -1. A timeout is curl's error 28.
 C4.url = function()
-  local transfer = {}
-  function transfer:SetOptions() end
-  function transfer:OnDone(callback)
-    self.onDone = callback
+  local transfer = { callbacks = {}, chunks = 0 }
+  table.insert(H.transfers, transfer)
+  function transfer:SetOptions(options)
+    self.options = options
+    return self
   end
-  function transfer:Get(url)
+  for _, name in ipairs({ "OnHeaders", "OnBodyChunk", "OnBody", "OnDone" }) do
+    transfer[name] = function(self, callback)
+      self.callbacks[name] = callback
+      return self
+    end
+  end
+  function transfer:Cancel()
+    self.cancelled = true
+    return self
+  end
+  function transfer:_done(responses, code, message)
+    if self.callbacks.OnDone then
+      pcall(self.callbacks.OnDone, self, responses, code, message)
+    end
+  end
+  function transfer:_run(answer)
+    if answer.unreachable then
+      return self:_done({}, 6, "Could not resolve host")
+    end
+    if answer.timeout then
+      return self:_done({}, 28, "Timeout was reached")
+    end
+    local done, cb = {}, self.callbacks
+    for _, r in ipairs(answer.responses or { answer }) do
+      local response = { code = r.code or 200, headers = r.headers or {} }
+      table.insert(done, response)
+      if cb.OnHeaders and cb.OnHeaders(self, response) == true then
+        self.aborted = true
+        return self:_done(done, -1, nil)
+      end
+      local body = r.body or ""
+      if cb.OnBodyChunk then
+        local size = r.chunk or 4096
+        for i = 1, #body, size do
+          self.chunks = self.chunks + 1
+          if cb.OnBodyChunk(self, response, body:sub(i, i + size - 1)) == true then
+            self.aborted = true
+            return self:_done(done, -1, nil)
+          end
+        end
+      else
+        response.body = body
+      end
+      if cb.OnBody then
+        cb.OnBody(self, response)
+      end
+    end
+    self:_done(done, 0, nil)
+  end
+  function transfer:Get(url, headers)
     table.insert(H.fetched, url)
+    self.url, self.headers = url, headers
     local answer = H.urlAnswer and H.urlAnswer(url)
-    if answer and answer.unreachable then
-      pcall(self.onDone, self, {}, 6, "Could not resolve host")
-      return
-    end
-    if answer then
-      pcall(
-        self.onDone,
-        self,
-        { { code = answer.code or 200, headers = answer.headers or {}, body = answer.body } },
-        0,
-        nil
-      )
-      return
-    end
-    local headers = { ["Content-Type"] = "application/json; charset=utf-8" }
-    pcall(self.onDone, self, { { code = 200, headers = headers, body = H.iconifyBody } }, 0, nil)
+    self:_run(answer or { headers = { ["Content-Type"] = "application/json; charset=utf-8" }, body = H.iconifyBody })
+    return self
   end
   return transfer
 end

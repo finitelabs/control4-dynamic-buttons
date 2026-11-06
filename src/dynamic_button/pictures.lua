@@ -57,13 +57,36 @@ function Pictures:new(opts)
 end
 
 --- @param data string
---- @return boolean svg Whether the data is SVG markup.
+--- @return boolean svg Whether the data is SVG markup: its root element is svg, after any XML
+--- declaration, comments and doctype.
 local function isSvg(data)
   if data:find("\0", 1, true) then
     return false
   end
   local head = data:sub(1, 4096):gsub("^\239\187\191", "")
-  return head:match("^%s*<") ~= nil and head:lower():find("<svg", 1, true) ~= nil
+  local pos = 1
+  while true do
+    pos = head:match("^%s*()", pos)
+    local close
+    if head:sub(pos, pos + 1) == "<?" then
+      close = select(2, head:find("?>", pos + 2, true))
+    elseif head:sub(pos, pos + 3) == "<!--" then
+      close = select(2, head:find("-->", pos + 4, true))
+    elseif head:sub(pos, pos + 8):upper() == "<!DOCTYPE" then
+      local subset, gt = head:find("[", pos, true), head:find(">", pos, true)
+      if subset and gt and subset < gt then
+        local ends = head:find("]", subset, true)
+        gt = ends and head:find(">", ends, true)
+      end
+      close = gt
+    else
+      return head:match("^<svg[%s>/]", pos) ~= nil
+    end
+    if not close then
+      return false
+    end
+    pos = close + 1
+  end
 end
 
 --- What a stored picture is, from its first bytes.
@@ -106,6 +129,29 @@ function Pictures.fetchedKind(data)
   return nil
 end
 
+--- How long a fetch may take in all, in seconds.
+Pictures.FETCH_SECONDS = 20
+
+--- The most redirects followed when the controller hands one back unfollowed.
+local MAX_HOPS = 5
+
+local TOO_LARGE = "The picture at that address is larger than 2 MB."
+local NOT_A_PICTURE = "The address didn't answer with a PNG, JPEG, GIF, WebP or SVG picture."
+
+--- A name to keep: a web address is cut to its last part, so no login, query or token in it is kept.
+--- @param raw any
+--- @return string name
+function Pictures.safeName(raw)
+  local name = tostring(raw or ""):match("^%s*(.-)%s*$")
+  local rest = name:match("^%a[%w+.-]*://(.*)$")
+  if not rest then
+    return name
+  end
+  local authority, path = rest:match("^([^/?#]*)(.*)$")
+  local last = path:gsub("[?#].*$", ""):match("([^/]+)/*$")
+  return last or (authority:gsub("^.*@", ""):gsub(":%d*$", ""))
+end
+
 --- A web address the controller fetches: http or https, with no spaces.
 --- @param raw any
 --- @return string|nil address
@@ -126,10 +172,10 @@ end
 --- @return string|nil err Why it's refused, as the Button tab shows it.
 function Pictures.checkFetched(body)
   if type(body) ~= "string" or not Pictures.fetchedKind(body) then
-    return "The address didn't answer with a PNG, JPEG, GIF, WebP or SVG picture."
+    return NOT_A_PICTURE
   end
   if #body > Pictures.MAX_FETCH then
-    return "The picture at that address is larger than 2 MB."
+    return TOO_LARGE
   end
   return nil
 end
@@ -143,6 +189,120 @@ function Pictures.fetchError(failure)
     return string.format("The address answered with status %d.", code)
   end
   return "The controller couldn't reach that address."
+end
+
+--- @param headers any
+--- @param name string
+--- @return string|nil value The header's value, whatever case the server wrote its name in.
+local function header(headers, name)
+  if type(headers) ~= "table" then
+    return nil
+  end
+  name = name:lower()
+  for key, value in pairs(headers) do
+    if type(key) == "string" and key:lower() == name then
+      return tostring(type(value) == "table" and value[#value] or value)
+    end
+  end
+  return nil
+end
+
+--- @param code any
+--- @return boolean passing A response on the way to the answer: a redirect or an interim response.
+local function passing(code)
+  code = tonumber(code) or 0
+  return code < 200 or (code >= 300 and code < 400)
+end
+
+--- Where a redirect points, from the address it came from.
+--- @param base string
+--- @param location any
+--- @return string|nil address
+function Pictures.resolve(base, location)
+  location = tostring(location or ""):match("^%s*(.-)%s*$")
+  if location == "" then
+    return nil
+  end
+  if location:lower():match("^https?://") then
+    return location
+  end
+  local scheme, authority, path = base:match("^(%a[%w+.-]*:)//([^/?#]*)([^?#]*)")
+  if not scheme then
+    return nil
+  end
+  if location:sub(1, 2) == "//" then
+    return scheme .. location
+  end
+  if location:sub(1, 1) == "/" then
+    return scheme .. "//" .. authority .. location
+  end
+  return scheme .. "//" .. authority .. (path:match("^(.*/)") or "/") .. location
+end
+
+--- Fetch a picture for the Button tab. What can't be a picture is refused as soon as the answer
+--- shows it: a status, a length over `MAX_FETCH` or a page or stream by its headers, and a body that
+--- grows past `MAX_FETCH` while it arrives, so nothing large is held on the controller.
+--- @param address string
+--- @param done fun(body: string|nil, err: string|nil)
+--- @param hops? integer Redirects followed so far (optional).
+function Pictures.fetch(address, done, hops)
+  hops = hops or 0
+  local parts, bytes, refused = {}, 0, nil
+  C4:url()
+    :SetOptions({ fail_on_error = false, timeout = Pictures.FETCH_SECONDS, connect_timeout = 10 })
+    :OnHeaders(function(_, response)
+      parts, bytes = {}, 0
+      if passing(response.code) then
+        return false
+      end
+      local code = tonumber(response.code) or 0
+      local length = tonumber(header(response.headers, "Content-Length"))
+      local kind = (header(response.headers, "Content-Type") or ""):lower()
+      if code >= 400 then
+        refused = Pictures.fetchError({ code = code })
+      elseif length and length > Pictures.MAX_FETCH then
+        refused = TOO_LARGE
+      elseif kind:match("^%s*multipart/") or kind:match("^%s*text/html") then
+        refused = NOT_A_PICTURE
+      end
+      return refused ~= nil
+    end)
+    :OnBodyChunk(function(_, response, chunk)
+      if passing(response.code) then
+        return false
+      end
+      bytes = bytes + #chunk
+      if bytes > Pictures.MAX_FETCH then
+        refused, parts = TOO_LARGE, {}
+        return true
+      end
+      table.insert(parts, chunk)
+      return false
+    end)
+    :OnDone(function(_, responses, errCode, errMsg)
+      if refused then
+        return done(nil, refused)
+      end
+      if tonumber(errCode) ~= 0 then
+        log:debug("A picture's fetch ended with error %s: %s", tostring(errCode), tostring(errMsg))
+        return done(nil, tonumber(errCode) == 28 and "The address took too long to answer." or Pictures.fetchError(nil))
+      end
+      local final = type(responses) == "table" and responses[#responses] or nil
+      if final and passing(final.code) then
+        local nextAddress = hops < MAX_HOPS and Pictures.resolve(address, header(final.headers, "Location"))
+        if not (nextAddress and Pictures.checkAddress(nextAddress)) then
+          return done(nil, Pictures.fetchError({ code = final.code }))
+        end
+        return Pictures.fetch(nextAddress, done, hops + 1)
+      end
+      local body = table.concat(parts)
+      local bad = Pictures.checkFetched(body)
+      if bad then
+        return done(nil, bad)
+      end
+      done(body)
+    end)
+    :Get(address, { ["User-Agent"] = "Control4" })
 end
 
 --- @private
@@ -223,7 +383,7 @@ function Pictures:add(data, fields)
   if #list.list >= Pictures.MAX then
     return nil, string.format("a button keeps at most %d pictures", Pictures.MAX)
   end
-  local name = tostring(fields.name or ""):match("^%s*(.-)%s*$")
+  local name = Pictures.safeName(fields.name)
   local picture = {
     id = string.format("mine:p%d", list.nextId),
     kind = kind,
@@ -240,7 +400,7 @@ function Pictures:add(data, fields)
   list.nextId = list.nextId + 1
   table.insert(list.list, picture)
   self:_save(list)
-  log:debug("Kept picture %s as %s", picture.name, picture.id)
+  log:debug("Kept picture %s, a %s of %d bytes", picture.id, picture.kind, picture.bytes)
   return picture
 end
 
