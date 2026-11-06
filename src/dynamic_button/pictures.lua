@@ -129,7 +129,7 @@ function Pictures.fetchedKind(data)
   return nil
 end
 
---- How long a fetch may take in all, in seconds.
+--- How long each fetch may take, in seconds: a redirect handed back starts a new one.
 Pictures.FETCH_SECONDS = 20
 
 --- The most redirects followed when the controller hands one back unfollowed.
