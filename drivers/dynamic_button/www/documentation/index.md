@@ -415,7 +415,9 @@ was added, and all of them go when the button is deleted or reset.
 1. **To these Dynamic Buttons** - the buttons to copy them to, by room and name.
 1. **Add to their looks / Replace their looks** - `Add` puts the looks after a
    button's own, as many as fit in its eight. `Replace` deletes a button's looks
-   first, and the default look among the copies becomes its default.
+   first, and the default look among the copies becomes its default. It asks for
+   a second press on `Confirm Replace`, since a button's current looks, their
+   pictures and the programming on their `Shown` events go.
 1. **Copy** - copies to one button after another and shows a line for each: how
    many looks it got, how many didn't fit, and what stopped it.
 
@@ -424,17 +426,29 @@ A copy brings everything a look has: its picture, colors, tile shape, `Cycle`,
 other button as its own, and a picture that refreshes is fetched by the other
 button from the same address. A look whose name the other button already uses
 gets the next number. A button without an active license keeps its looks and
-gets none.
+gets none. A look whose own picture this button no longer has is left out and
+named.
 
 `Export` saves the button's looks and your own pictures in one file named after
-the button, ending in `.dynamic-button.json`.
+the button, ending in `.dynamic-button.json`. The file holds the web address of
+each picture that refreshes, which can carry a login or token.
 
-`Import…` opens such a file and lists its looks, with
-`Add to this button's looks` or `Replace this button's looks`. A picture in the
-file goes through the same checks as an uploaded file or pasted SVG, and a look
-that uses an icon this driver doesn't have is left out. `Show when` and badge
-text name devices by their id in the project the file came from, so check them
-after importing into another project.
+`Import…` opens such a file and lists its looks, each with its `Show when`, a
+badge's text that holds a variable, and the web address of a picture that
+refreshes. A look the driver would refuse, or one that uses an icon this driver
+doesn't have, is left out and named before anything changes. A picture in the
+file goes through the same checks as an uploaded file or pasted SVG.
+
+Those three come with the looks only when
+`Bring Show when, live badge text and web addresses with these looks` is
+checked, and it starts unchecked: the controller runs a `Show when` and a
+badge's variable text, and fetches a web address. Without it, `Show when` is
+left empty, a badge that holds a variable is left off, and a look whose picture
+refreshes from a web address is left out and named. `Add to this button's looks`
+and `Replace this button's looks` work as they do in `Copy To`, and `Replace`
+asks for `Confirm Replace` the same way. `Show when` and badge text name devices
+by their id in the project the file came from, so check them after importing
+into another project.
 
 ## Cycling Through Looks
 
