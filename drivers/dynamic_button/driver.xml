@@ -195,6 +195,24 @@
         <name>Previous Look</name>
         <description>Show the previous look in the cycle on NAME</description>
       </command>
+      <command>
+        <name>Refresh Web Picture</name>
+        <description>Refresh the shown look's picture from its web address on NAME</description>
+      </command>
+      <command>
+        <name>Set Web Address</name>
+        <description>Set the web address of PARAM1 on NAME to PARAM2</description>
+        <params>
+          <param>
+            <name>Look</name>
+            <type>DYNAMIC_LIST</type>
+          </param>
+          <param>
+            <name>Address</name>
+            <type>STRING</type>
+          </param>
+        </params>
+      </command>
     </commands>
   </config>
   <capabilities>

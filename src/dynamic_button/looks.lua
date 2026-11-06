@@ -26,9 +26,9 @@ local log = require("lib.logging")
 --- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
 --- @field custom? LookCustom How the look changes its picture; the picture as it comes without the field.
 --- @field showWhen? string When Look Control's By Value shows the look, an expression; never true without the field.
---- @field image? { bytes: integer, stale?: boolean, version?: integer } The drawn picture, once the Button
---- tab has sent it; stale while the look's fields have changed since it was drawn. Its version is the
---- number it's served under.
+--- @field image? { bytes: integer, stale?: boolean, version?: integer, source?: string } The drawn picture,
+--- once the Button tab has sent it; stale while the look's fields have changed since it was drawn. Its
+--- version is the number it's served under; for a refreshing picture, its source names the bytes.
 
 --- @class LookBadge
 --- @field text string Up to `Looks.MAX_BADGE` characters, or with a variable up to
@@ -53,6 +53,7 @@ local log = require("lib.logging")
 --- @class Looks
 --- @field _store table The persist store the looks are kept in.
 --- @field _hasPicture fun(id: string): boolean Whether the button keeps a picture of its own by that id.
+--- @field _refreshes fun(id: string): boolean Whether that picture refreshes from a web address.
 local Looks = {}
 Looks.__index = Looks
 
@@ -111,11 +112,16 @@ local LOOKS_PERSIST_KEY = "Looks"
 --- @param store table A persist-like store with get(key, default) and set(key, value).
 --- @param hasPicture? fun(id: string): boolean Whether the button keeps a picture of its own by that id
 --- (optional). Without it, a look can't use one.
+--- @param refreshes? fun(id: string): boolean Whether that picture refreshes from a web address
+--- (optional). Without it, none does.
 --- @return Looks looks
-function Looks:new(store, hasPicture)
+function Looks:new(store, hasPicture, refreshes)
   local instance = setmetatable({}, self)
   instance._store = store
   instance._hasPicture = hasPicture or function()
+    return false
+  end
+  instance._refreshes = refreshes or function()
     return false
   end
   return instance
@@ -400,22 +406,30 @@ function Looks:_check(fields, exceptId)
   if not iconColor or not tileColor then
     return nil, "colors are #RRGGBB"
   end
-  if not knownShape(fields.tileShape) then
-    return nil, "unknown tile shape"
-  end
-  local glow = fields.glow
-  if glow == nil then
-    glow = Looks.FULL_GLOW
-  end
-  if type(glow) ~= "number" or glow ~= math.floor(glow) or glow < 0 or glow > Looks.MAX_GLOW then
-    return nil, "glow is a whole percent from 0 to 200"
-  end
-  if fields.grayscale ~= nil and type(fields.grayscale) ~= "boolean" then
-    return nil, "grayscale is on or off"
-  end
-  local custom, customErr = checkCustom(fields.custom)
-  if customErr then
-    return nil, customErr
+  -- Shown as the site sends it: nothing is drawn on or around it, so whatever would be is left out
+  -- unread.
+  local refreshes = stored and self._refreshes(iconId)
+  local tileShape, glow, grayscale, custom = "None", Looks.FULL_GLOW, false, nil
+  if not refreshes then
+    if not knownShape(fields.tileShape) then
+      return nil, "unknown tile shape"
+    end
+    tileShape, glow = fields.tileShape, fields.glow
+    if glow == nil then
+      glow = Looks.FULL_GLOW
+    end
+    if type(glow) ~= "number" or glow ~= math.floor(glow) or glow < 0 or glow > Looks.MAX_GLOW then
+      return nil, "glow is a whole percent from 0 to 200"
+    end
+    if fields.grayscale ~= nil and type(fields.grayscale) ~= "boolean" then
+      return nil, "grayscale is on or off"
+    end
+    grayscale = fields.grayscale == true
+    local customErr
+    custom, customErr = checkCustom(fields.custom)
+    if customErr then
+      return nil, customErr
+    end
   end
   if fields.showWhen ~= nil and type(fields.showWhen) ~= "string" then
     return nil, '"Show when" is text'
@@ -437,11 +451,11 @@ function Looks:_check(fields, exceptId)
       licenseUrl = licenseUrl:sub(1, 300),
     },
     iconColor = iconColor,
-    tileShape = fields.tileShape,
+    tileShape = tileShape,
     tileColor = tileColor,
     inCycle = fields.inCycle ~= false,
     glow = glow,
-    grayscale = fields.grayscale == true,
+    grayscale = grayscale,
     custom = custom,
     showWhen = showWhen ~= "" and showWhen or nil,
   }
@@ -559,13 +573,14 @@ end
 --- @param id integer
 --- @param bytes integer|nil
 --- @param version? integer The number it's served under (optional).
+--- @param source? string Names the refreshing picture's bytes it was served from (optional).
 --- @return Look|nil look
-function Looks:setImage(id, bytes, version)
+function Looks:setImage(id, bytes, version, source)
   id = tonumber(id)
   local data = self:_load()
   for _, look in ipairs(data.list) do
     if look.id == id then
-      look.image = bytes and { bytes = bytes, version = version } or nil
+      look.image = bytes and { bytes = bytes, version = version, source = source } or nil
       self:_save(data)
       return look
     end

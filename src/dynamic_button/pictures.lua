@@ -4,6 +4,7 @@
 
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
+local Png = require("dynamic_button.png")
 
 --- @class Picture
 --- @field id string `mine:p<n>`, unique for the life of the button.
@@ -11,8 +12,11 @@ local Images = require("dynamic_button.images")
 --- @field width number Its width, in pixels or its view box's units.
 --- @field height number Its height, in pixels or its view box's units.
 --- @field bytes integer
---- @field name string Its file name or web address.
+--- @field name string Its file name, or a web address's last part.
 --- @field added number When it was added, in seconds.
+--- @field every? integer For a picture that refreshes: how often, in seconds, one of `Pictures.EVERY`.
+--- @field source? string For a picture that refreshes: its bytes' CRC32 and length, which name them.
+--- @field fetchedAt? number For a picture that refreshes: when its bytes last changed, in seconds.
 
 --- @class Pictures
 --- @field _store table The persist store the list is kept in.
@@ -36,6 +40,9 @@ Pictures.MAX_FETCH = 2 * 1024 * 1024
 --- The longest web address fetched, in bytes.
 Pictures.MAX_ADDRESS = 2048
 
+--- How often a picture from a web address can refresh, in seconds.
+Pictures.EVERY = { 60, 300, 900, 3600 }
+
 --- A picture no look names is kept this long after it was added, in seconds: the look saving it
 --- comes after it.
 Pictures.GRACE_SECONDS = 600
@@ -44,6 +51,9 @@ Pictures.GRACE_SECONDS = 600
 local MAX_NAME = 300
 local DIR = "pictures"
 local PERSIST_KEY = "Pictures"
+--- Refreshing pictures' web addresses, by id: encrypted, so storage's trace never shows one, since an
+--- address can carry a login or a token.
+local ADDRESSES_KEY = "PictureAddresses"
 local EXTENSIONS = { png = "png", jpeg = "jpg", svg = "svg" }
 
 --- @param opts { store: table, used: fun(): table<string, boolean>, now?: fun(): number }
@@ -150,6 +160,71 @@ function Pictures.safeName(raw)
   local authority, path = rest:match("^([^/?#]*)(.*)$")
   local last = path:gsub("[?#].*$", ""):match("([^/]+)/*$")
   return last or (authority:gsub("^.*@", ""):gsub(":%d*$", ""))
+end
+
+--- @param data string
+--- @param at integer
+--- @return integer value The big-endian 16-bit number at `at`.
+local function be16(data, at)
+  local a, b = data:byte(at, at + 1)
+  return (a or 0) * 256 + (b or 0)
+end
+
+--- A PNG's or JPEG's size in pixels, from its header.
+--- @param data string
+--- @return integer|nil width
+--- @return integer|nil height
+function Pictures.dimensions(data)
+  local kind = Pictures.kindOf(data)
+  if kind == "png" and data:sub(13, 16) == "IHDR" then
+    local width, height = be16(data, 17) * 65536 + be16(data, 19), be16(data, 21) * 65536 + be16(data, 23)
+    if width > 0 and height > 0 then
+      return width, height
+    end
+  elseif kind == "jpeg" then
+    -- The frame header (SOF0 to SOF15, but not DHT, JPG or DAC) carries the size.
+    local at = 3
+    while at + 8 <= #data do
+      if data:byte(at) ~= 0xFF then
+        return nil, nil
+      end
+      local marker = data:byte(at + 1)
+      if marker == 0xFF then
+        at = at + 1
+      elseif marker == 0xD8 or marker == 0x01 or (marker >= 0xD0 and marker <= 0xD7) then
+        at = at + 2
+      else
+        if marker >= 0xC0 and marker <= 0xCF and marker ~= 0xC4 and marker ~= 0xC8 and marker ~= 0xCC then
+          local height, width = be16(data, at + 5), be16(data, at + 7)
+          if width > 0 and height > 0 then
+            return width, height
+          end
+          return nil, nil
+        end
+        at = at + 2 + be16(data, at + 2)
+      end
+    end
+  end
+  return nil, nil
+end
+
+--- @param value any
+--- @return integer|nil every One of `Pictures.EVERY`, or nil.
+function Pictures.checkEvery(value)
+  local n = tonumber(value)
+  for _, every in ipairs(Pictures.EVERY) do
+    if n == every then
+      return every
+    end
+  end
+  return nil
+end
+
+--- What names a refreshing picture's bytes: the same bytes, the same name.
+--- @param data string
+--- @return string source
+function Pictures.source(data)
+  return string.format("%08x-%d", Png.crc32(data), #data)
 end
 
 --- A web address the controller fetches: http or https, with no spaces.
@@ -279,12 +354,13 @@ function Pictures.fetch(address, done, hops)
       table.insert(parts, chunk)
       return false
     end)
-    :OnDone(function(_, responses, errCode, errMsg)
+    :OnDone(function(_, responses, errCode)
       if refused then
         return done(nil, refused)
       end
       if tonumber(errCode) ~= 0 then
-        log:debug("A picture's fetch ended with error %s: %s", tostring(errCode), tostring(errMsg))
+        -- Only the code: curl's message can carry the address's host.
+        log:debug("A picture's fetch ended with error %s", tostring(errCode))
         return done(nil, tonumber(errCode) == 28 and "The address took too long to answer." or Pictures.fetchError(nil))
       end
       local final = type(responses) == "table" and responses[#responses] or nil
@@ -378,6 +454,66 @@ function Pictures:add(data, fields)
   if not width or not height then
     return nil, "the picture's size is missing"
   end
+  return self:_keep(data, { kind = kind, width = width, height = height, name = fields.name })
+end
+
+--- Keep a picture from a web address that refreshes: shown as the site sends it, so only a PNG or
+--- JPEG, at most `MAX_FETCH` bytes.
+--- @param data string
+--- @param url any
+--- @param every any One of `Pictures.EVERY`.
+--- @return Picture|nil picture
+--- @return string|nil err Why it was refused, as the Button tab shows it.
+function Pictures:addWeb(data, url, every)
+  local address, addressErr = Pictures.checkAddress(url)
+  if not address then
+    return nil, addressErr
+  end
+  every = Pictures.checkEvery(every)
+  if not every then
+    return nil, "A picture refreshes every minute, 5 minutes, 15 minutes or hour."
+  end
+  local kind, err = Pictures.checkRefreshed(data)
+  if not kind then
+    return nil, err
+  end
+  local width, height = Pictures.dimensions(data)
+  return self:_keep(data, {
+    kind = kind,
+    width = width,
+    height = height,
+    name = address,
+    url = address,
+    every = every,
+    source = Pictures.source(data),
+    fetchedAt = self._now(),
+  })
+end
+
+--- A refreshed picture the Control4 app can show as the site sends it.
+--- @param data any
+--- @return string|nil kind `png` or `jpeg`.
+--- @return string|nil err Why it's refused, as the Button tab shows it.
+function Pictures.checkRefreshed(data)
+  local kind = type(data) == "string" and Pictures.kindOf(data) or nil
+  if kind ~= "png" and kind ~= "jpeg" then
+    return nil, "A picture that refreshes has to be a PNG or JPEG."
+  end
+  if #data > Pictures.MAX_FETCH then
+    return nil, "The picture at that address is larger than 2 MB."
+  end
+  if not Pictures.dimensions(data) then
+    return nil, "The controller couldn't read that picture's size."
+  end
+  return kind, nil
+end
+
+--- @private
+--- @param data string
+--- @param fields table The record's fields but its id, bytes and time.
+--- @return Picture|nil picture
+--- @return string|nil err
+function Pictures:_keep(data, fields)
   self:collect()
   local list = self:_load()
   if #list.list >= Pictures.MAX then
@@ -386,12 +522,15 @@ function Pictures:add(data, fields)
   local name = Pictures.safeName(fields.name)
   local picture = {
     id = string.format("mine:p%d", list.nextId),
-    kind = kind,
-    width = width,
-    height = height,
+    kind = fields.kind,
+    width = fields.width,
+    height = fields.height,
     bytes = #data,
     name = name ~= "" and name:sub(1, MAX_NAME) or "Picture",
     added = self._now(),
+    every = fields.every,
+    source = fields.source,
+    fetchedAt = fields.fetchedAt,
   }
   C4:FileCreateDir("SANDBOX", DIR)
   if not Images.writeFile("SANDBOX", DIR, fileName(picture), data) then
@@ -400,8 +539,97 @@ function Pictures:add(data, fields)
   list.nextId = list.nextId + 1
   table.insert(list.list, picture)
   self:_save(list)
+  if fields.url then
+    self:_setAddresses(function(addresses)
+      addresses[picture.id] = fields.url
+    end)
+  end
   log:debug("Kept picture %s, a %s of %d bytes", picture.id, picture.kind, picture.bytes)
   return picture
+end
+
+--- @private
+--- @param change fun(addresses: table<string, string>)
+function Pictures:_setAddresses(change)
+  local addresses = self._store:get(ADDRESSES_KEY, nil, true)
+  addresses = type(addresses) == "table" and addresses or {}
+  change(addresses)
+  self._store:set(ADDRESSES_KEY, addresses, true)
+end
+
+--- @param id any
+--- @return string|nil address The web address a refreshing picture comes from. Never log it.
+function Pictures:address(id)
+  local addresses = self._store:get(ADDRESSES_KEY, nil, true)
+  return type(addresses) == "table" and addresses[tostring(id or "")] or nil
+end
+
+--- @param id any
+--- @return boolean refreshes Whether the button keeps a picture by that id that refreshes.
+function Pictures:refreshes(id)
+  local picture = self:get(id)
+  return picture ~= nil and picture.every ~= nil
+end
+
+--- @private
+--- @param id any
+--- @param change fun(picture: Picture): boolean|nil Changes the record; false leaves it unsaved.
+--- @return Picture|nil picture
+function Pictures:_change(id, change)
+  local data = self:_load()
+  for _, picture in ipairs(data.list) do
+    if picture.id == tostring(id or "") then
+      if change(picture) == false then
+        return nil
+      end
+      self:_save(data)
+      return picture
+    end
+  end
+  return nil
+end
+
+--- A refreshing picture's new bytes: kept in place of the old ones.
+--- @param id any
+--- @param data string Checked with `Pictures.checkRefreshed`.
+--- @return Picture|nil picture Nil when it isn't a refreshing picture or couldn't be stored.
+function Pictures:replace(id, data)
+  local kind = Pictures.checkRefreshed(data)
+  if not kind then
+    return nil
+  end
+  return self:_change(id, function(picture)
+    if not picture.every then
+      return false
+    end
+    local width, height = Pictures.dimensions(data)
+    local was, now = fileName(picture), fileName({ id = picture.id, kind = kind })
+    if not Images.writeFile("SANDBOX", DIR, now, data) then
+      return false
+    end
+    if now ~= was then
+      Images.deleteFile("SANDBOX", DIR, was)
+    end
+    picture.kind, picture.width, picture.height, picture.bytes = kind, width, height, #data
+    picture.source, picture.fetchedAt = Pictures.source(data), self._now()
+  end)
+end
+
+--- Point a refreshing picture at another address. Its bytes stay until the next fetch.
+--- @param id any
+--- @param address string Checked with `Pictures.checkAddress`.
+--- @return Picture|nil picture
+function Pictures:setAddress(id, address)
+  return self:_change(id, function(picture)
+    if not picture.every then
+      return false
+    end
+    picture.name = Pictures.safeName(address):sub(1, MAX_NAME)
+    picture.fetchedAt = nil
+    self:_setAddresses(function(addresses)
+      addresses[picture.id] = address
+    end)
+  end)
 end
 
 --- @param id any
@@ -426,7 +654,27 @@ function Pictures:collect()
   if #kept ~= #data.list then
     data.list = kept
     self:_save(data)
+    self:_keepAddresses(kept)
   end
+end
+
+--- @private
+--- @param list Picture[] The pictures whose addresses stay.
+function Pictures:_keepAddresses(list)
+  if self._store:get(ADDRESSES_KEY, nil, true) == nil then
+    return
+  end
+  self:_setAddresses(function(addresses)
+    local kept = {}
+    for _, picture in ipairs(list) do
+      kept[picture.id] = true
+    end
+    for id in pairs(addresses) do
+      if not kept[id] then
+        addresses[id] = nil
+      end
+    end
+  end)
 end
 
 --- Delete every picture. Ids go on from where they were.
@@ -436,6 +684,7 @@ function Pictures:clear()
     Images.deleteFile("SANDBOX", DIR, fileName(picture))
   end
   self:_save({ nextId = data.nextId, list = {} })
+  self:_keepAddresses({})
 end
 
 return Pictures

@@ -13,6 +13,7 @@ local Looks = require("dynamic_button.looks")
 --- @field driverName string The driver's file name without `.c4z`.
 --- @field sendIcon fun(icon: string, description: string) Tells the proxy what to show.
 --- @field badges LiveBadges Draws the shown look's live badge.
+--- @field refresher? WebPictures Refreshes the shown look's picture from its web address.
 --- @field _badgeKey string|nil Names the shown look's live badge text in its address.
 local Button = {}
 Button.__index = Button
@@ -20,7 +21,7 @@ Button.__index = Button
 local SHOWN_PERSIST_KEY = "ShownLook"
 local VERSION_PERSIST_KEY = "ImageVersion"
 
---- @param opts { looks: Looks, images: Images, store: table, deviceId: integer, driverName: string, sendIcon: fun(icon: string, description: string), badges: LiveBadges }
+--- @param opts { looks: Looks, images: Images, store: table, deviceId: integer, driverName: string, sendIcon: fun(icon: string, description: string), badges: LiveBadges, refresher?: WebPictures }
 --- @return Button button
 function Button:new(opts)
   local instance = setmetatable({}, self)
@@ -31,7 +32,18 @@ function Button:new(opts)
   instance.driverName = opts.driverName
   instance.sendIcon = opts.sendIcon
   instance.badges = opts.badges
+  instance.refresher = opts.refresher
   return instance
+end
+
+--- Tell what watches the shown look which one it is now, or nil for none.
+--- @private
+--- @param look Look|nil
+function Button:_watch(look)
+  self.badges:watch(look)
+  if self.refresher then
+    self.refresher:watch(look)
+  end
 end
 
 --- @return Look|nil look The look the button shows, or nil for the driver's own icon.
@@ -79,7 +91,7 @@ end
 function Button:_showDefault()
   self.store:set(SHOWN_PERSIST_KEY, nil)
   self._badgeKey = nil
-  self.badges:watch(nil)
+  self:_watch(nil)
   self.sendIcon(Images.ownIcon(self.driverName), "")
 end
 
@@ -112,7 +124,7 @@ function Button:show(id, again)
   self.store:set(SHOWN_PERSIST_KEY, look.id)
   self._badgeKey = key
   self:_tell(look)
-  self.badges:watch(look)
+  self:_watch(look)
   return true
 end
 
@@ -180,10 +192,11 @@ end
 
 --- A look's new picture arrived: keep it, and show it if it is shown or nothing is.
 --- @param id integer
---- @param png string
+--- @param png string The picture: a PNG, or as a refreshing picture's site sent it.
+--- @param source? string Names a refreshing picture's bytes (optional).
 --- @return boolean ok
 --- @return boolean showed True if the button now shows a new picture.
-function Button:imageArrived(id, png)
+function Button:imageArrived(id, png, source)
   local look = self.looks:get(id)
   if not look then
     return false, false
@@ -191,7 +204,7 @@ function Button:imageArrived(id, png)
   if not self.images:save(look.id, png) then
     return false, false
   end
-  self.looks:setImage(look.id, #png, self:_nextVersion())
+  self.looks:setImage(look.id, #png, self:_nextVersion(), source)
   self.images:unserve(self.deviceId, look.id)
   local shown = self:shown()
   if shown == nil or shown.id == look.id then
@@ -249,7 +262,7 @@ function Button:restore()
     self.store:set(SHOWN_PERSIST_KEY, look.id)
     self._badgeKey = nil
     self:_tell(look)
-    self.badges:watch(look)
+    self:_watch(look)
     return
   end
   local picture, key
@@ -263,7 +276,7 @@ function Button:restore()
   self.store:set(SHOWN_PERSIST_KEY, look.id)
   self._badgeKey = key
   self:_tell(look)
-  self.badges:watch(look)
+  self:_watch(look)
 end
 
 --- The button left the project: remove every stored and served picture.

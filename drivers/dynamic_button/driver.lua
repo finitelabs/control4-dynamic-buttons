@@ -36,6 +36,7 @@ local driverFilenames = require("lib.driver-filenames")
 local Looks = require("dynamic_button.looks")
 local Images = require("dynamic_button.images")
 local Pictures = require("dynamic_button.pictures")
+local WebPictures = require("dynamic_button.web_pictures")
 local Button = require("dynamic_button.button")
 local Iconify = require("dynamic_button.iconify")
 local Follow = require("dynamic_button.follow")
@@ -79,6 +80,8 @@ local pictures = Pictures:new({
 })
 looks = Looks:new(persist, function(id)
   return pictures:get(id) ~= nil
+end, function(id)
+  return pictures:refreshes(id)
 end)
 local images = Images:new()
 
@@ -87,6 +90,8 @@ local button
 
 --- @type LiveBadges
 local badges
+--- @type WebPictures
+local refresher
 --- @type Follow
 local follow
 
@@ -103,6 +108,11 @@ local gLookIsItems = nil
 -- Chunks are large and carry nothing a log needs.
 UIR.suppressDebug["_PUT_IMAGE"] = true
 UIR.suppressDebug["_PUT_PICTURE"] = true
+-- A web address can carry a login or a token, so nothing logs one.
+UIR.suppressDebug["_FETCH_PICTURE"] = true
+UIR.suppressDebug["_ADD_WEB_PICTURE"] = true
+EC.suppressDebug["Set Web Address"] = true
+EC.suppressDebug["Set_Web_Address"] = true
 
 --- @return string name The driver's file name without `.c4z`, which names its web folder.
 local function driverName()
@@ -275,13 +285,19 @@ local function tabState()
   end
   local own = {}
   for _, picture in ipairs(pictures:list()) do
-    table.insert(own, {
+    local entry = {
       id = picture.id,
       kind = picture.kind,
       width = picture.width,
       height = picture.height,
       name = picture.name,
-    })
+    }
+    if picture.every then
+      local status = refresher and refresher:status(picture.id) or {}
+      entry.url, entry.every = pictures:address(picture.id), picture.every
+      entry.refreshedAt, entry.error = status.refreshedAt, status.error
+    end
+    table.insert(own, entry)
   end
   local shown = button:shown()
   return {
@@ -451,6 +467,7 @@ local function onLicense(licensed)
   if not licensed then
     log:warn("No active license: the button shows the driver's own icon until there is one")
     badges:watch(nil)
+    refresher:watch(nil)
     sendIcon(Images.ownIcon(driverName()), "")
     UpdateProperty("Driver Status", drivercentral.UNLICENSED_STATUS)
     pushState()
@@ -522,6 +539,22 @@ function OnDriverLateInit()
       return followAllowed()
     end,
   })
+  refresher = WebPictures:new({
+    pictures = pictures,
+    looks = looks,
+    arrived = function(lookId, data, source)
+      local before = button:shown()
+      if not button:imageArrived(lookId, data, source) then
+        log:warn("Could not keep look %s's refreshed picture", tostring(lookId))
+        return
+      end
+      announceShown(before and before.id or nil)
+    end,
+    changed = pushState,
+    allowed = function()
+      return followAllowed()
+    end,
+  })
   button = Button:new({
     looks = looks,
     images = images,
@@ -530,6 +563,7 @@ function OnDriverLateInit()
     driverName = driverName(),
     sendIcon = sendIcon,
     badges = badges,
+    refresher = refresher,
   })
   badges:boot()
   button:restore()
@@ -590,6 +624,9 @@ end
 
 function OnDriverRemovedFromProject()
   log:trace("OnDriverRemovedFromProject()")
+  if refresher then
+    refresher:watch(nil)
+  end
   if button then
     button:removed()
   end
@@ -771,8 +808,20 @@ function UIR._SAVE_LOOK(tParams)
   syncLookEvents()
   follow:lookSaved(look.id)
   pictures:collect()
+  -- A picture that refreshes is served as the site sent it: no picture comes from the tab for it.
+  local web = pictures:refreshes(look.icon.id) and pictures:get(look.icon.id)
+  if web and not (look.image and not look.image.stale and look.image.source == web.source) then
+    local data = pictures:load(web.id)
+    local before = button:shown()
+    if not (data and button:imageArrived(look.id, data, web.source)) then
+      return pushError(string.format("the picture for %s could not be kept", look.name))
+    end
+    announceShown(before and before.id or nil)
+    look = looks:get(look.id)
+  end
   local shown = button:shown()
   if shown and shown.id == look.id then
+    refresher:watch(look)
     badges:watch(look)
     -- A stale picture is about to be replaced, and showing the new one draws the badge.
     if not (look.image and look.image.stale) then
@@ -862,6 +911,35 @@ function UIR._FETCH_PICTURE(tParams)
       return
     end
     sendPieces("FETCHED", { request = request }, body)
+  end)
+end
+
+--- A picture from a web address that refreshes, kept for a look to use: the controller fetches it
+--- again rather than the tab sending back what it fetched, since it's kept as the site sends it.
+--- @param tParams table
+function UIR._ADD_WEB_PICTURE(tParams)
+  log:trace("UIR._ADD_WEB_PICTURE()")
+  local params = tabParams(tParams)
+  local request = tostring(params.request or "")
+  local address, err = Pictures.checkAddress(params.url)
+  if address and not Pictures.checkEvery(params.every) then
+    address, err = nil, "A picture refreshes every minute, 5 minutes, 15 minutes or hour."
+  end
+  if not address then
+    return uiRespond("PICTURE_STORED", { request = request, error = err })
+  end
+  Pictures.fetch(address, function(body, refused)
+    local picture
+    if body then
+      picture, refused = pictures:addWeb(body, address, params.every)
+    end
+    if not picture then
+      C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused })
+      return
+    end
+    refresher:noteFetched(picture.id)
+    log:info("Kept picture %s, which refreshes every %d seconds", picture.id, picture.every)
+    reply("PICTURE_STORED", { request = request, picture = picture.id })
   end)
 end
 
@@ -1070,6 +1148,56 @@ function GCPL.Show_Look(paramName)
   return choices
 end
 
+--- Fetch the shown look's picture from its web address now.
+function EC.Refresh_Web_Picture()
+  log:trace("EC.Refresh_Web_Picture()")
+  local ok, err = refresher:refresh()
+  if not ok then
+    log:warn("Refresh Web Picture: %s", err)
+  end
+end
+
+--- Point a look's refreshing picture at another web address, and fetch it now.
+--- @param params table
+function EC.Set_Web_Address(params)
+  log:trace("EC.Set_Web_Address()")
+  local look = looks:fromChoice(Select(params, "Look"))
+  if not look then
+    log:warn("Set Web Address: no look %s", tostring(Select(params, "Look")))
+    return
+  end
+  if not pictures:refreshes(look.icon.id) then
+    log:warn("Set Web Address: look %s's picture doesn't refresh from a web address", look.name)
+    return
+  end
+  local address, err = Pictures.checkAddress(Select(params, "Address"))
+  if not address then
+    log:warn("Set Web Address: look %s: %s", look.name, err)
+    return
+  end
+  pictures:setAddress(look.icon.id, address)
+  refresher:forget(look.icon.id)
+  log:info("Set Web Address: look %s's picture has a new address", look.name)
+  refresher:refreshPicture(look.icon.id)
+  pushState()
+end
+
+--- @param paramName string
+--- @return string[] choices The looks whose picture refreshes from a web address.
+function GCPL.Set_Web_Address(paramName)
+  log:trace("GCPL.Set_Web_Address(%s)", paramName)
+  if paramName ~= "Look" then
+    return {}
+  end
+  local choices = {}
+  for _, look in ipairs(looks:list()) do
+    if pictures:refreshes(look.icon.id) then
+      table.insert(choices, Looks.label(look))
+    end
+  end
+  return choices
+end
+
 --------------------------------------------------------------------------------
 -- Actions
 --------------------------------------------------------------------------------
@@ -1162,6 +1290,11 @@ EC.Reset_Driver = whileLicensed(EC.Reset_Driver)
 GCPL.Show_Look = whileLicensed(GCPL.Show_Look, function()
   return {}
 end)
+EC.Refresh_Web_Picture = whileLicensed(EC.Refresh_Web_Picture)
+EC.Set_Web_Address = whileLicensed(EC.Set_Web_Address)
+GCPL.Set_Web_Address = whileLicensed(GCPL.Set_Web_Address, function()
+  return {}
+end)
 for _, name in ipairs({
   "_SAVE_LOOK",
   "_PUT_IMAGE",
@@ -1182,5 +1315,11 @@ UIR._ICONIFY = whileLicensed(UIR._ICONIFY, function(tParams)
 end)
 UIR._FETCH_PICTURE = whileLicensed(UIR._FETCH_PICTURE, function(tParams)
   return uiRespond("FETCHED", { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
+end)
+UIR._ADD_WEB_PICTURE = whileLicensed(UIR._ADD_WEB_PICTURE, function(tParams)
+  return uiRespond(
+    "PICTURE_STORED",
+    { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL }
+  )
 end)
 --#endif
