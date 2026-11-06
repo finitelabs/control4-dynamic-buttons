@@ -134,8 +134,12 @@ end
 
 --- A look was deleted.
 --- @param id integer
-function Follow:lookDeleted(id)
+--- @param wasShown boolean The button has moved to another look, which nothing asked for, so no hold is left.
+function Follow:lookDeleted(id, wasShown)
   self._engine:unsubscribeExpression(tostring(id))
+  if wasShown then
+    self._store:set(APPLIED_PERSIST_KEY, nil)
+  end
   self:evaluate()
 end
 
@@ -143,13 +147,6 @@ end
 --- @param id integer|string
 function Follow:deviceRemoved(id)
   self._engine:handleDeviceRemoved(tonumber(id) or -1)
-end
-
---- Number of variables a look's expression is watching.
---- @param id integer
---- @return number
-function Follow:watchedCount(id)
-  return self._engine:watchedCount(tostring(id))
 end
 
 --- @private
@@ -209,7 +206,9 @@ function Follow:evaluate()
     self._matched = matched
     -- Only a change of match shows anything, so a look shown from programming stays until then.
     if matched == nil then
-      self._store:set(APPLIED_PERSIST_KEY, nil)
+      if self._store:get(APPLIED_PERSIST_KEY) ~= nil then
+        self._store:set(APPLIED_PERSIST_KEY, nil)
+      end
     elseif matched ~= tonumber(self._store:get(APPLIED_PERSIST_KEY)) then
       local ok, err = self._show(matched)
       if ok then

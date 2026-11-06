@@ -727,7 +727,7 @@ function UIR._DELETE_LOOK(tParams)
   announceShown(before and before.id or nil)
   registerLookIs(lookChoices())
   syncLookEvents()
-  follow:lookDeleted(removed.id)
+  follow:lookDeleted(removed.id, before ~= nil and before.id == removed.id)
   return pushState()
 end
 
@@ -769,6 +769,16 @@ function UIR._GET_DEVICES()
   return uiRespond("DEVICES_DATA", { devices = JSON:encode(devices) })
 end
 
+--- @param text string
+--- @param bytes integer
+--- @return string cut At most that many bytes, on a whole character: a UTF-8 lead byte left on its own isn't valid text.
+local function cutText(text, bytes)
+  if #text <= bytes then
+    return text
+  end
+  return (text:sub(1, bytes):gsub("[\192-\255][\128-\191]*$", ""))
+end
+
 --- One device's variables, with a value short enough to show beside its name.
 --- @param tParams table
 function UIR._GET_DEVICE_VARIABLES(tParams)
@@ -776,12 +786,7 @@ function UIR._GET_DEVICE_VARIABLES(tParams)
   local deviceId = tonumber(tabParams(tParams).deviceId)
   local variables = deviceId and Expressions.deviceVariables(deviceId) or {}
   for _, variable in ipairs(variables) do
-    local value = tostring(variable.value == nil and "" or variable.value)
-    if #value > 60 then
-      -- Cut on a whole character: a UTF-8 lead byte left on its own isn't valid text.
-      value = value:sub(1, 60):gsub("[\192-\255][\128-\191]*$", "")
-    end
-    variable.value = value
+    variable.value = cutText(tostring(variable.value == nil and "" or variable.value), 60)
   end
   return uiRespond("DEVICE_VARIABLES_DATA", { deviceId = tostring(deviceId or ""), variables = JSON:encode(variables) })
 end
@@ -795,6 +800,7 @@ function UIR._EVAL_EXPRESSION(tParams)
   return uiRespond("EVAL_RESULT", {
     id = tostring(params.id or ""),
     rendered = evaluation.rendered or "",
+    substituted = cutText(evaluation.substituted or "", Looks.MAX_SHOW_WHEN),
     result = evaluation.result ~= nil and tostring(evaluation.result) or "",
     error = evaluation.error or "",
   })
