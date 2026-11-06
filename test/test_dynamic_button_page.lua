@@ -233,6 +233,11 @@ T.truthy(
   has("{ id: null, name: copyName(look.name) }")
 )
 
+T.truthy(
+  "a copy isn't the default, even on a button with none",
+  has("gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;")
+)
+
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
