@@ -151,6 +151,24 @@ T.eq("one place sends commands", posts, 1)
 T.truthy("the preview uses it", has("sendCommand('_EVAL_EXPRESSION'"))
 T.truthy("and the browser", has("sendCommand('_GET_DEVICES')") and has("sendCommand('_GET_DEVICE_VARIABLES'"))
 
+T.section("Every select draws one arrow")
+local shared = page:find('select, input[type="text"], input[type="search"] {', 1, true)
+local arrow = page:find("\n  select { appearance: none; -webkit-appearance: none;", 1, true)
+T.truthy("the browser's own is off, after the shared rule's background", shared and arrow and arrow > shared)
+local arrowRule = arrow and page:sub(arrow, page:find("\n", arrow + 1, true)) or ""
+T.truthy("it's a chevron in the page's muted color", arrowRule:find("stroke='%236b7280'", 1, true))
+T.eq("the muted color is still that", page:match("%-%-text%-muted: (#%x+);"), "#6b7280")
+T.truthy(
+  "the same distance in from the edge everywhere",
+  arrowRule:find("background-position: right 10px center;", 1, true)
+)
+T.truthy("that doesn't repeat", arrowRule:find("background-repeat: no-repeat;", 1, true))
+T.truthy("and a long choice stops short of it", arrowRule:find("padding-right: 28px;", 1, true))
+T.falsy(
+  "no later rule sets a select's background or padding",
+  page:find("\n[^\n]*select[^\n{]*{[^\n}]*padding:", arrow + #arrowRule, false)
+)
+
 T.section("Which look is shown")
 T.truthy("the page takes the small message", has("if (cmd === 'SHOWN') onShown(params);"))
 
