@@ -66,7 +66,7 @@ T.truthy("and the two stay the same height", has("box.style.height = Math.max(64
 T.truthy("what's colored is escaped", has("escMin(text).replace(HL_RE"))
 T.truthy("the help opens beside the label", has('id="when-help-toggle"') and has('id="fld-when-help" hidden'))
 T.truthy("the preview shows its references", has(">References<") and has("With current values"))
-T.truthy("and a plain result", has("p.result === 'true' ? 'True' : 'False'"))
+T.truthy("and a plain result", has("isTrue ? 'True' : 'False'"))
 T.truthy("how many it watches", has("'Watching ' + n + ' reference'"))
 T.truthy("and marks what's used in the browser", has("(isUsed ? ' used' : '')") and has('class="ins">Insert'))
 
