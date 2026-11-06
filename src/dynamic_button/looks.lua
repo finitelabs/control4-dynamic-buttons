@@ -24,6 +24,7 @@ local log = require("lib.logging")
 --- @field glow? integer How much of the picture's own glow is drawn, 0 to 200; 100 without the field.
 --- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
 --- @field custom? LookCustom How the look changes its picture; the picture as it comes without the field.
+--- @field showWhen? string When Look Control's By Value shows the look, an expression; never true without the field.
 --- @field image? { bytes: integer, stale?: boolean } The drawn picture, once the Button tab has sent it;
 --- stale while the look's fields have changed since it was drawn.
 
@@ -85,6 +86,9 @@ local CUSTOM_COLORS = { "color", "body", "tile", "symbol", "glowColor" }
 --- The largest icon markup a look keeps, in bytes.
 Looks.MAX_ICON_BODY = 16 * 1024
 
+--- The longest Show when expression, in bytes.
+Looks.MAX_SHOW_WHEN = 2000
+
 local LOOKS_PERSIST_KEY = "Looks"
 
 --- @param store table A persist-like store with get(key, default) and set(key, value).
@@ -96,7 +100,7 @@ function Looks:new(store)
 end
 
 --- @private
---- @return { nextId: integer, list: Look[] } data
+--- @return { nextId: integer, list: Look[], defaultId?: integer } data
 function Looks:_load()
   local data = self._store:get(LOOKS_PERSIST_KEY)
   if type(data) ~= "table" or type(data.list) ~= "table" then
@@ -107,7 +111,7 @@ function Looks:_load()
 end
 
 --- @private
---- @param data { nextId: integer, list: Look[] }
+--- @param data { nextId: integer, list: Look[], defaultId?: integer }
 function Looks:_save(data)
   self._store:set(LOOKS_PERSIST_KEY, data)
 end
@@ -337,6 +341,13 @@ function Looks:_check(fields, exceptId)
   if customErr then
     return nil, customErr
   end
+  if fields.showWhen ~= nil and type(fields.showWhen) ~= "string" then
+    return nil, "Show when is text"
+  end
+  local showWhen = fields.showWhen and fields.showWhen:match("^%s*(.-)%s*$") or ""
+  if #showWhen > Looks.MAX_SHOW_WHEN then
+    return nil, string.format("Show when can be at most %d characters", Looks.MAX_SHOW_WHEN)
+  end
   return {
     name = name,
     icon = {
@@ -355,6 +366,7 @@ function Looks:_check(fields, exceptId)
     glow = glow,
     grayscale = fields.grayscale == true,
     custom = custom,
+    showWhen = showWhen ~= "" and showWhen or nil,
   }
 end
 
@@ -490,6 +502,9 @@ function Looks:delete(id)
   for i, look in ipairs(data.list) do
     if look.id == id then
       table.remove(data.list, i)
+      if data.defaultId == id then
+        data.defaultId = nil
+      end
       self:_save(data)
       return look
     end
@@ -521,6 +536,19 @@ function Looks:reorder(ids)
   data.list = list
   self:_save(data)
   return true
+end
+
+--- @return integer|nil id The look By Value shows when no Show when is true.
+function Looks:defaultId()
+  return tonumber(self:_load().defaultId)
+end
+
+--- Pick the look By Value shows when no Show when is true.
+--- @param id integer|nil Nil for none.
+function Looks:setDefault(id)
+  local data = self:_load()
+  data.defaultId = id
+  self:_save(data)
 end
 
 --- Forget every look. Ids go on from where they were, so a programming choice naming an old

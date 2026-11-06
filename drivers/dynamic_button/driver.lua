@@ -36,6 +36,8 @@ local Looks = require("dynamic_button.looks")
 local Images = require("dynamic_button.images")
 local Button = require("dynamic_button.button")
 local Iconify = require("dynamic_button.iconify")
+local Follow = require("dynamic_button.follow")
+local Expressions = require("lib.expressions")
 
 --- The UI Button proxy's binding.
 local PROXY_BINDING = 5001
@@ -63,6 +65,15 @@ local images = Images:new()
 
 --- @type Button
 local button
+
+--- @type Follow
+local follow
+
+--- Whether the values may change the look.
+--- @return boolean
+local followAllowed = function()
+  return true
+end
 
 --- The Look Is conditional's list as last registered.
 --- @type string|nil
@@ -202,6 +213,7 @@ end
 --- @return table state What the Button tab shows.
 local function tabState()
   local list = {}
+  local byValue = follow ~= nil and lookControl() == "By Value"
   for _, look in ipairs(looks:list()) do
     table.insert(list, {
       id = look.id,
@@ -216,6 +228,9 @@ local function tabState()
       glow = Looks.glow(look),
       grayscale = Looks.grayscale(look),
       custom = look.custom,
+      showWhen = look.showWhen,
+      showWhenText = byValue and look.showWhen and Expressions.render(look.showWhen, "condition") or nil,
+      whenError = byValue and follow:whenError(look.id) or nil,
     })
   end
   local properties = {}
@@ -234,6 +249,8 @@ local function tabState()
     looks = list,
     shown = shown and shown.id or nil,
     lookControl = lookControl(),
+    defaultLook = looks:defaultId(),
+    matched = byValue and follow:matched() or nil,
     max = Looks.MAX,
     maxChunk = Images.MAX_CHUNK,
     maxBytes = Images.MAX_BYTES,
@@ -393,6 +410,7 @@ local function onLicense(licensed)
   end
   registerLookIs(lookChoices(), true)
   UpdateProperty("Driver Status", "Ready")
+  follow:evaluate()
   pushState()
 end
 --#endif
@@ -443,6 +461,24 @@ function OnDriverLateInit()
     registerLookIs(saved, true)
   end
   registerLookIs(lookChoices())
+  follow = Follow:new({
+    looks = looks,
+    store = persist,
+    show = function(id)
+      local before = button:shown()
+      local ok, err = button:show(id)
+      if not ok then
+        return false, err
+      end
+      announceShown(before and before.id or nil)
+      pushShown()
+      return true
+    end,
+    changed = pushState,
+    allowed = function()
+      return followAllowed()
+    end,
+  })
 
   gInitialized = true
   UpdateProperty("Driver Status", "Ready")
@@ -451,11 +487,23 @@ function OnDriverLateInit()
   --#ifdef DRIVERCENTRAL
   drivercentral:startGate(onLicense)
   --#endif
+  -- After the gate: it decides whether the values may change the look.
+  follow:start(lookControl() == "By Value")
 end
 
 --#ifdef DRIVERCENTRAL
 OnDriverLateInit = diagnostics:wrapLateInit(OnDriverLateInit)
 --#endif
+
+--- A referenced device's expressions have an error from now on.
+--- @param deviceId integer
+function OnDeviceRemovedFromProject(deviceId)
+  log:trace("OnDeviceRemovedFromProject(%s)", deviceId)
+  DeviceUpdated(deviceId)
+  if follow then
+    follow:deviceRemoved(deviceId)
+  end
+end
 
 function OnDriverRemovedFromProject()
   log:trace("OnDriverRemovedFromProject()")
@@ -472,6 +520,7 @@ end
 
 --#ifdef DRIVERCENTRAL
 -- Director calls these itself, so no dispatcher reports their errors.
+OnDeviceRemovedFromProject = diagnostics:wrap(OnDeviceRemovedFromProject, "OnDeviceRemovedFromProject")
 OnDriverRemovedFromProject = diagnostics:wrap(OnDriverRemovedFromProject, "OnDriverRemovedFromProject")
 OnDriverDestroyed = diagnostics:wrap(OnDriverDestroyed, "OnDriverDestroyed")
 --#endif
@@ -531,6 +580,9 @@ end
 
 function OPC.Look_Control(propertyValue)
   log:trace("OPC.Look_Control(%s)", propertyValue)
+  if follow then
+    follow:setActive(lookControl() == "By Value")
+  end
   syncTab()
 end
 
@@ -622,12 +674,18 @@ function UIR._SAVE_LOOK(tParams)
   if not look then
     return pushError(err or "the look was not saved")
   end
+  if params.isDefault == true then
+    looks:setDefault(look.id)
+  elseif looks:defaultId() == look.id then
+    looks:setDefault(nil)
+  end
   if before and before.id == look.id and before.name ~= look.name then
     button:retell()
     announceShown(look.id)
   end
   registerLookIs(lookChoices())
   syncLookEvents()
+  follow:lookSaved(look.id)
   return reply("SAVED", { look = tostring(look.id) })
 end
 
@@ -653,6 +711,7 @@ function UIR._PUT_IMAGE(tParams)
   end
   log:info("Stored the picture for look %s (%d bytes)", look.name, #png)
   announceShown(before and before.id or nil)
+  follow:evaluate()
   return reply("IMAGE_STORED", { look = tostring(look.id) })
 end
 
@@ -668,6 +727,7 @@ function UIR._DELETE_LOOK(tParams)
   announceShown(before and before.id or nil)
   registerLookIs(lookChoices())
   syncLookEvents()
+  follow:lookDeleted(removed.id, before ~= nil and before.id == removed.id)
   return pushState()
 end
 
@@ -679,6 +739,7 @@ function UIR._ORDER_LOOKS(tParams)
     return pushError(err or "the order was not saved")
   end
   registerLookIs(lookChoices())
+  follow:evaluate()
   return pushState()
 end
 
@@ -692,6 +753,57 @@ function UIR._SHOW_LOOK(tParams)
   end
   announceShown(before and before.id or nil)
   return pushShown()
+end
+
+--- The devices a Show when can read. This button's own Look variable sends it no change events, and
+--- a look following the look shown could only chase itself, so the button isn't offered.
+function UIR._GET_DEVICES()
+  log:trace("UIR._GET_DEVICES()")
+  local own = tointeger(C4:GetDeviceID())
+  local devices = {}
+  for _, device in ipairs(Expressions.devices()) do
+    if device.id ~= own then
+      table.insert(devices, device)
+    end
+  end
+  return uiRespond("DEVICES_DATA", { devices = JSON:encode(devices) })
+end
+
+--- @param text string
+--- @param bytes integer
+--- @return string cut At most that many bytes, on a whole character: a UTF-8 lead byte left on its own isn't valid text.
+local function cutText(text, bytes)
+  if #text <= bytes then
+    return text
+  end
+  return (text:sub(1, bytes):gsub("[\192-\255][\128-\191]*$", ""))
+end
+
+--- One device's variables, with a value short enough to show beside its name.
+--- @param tParams table
+function UIR._GET_DEVICE_VARIABLES(tParams)
+  log:trace("UIR._GET_DEVICE_VARIABLES()")
+  local deviceId = tonumber(tabParams(tParams).deviceId)
+  local variables = deviceId and Expressions.deviceVariables(deviceId) or {}
+  for _, variable in ipairs(variables) do
+    variable.value = cutText(tostring(variable.value == nil and "" or variable.value), 60)
+  end
+  return uiRespond("DEVICE_VARIABLES_DATA", { deviceId = tostring(deviceId or ""), variables = JSON:encode(variables) })
+end
+
+--- Try a Show when without saving it, for the editor's preview.
+--- @param tParams table
+function UIR._EVAL_EXPRESSION(tParams)
+  log:trace("UIR._EVAL_EXPRESSION()")
+  local params = tabParams(tParams)
+  local evaluation = Expressions.evaluate("condition", tostring(params.expression or ""):sub(1, Looks.MAX_SHOW_WHEN))
+  return uiRespond("EVAL_RESULT", {
+    id = tostring(params.id or ""),
+    rendered = evaluation.rendered or "",
+    substituted = cutText(evaluation.substituted or "", Looks.MAX_SHOW_WHEN),
+    result = evaluation.result ~= nil and tostring(evaluation.result) or "",
+    error = evaluation.error or "",
+  })
 end
 
 --- Fetch from Iconify for a Button tab that can't reach it; only the offered packs.
@@ -780,6 +892,7 @@ PRESS_ACTIONS["On Select"] = function()
   stepLook(1)
 end
 PRESS_ACTIONS["Manual"] = function() end
+PRESS_ACTIONS["By Value"] = function() end
 
 --- A press of the button in Navigator. The proxy fires its own Selected event in every mode.
 --- @param idBinding integer
@@ -839,6 +952,7 @@ function EC.Reset_Driver(params)
     return
   end
   log:print("Resetting driver to initial state")
+  follow:stop()
   button:reset()
   values:reset()
   conditionals:reset()
@@ -880,6 +994,10 @@ local function whileLicensed(fn, refused)
   end
 end
 
+followAllowed = function()
+  return drivercentral:licensed()
+end
+
 -- _GET_STATE and _SET_DRIVER stay open while stopped: they only do what Composer's own Properties tab can.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
@@ -889,7 +1007,16 @@ EC.Reset_Driver = whileLicensed(EC.Reset_Driver)
 GCPL.Show_Look = whileLicensed(GCPL.Show_Look, function()
   return {}
 end)
-for _, name in ipairs({ "_SAVE_LOOK", "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
+for _, name in ipairs({
+  "_SAVE_LOOK",
+  "_PUT_IMAGE",
+  "_DELETE_LOOK",
+  "_ORDER_LOOKS",
+  "_SHOW_LOOK",
+  "_GET_DEVICES",
+  "_GET_DEVICE_VARIABLES",
+  "_EVAL_EXPRESSION",
+}) do
   UIR[name] = whileLicensed(UIR[name], function()
     return pushError(UNLICENSED_REFUSAL)
   end)

@@ -132,9 +132,10 @@
         <items>
           <item>On Select</item>
           <item>Manual</item>
+          <item>By Value</item>
         </items>
         <default>Manual</default>
-        <description>On Select shows the next look on each press. Manual leaves it to programming.</description>
+        <description>Next look on each press, only from programming, or each look's Show when.</description>
       </property>
       <property>
         <name>Shown Look</name>

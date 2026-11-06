@@ -11,6 +11,7 @@
     --border: #d1d5db; --text: #1a1a1a; --text-muted: #6b7280;
     --accent: #2563eb; --accent-hover: #1d4ed8; --danger: #dc2626;
     --success: #16a34a; --warning: #d97706;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
     --radius: 6px; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --shadow: 0 1px 3px rgba(0,0,0,0.08);
     --tile: #1c1c1e; --tile-text: #ffffff;
@@ -72,6 +73,8 @@
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field label, .flabel { font-size: 11px; color: var(--text-muted); font-weight: 500; }
   select, input[type="text"], input[type="search"] { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
+  /* The browser's own arrow sits where it likes, so every select draws this one. It comes after the rule above, whose background shorthand would reset it. */
+  select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 6px; padding-right: 28px; text-overflow: ellipsis; }
   input[type="color"] { width: 44px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
   .colorrow { display: flex; align-items: center; gap: 8px; }
   .colorrow code { font-size: 12px; color: var(--text-muted); }
@@ -89,6 +92,55 @@
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .control select { width: auto; min-width: 110px; }
+  .whenlabel { align-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding-top: 9px; }
+  .whenlabel label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .lookform .fctl.whenbox { align-items: flex-start; }
+  /* Show when's editor: a transparent textarea over a <pre> of the same text in color. Both layers
+     share their font metrics so the caret and selection stay aligned. */
+  .edwrap { position: relative; flex: 1; min-width: 0; }
+  .edwrap textarea, .edwrap pre { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; padding: 9px 10px; margin: 0; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; min-height: 64px; box-sizing: border-box; width: 100%; border-radius: var(--radius); tab-size: 2; }
+  .edwrap pre { position: absolute; inset: 0; border: 1px solid transparent; background: var(--surface); overflow: hidden; pointer-events: none; color: var(--text); }
+  .edwrap textarea { position: relative; z-index: 1; display: block; background: transparent; color: transparent; caret-color: var(--text); border: 1px solid var(--border); resize: none; overflow: hidden; }
+  .edwrap textarea::placeholder { color: #9ca3af; }
+  .edwrap textarea::selection { background: rgba(37,99,235,0.22); }
+  .edwrap textarea.input-error { border-color: var(--danger); }
+  .hl-tok { background: #dbeafe; border-radius: 4px; box-shadow: 0 0 0 1.5px #dbeafe; color: #1d4ed8; }
+  .hl-fn { color: #6d28d9; }
+  .hl-num { color: #0f766e; }
+  .hl-str { color: #059669; }
+  .hl-op { color: #6b7280; }
+  .help-toggle { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font); font-size: 11px; font-weight: 500; color: var(--accent); text-align: left; }
+  .help-toggle:hover { text-decoration: underline; }
+  .help { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius); padding: 10px 12px; columns: 2; column-gap: 24px; min-width: 0; }
+  @media (max-width: 740px) { .help { columns: 1; } }
+  .help section { break-inside: avoid; margin-bottom: 10px; }
+  .help h4 { font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #94a3b8; margin: 0 0 3px; }
+  .help p { font-size: 11.5px; color: #475569; margin: 0 0 4px; }
+  .help code { font-family: var(--mono); font-size: 10.5px; color: #1e293b; background: #eef2f7; border-radius: 3px; padding: 0 3px; }
+  .prev { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
+  .prev .pl { font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+  .prev .pv { font-family: var(--mono); font-size: 11px; color: #475569; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .prev .pres { font-family: var(--mono); font-size: 16px; font-weight: 700; }
+  .prev .pres.true { color: var(--success); }
+  .prev .pres.false { color: #475569; }
+  .prev .perr { font-size: 12px; font-weight: 600; color: var(--danger); overflow-wrap: anywhere; }
+  .prev .pub { font-size: 11px; color: var(--text-muted); border-top: 1px dashed #e2e8f0; margin-top: 9px; padding-top: 8px; }
+  .lookrow .sub.bad { color: var(--danger); white-space: normal; }
+  .varbrowser { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; min-width: 0; }
+  .vartree { max-height: 220px; overflow-y: auto; margin-top: 6px; }
+  .troom { padding: 8px 4px 2px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+  .tsection { padding: 4px 22px 0; font-size: 10.5px; color: var(--text-muted); }
+  .tdev { display: flex; align-items: center; gap: 6px; padding: 3px 4px; font-weight: 500; cursor: pointer; border-radius: 4px; }
+  .tdev:hover { background: var(--surface-hover); }
+  .tdev .chev { color: var(--text-muted); font-size: 10px; width: 10px; }
+  .tvar { display: flex; align-items: center; gap: 8px; width: 100%; padding: 3px 4px 3px 22px; background: none; border: 0; font: inherit; text-align: left; color: inherit; cursor: pointer; border-radius: 4px; }
+  .tvar:hover { background: #eef2ff; outline: 1px solid #c7d2fe; }
+  .tvar .vname { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tvar .vval { max-width: 40%; color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tvar .ins { visibility: hidden; flex: none; font-size: 10px; font-weight: 600; color: #fff; background: var(--accent); border-radius: 4px; padding: 1px 6px; }
+  .tvar.used .vname::after { content: " \2713"; color: var(--success); }
+  .tvar:hover .ins { visibility: visible; }
+  .tloading { padding: 4px 22px; font-size: 11px; color: var(--text-muted); font-style: italic; }
   .pgroup { font-size: 11px; font-weight: 600; color: var(--text); margin: 12px 0 6px; }
   .pgroup:first-of-type { margin-top: 0; }
   .props-note { margin: -2px 0 12px; }
@@ -143,6 +195,8 @@
   .status.bad { color: var(--danger); }
   .big { display: block; width: 150px; height: 150px; margin: 10px auto 0; border-radius: 8px; background-color: #e5e7eb; background-image: linear-gradient(45deg, #d1d5db 25%, transparent 25%), linear-gradient(-45deg, #d1d5db 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d1d5db 75%), linear-gradient(-45deg, transparent 75%, #d1d5db 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
   .big.dark { background-color: #1f2a36; background-image: linear-gradient(45deg, #2b3a4a 25%, transparent 25%), linear-gradient(-45deg, #2b3a4a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2b3a4a 75%), linear-gradient(-45deg, transparent 75%, #2b3a4a 75%); }
+  #lic-card summary { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; cursor: pointer; }
+  #lic-card[open] summary { margin-bottom: 10px; }
   .lic-list { margin-top: 4px; padding-left: 18px; color: var(--text-muted); font-size: 11px; }
   .lic-copy { margin-top: 8px; font-size: 11px; color: var(--text-muted); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -204,6 +258,79 @@
           <div class="frow" id="fld-cycle">
             <label for="f-in-cycle">Cycle</label>
             <div class="fctl"><label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label></div>
+          </div>
+          <div class="frow" id="fld-when" hidden>
+            <div class="whenlabel">
+              <label for="f-when">Show when</label>
+              <button type="button" class="help-toggle" id="when-help-toggle" aria-expanded="false">Syntax help</button>
+            </div>
+            <div class="fctl whenbox">
+              <div class="edwrap">
+                <pre id="when-hl" aria-hidden="true"></pre>
+                <textarea id="f-when" rows="2" maxlength="2000" spellcheck="false" placeholder="PARAM{device,variable} > 50"></textarea>
+              </div>
+              <button class="btn btn-secondary sm" id="when-insert" type="button">Browse Variables</button>
+            </div>
+          </div>
+          <div class="frow" id="fld-when-help" hidden>
+            <span></span>
+            <div class="help" id="when-help">
+              <section>
+                <h4>True or false</h4>
+                <p>A Show when has to come out <code>true</code> or <code>false</code>, so it usually ends in a comparison. A variable that already holds true or false can stand alone.</p>
+              </section>
+              <section>
+                <h4>Variables</h4>
+                <p><code>PARAM{device id,variable id}</code> reads a variable's current value. Browse Variables puts one at the cursor.</p>
+                <p>A variable can also go by its exact name, case and all: <code>PARAM{device id,LEVEL}</code>.</p>
+              </section>
+              <section>
+                <h4>Comparing</h4>
+                <p><code>==</code> <code>~=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code>, where <code>~=</code> means not equal.</p>
+                <p>Join them with <code>and</code> <code>or</code> <code>not</code>.</p>
+                <p>Math: <code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> <code>^</code> <code>( )</code></p>
+              </section>
+              <section>
+                <h4>Text</h4>
+                <p>Put text in double quotes: <code>== "Charging"</code>. It matches exactly, case and all.</p>
+                <p>A value that is a number or true or false compares as one. Any other value compares as text.</p>
+              </section>
+              <section>
+                <h4>Functions</h4>
+                <p><code>abs</code> <code>ceil</code> <code>floor</code> <code>sqrt</code> <code>min</code> <code>max</code> <code>round(x, places)</code> <code>pi</code> <code>huge</code></p>
+                <p><code>c2f</code> <code>f2c</code> convert between Celsius and Fahrenheit.</p>
+                <p><code>device_name(id)</code> <code>room_name(id)</code> give a device's name and room.</p>
+                <p><code>tonumber</code> <code>tostring</code> <code>type</code>, and the <code>math</code> and <code>string</code> libraries: <code>math.fmod</code>, <code>string.lower</code> and the rest.</p>
+              </section>
+            </div>
+          </div>
+          <div class="frow" id="fld-when-browser" hidden>
+            <span></span>
+            <div class="varbrowser">
+              <input type="search" id="var-search" placeholder="Search rooms, devices, variables" aria-label="Search rooms, devices, variables">
+              <div class="vartree" id="var-tree"></div>
+            </div>
+          </div>
+          <div class="frow" id="fld-when-preview" hidden>
+            <span></span>
+            <div class="prev" id="when-preview">
+              <div class="pl">References</div>
+              <div class="pv" id="prev-rendered"></div>
+              <div id="prev-sub-wrap">
+                <div class="pl">With current values</div>
+                <div class="pv" id="prev-substituted"></div>
+              </div>
+              <div id="prev-res-wrap">
+                <div class="pl">Result</div>
+                <div class="pres" id="prev-result"></div>
+                <div class="perr" id="prev-error"></div>
+              </div>
+              <div class="pub" id="when-watch"></div>
+            </div>
+          </div>
+          <div class="frow" id="fld-default" hidden>
+            <label for="f-default">Default look</label>
+            <div class="fctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> Show this look when no Show when is true</label></div>
           </div>
         </div>
         <div class="lookform picker" id="pick-form">
@@ -321,8 +448,8 @@
     <div class="status" id="status"></div>
   </div>
 
-  <div class="card" id="lic-card">
-    <h3>Icon licenses</h3>
+  <details class="card" id="lic-card">
+    <summary>Icon licenses</summary>
     <div>The included icons and the icon packs are drawn from these collections:</div>
     <ul class="lic-list">
       <li>Material Design Icons, copyright Pictogrammers, Apache License 2.0 (github.com/Templarian/MaterialDesign)</li>
@@ -334,7 +461,7 @@
     <div class="lic-copy">The Classic Device pictures are our own drawings, most built around a Material Design Icons symbol.</div>
     <div class="lic-copy">The driver includes the full license text in LICENSES.txt. Searched icons come from packs whose licenses allow use without credit on each icon. Each look keeps the name and license of the icon it was drawn from.</div>
     <ul class="lic-list" id="lic-list"></ul>
-  </div>
+  </details>
 </div>
 
 <script>
@@ -463,6 +590,9 @@ function handleDriverData(cmd, params) {
     }
     if (cmd === 'SHOWN') onShown(params);
     if (cmd === 'ICONIFY') onIconify(params);
+    if (cmd === 'EVAL_RESULT') onEvalResult(params);
+    if (cmd === 'DEVICES_DATA') onDevices(JSON.parse(params.devices || '[]'));
+    if (cmd === 'DEVICE_VARIABLES_DATA') onDeviceVariables(params.deviceId, JSON.parse(params.variables || '[]'));
     if (gWaiters[cmd]) gWaiters[cmd](params);
   } catch (e) { console.error('handleDriverData error:', cmd, e); }
 }
@@ -1006,7 +1136,8 @@ var gState = { properties: [], looks: [], shown: null, lookControl: 'Manual', ma
 
 function onState(state) {
   var packs = gState.packs.join(',');
-  gState = Object.assign(gState, state || {});
+  // The driver leaves these out when it has none, so the last state's can't carry over.
+  gState = Object.assign(gState, { shown: null, defaultLook: null, matched: null }, state || {});
   gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
   renderList();
@@ -1024,7 +1155,8 @@ function shownLook() {
 // What a press of the button does, by Look Control.
 var CONTROL_NOTES = {
   'On Select': 'Each press shows the next look in the cycle.',
-  'Manual': 'A press leaves the look as it is: programming changes it.'
+  'Manual': 'A press leaves the look as it is: programming changes it.',
+  'By Value': 'The first look whose Show when is true shows.'
 };
 function renderControl() {
   var mode = CONTROL_NOTES[gState.lookControl] ? gState.lookControl : 'Manual';
@@ -1098,6 +1230,7 @@ async function renderList() {
   $('shown-pill').innerHTML = shown ? '<span class="pill online">' + esc(shown.name) + '</span>' + (shown.stale ? ' ' + STALE_PILL : '') : '<span class="pill info">Driver icon</span>';
   navTile($('shown-tile'), shown);
   renderControl();
+  syncWhenRows();
   renderProps();
   var el = $('look-list');
   if (!list.length) {
@@ -1108,10 +1241,12 @@ async function renderList() {
     var id = Number(l.id);
     var badges = (id === gState.shown ? ' <span class="pill online">Shown</span>' : '') +
       (!l.hasImage ? ' <span class="pill pending">No picture yet</span>' : (l.stale ? ' ' + STALE_PILL : '')) +
-      (l.inCycle === false ? ' <span class="pill info" title="Presses, Next Look and Previous Look pass over this look.">Not in cycle</span>' : '');
+      (l.inCycle === false ? ' <span class="pill info" title="Presses, Next Look and Previous Look pass over this look.">Not in cycle</span>' : '') +
+      (byValue() && id === gState.defaultLook ? ' <span class="pill info" title="Shows when no Show when is true.">Default</span>' : '') +
+      (byValue() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the values call for a different look.">Matched</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
-      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div></div>' +
+      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div>' + whenLines(l) + '</div>' +
       '<div class="acts">' +
         '<button class="btn btn-secondary sm" type="button" data-act="show" data-id="' + id + '"' + (l.hasImage && id !== gState.shown ? '' : ' disabled') + '>Show</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
@@ -1755,6 +1890,10 @@ function openEditor(look) {
   $('f-in-cycle').checked = gEditor.look.inCycle !== false;
   $('f-glow').value = gEditor.look.glow;
   $('f-grayscale').checked = gEditor.look.grayscale;
+  gEditor.look.isDefault = !!look && gState.defaultLook === look.id;
+  $('f-when').value = gEditor.look.showWhen || '';
+  $('f-default').checked = gEditor.look.isDefault;
+  $('fld-when-browser').hidden = true;
   renderShapes();
   renderPicker();
   markPicked();
@@ -1765,6 +1904,7 @@ function openEditor(look) {
   syncCustom();
   measureBounds();
   $('editor').hidden = false;
+  syncWhen();
   preview();
   $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1804,7 +1944,7 @@ async function saveLook() {
     }
     var icon = l.icon && savedIcon(l.icon);
     var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
-      glow: savedGlow(l), grayscale: !!l.grayscale };
+      glow: savedGlow(l), grayscale: !!l.grayscale, showWhen: l.showWhen || '', isDefault: !!l.isDefault };
     if (custom) fields.custom = custom;
     if (!gApiHost) {
       demoSave(fields);
@@ -1866,14 +2006,397 @@ async function sendPicture(lookId, name, b64) {
 
 function demoSave(fields) {
   var existing = gState.looks.find(function(x) { return x.id === fields.id; });
+  var id = fields.id;
   if (existing) Object.assign(existing, fields, { custom: fields.custom, hasImage: true, stale: false });
   else {
-    var id = gState.looks.reduce(function(m, x) { return Math.max(m, x.id); }, 0) + 1;
-    gState.looks.push(Object.assign({}, fields, { id: id, hasImage: true, stale: false }));
+    id = gState.looks.reduce(function(m, x) { return Math.max(m, x.id); }, 0) + 1;
+    gState.looks.push(existing = Object.assign({}, fields, { id: id, hasImage: true, stale: false }));
     if (!gState.shown) gState.shown = id;
   }
+  existing.showWhenText = demoRendered(fields.showWhen);
+  existing.whenError = fields.showWhen ? demoEval(fields.showWhen.trim()).error : '';
+  if (fields.isDefault) gState.defaultLook = id;
+  else if (gState.defaultLook === id) gState.defaultLook = null;
   gState.looks.forEach(withIconBody);
   renderList();
+}
+
+// ============================================================
+// Show when: what By Value reads for each look
+// ============================================================
+var gDevices = [], gVarsByDevice = {}, gExpanded = {}, gRequestedVars = {}, gEvalSeq = 0, gEvalTimer = null;
+
+function byValue() { return gState.lookControl === 'By Value'; }
+
+// These only apply under By Value, so they're hidden otherwise.
+function syncWhenRows() {
+  var wasHidden = $('fld-when').hidden;
+  ['fld-when', 'fld-when-preview', 'fld-default'].forEach(function(id) { $(id).hidden = !byValue(); });
+  if (!byValue()) {
+    $('fld-when-browser').hidden = true;
+    setHelpOpen(false);
+  } else if (wasHidden) {
+    syncWhen(); // a hidden box had no height to measure
+  }
+}
+
+// Every name an expression can use, which the highlighter colors and the demo knows.
+var WHEN_NAMES = 'abs|ceil|floor|sqrt|min|max|round|pi|huge|c2f|f2c|device_name|room_name|tonumber|tostring|type';
+
+// Escape for a <pre>'s text. Quotes stay as they are, so the highlighter can still see a string.
+function escMin(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+var HL_RE = new RegExp(
+  '(PARAM\\s*\\{[^}]*\\})'                                  // 1 token
+  + '|("[^"\\n]*"|\'[^\'\\n]*\')'                           // 2 text
+  + '|((?:math|string)\\.\\w+'                              // 3 name
+  + '|\\b(?:' + WHEN_NAMES + '|and|or|not|true|false)\\b)'
+  + '|(\\d+(?:\\.\\d+)?)'                                   // 4 number
+  + '|(&lt;=?|&gt;=?|==|~=|[+\\-*/%^(),])',                 // 5 operator
+  'g');
+
+function hlRender(text) {
+  var out = escMin(text).replace(HL_RE, function(m, tok, str, fn, num, op) {
+    if (tok) return '<span class="hl-tok">' + tok + '</span>';
+    if (str) return '<span class="hl-str">' + str + '</span>';
+    if (fn) return '<span class="hl-fn">' + fn + '</span>';
+    if (num) return '<span class="hl-num">' + num + '</span>';
+    if (op) return '<span class="hl-op">' + op + '</span>';
+    return m;
+  });
+  // A trailing newline needs a filler so the two layers stay the same height.
+  if (out.slice(-1) === '\n' || out === '') out += '\u200b';
+  return out;
+}
+
+function syncHighlight() {
+  var box = $('f-when');
+  $('when-hl').innerHTML = hlRender(box.value);
+  // Grown to fit, so the layers never scroll apart.
+  box.style.height = 'auto';
+  box.style.height = Math.max(64, box.scrollHeight) + 'px';
+}
+
+// The variables the text reads, by "device:variable" as it writes them.
+function usedTokens() {
+  var used = {}, re = /PARAM\s*\{\s*([^,}]*?)\s*,\s*([^}]*?)\s*\}/g, m;
+  while ((m = re.exec($('f-when').value)) !== null) used[m[1] + ':' + m[2]] = true;
+  return used;
+}
+
+function updateWatchCount() {
+  var n = Object.keys(usedTokens()).length;
+  $('when-watch').hidden = !n;
+  $('when-watch').textContent = 'Watching ' + n + ' reference' + (n === 1 ? '' : 's');
+}
+
+// All that follows the text.
+function syncWhen() {
+  syncHighlight();
+  updateWatchCount();
+  if (!$('fld-when-browser').hidden) renderVarTree();
+  requestPreview();
+}
+
+function setHelpOpen(open) {
+  $('fld-when-help').hidden = !open;
+  $('when-help-toggle').textContent = open ? 'Hide syntax help' : 'Syntax help';
+  $('when-help-toggle').setAttribute('aria-expanded', String(open));
+}
+$('when-help-toggle').addEventListener('click', function() { setHelpOpen($('fld-when-help').hidden); });
+
+// The engine's errors in plain sentences. What it doesn't recognize stays as it is.
+var ERROR_KINDS = { number: 'a number', string: 'text', boolean: 'true or false', nil: 'nothing', table: 'a table', 'function': 'a function' };
+function errorKind(kind) { return ERROR_KINDS[kind] || kind; }
+
+// A device as the rendered text names it, for the first token reading it.
+function refLabel(device, template, rendered) {
+  var tokens = String(template || '').match(/PARAM\s*\{[^}]*\}/g) || [];
+  var labels = String(rendered || '').match(/\[[^\[\]]* > [^\[\]]*\]/g) || [];
+  if (tokens.length !== labels.length) return '';
+  for (var i = 0; i < tokens.length; i++) {
+    var m = /\{\s*([^,}]*?)\s*,/.exec(tokens[i]);
+    if (m && m[1] === device) return labels[i].slice(1, labels[i].lastIndexOf(' > '));
+  }
+  return '';
+}
+
+function friendlyCompile(body) {
+  var m = /^([\s\S]*?) near '?([\s\S]*?)'?$/.exec(body);
+  if (!m) return body;
+  var what = m[1], near = m[2], expected = /^'(.+?)' expected/.exec(what);
+  if (near === '<eof>') {
+    if (/^unfinished string/.test(what)) return "It stops before it's finished: a closing quote is missing.";
+    if (expected) return "It stops before it's finished: " + expected[1] + ' is missing.';
+    return "It stops before it's finished: something should follow the last part.";
+  }
+  if (expected && expected[1] === '<eof>') {
+    if (near === '=') return 'Use == to compare, not =.';
+    if (near === '!') return 'Use ~= for not equal, not !=.';
+    return 'It reads as finished before ' + near + ': that part is extra, or something before it is missing.';
+  }
+  if (expected) return expected[1] + ' is missing near ' + near + '.';
+  if (/^unexpected symbol/.test(what)) return 'Something is out of place near ' + near + '.';
+  if (/^malformed number/.test(what)) return near + " isn't a number.";
+  if (/^unfinished string/.test(what)) return 'A closing quote is missing near ' + near + '.';
+  return 'Something is wrong near ' + near + ': ' + what + '.';
+}
+
+function friendlyRuntime(body) {
+  var m = /attempt to compare (\w+) with (\w+)/.exec(body);
+  if (m) {
+    var kinds = [m[1], m[2]].sort();
+    if (kinds.indexOf('nil') >= 0) {
+      return 'This compares ' + errorKind(kinds[0] === 'nil' ? kinds[1] : kinds[0]) + ' with something that has no value. A name may be misspelled, or text may need quotes.';
+    }
+    return "This can't compare " + errorKind(kinds[0]) + ' with ' + errorKind(kinds[1]) + '. Both sides of < or > have to be the same kind.';
+  }
+  if (/attempt to compare two /.test(body)) return '< and > only work on numbers or text.';
+  m = /bad argument #\d+ to '(.+?)' \((\w+) expected, got (.+?)\)/.exec(body);
+  if (m) return m[1] + ' needs ' + errorKind(m[2]) + ' there, and this gives it ' + errorKind(m[3]) + '.';
+  m = /attempt to (perform arithmetic on|concatenate|call|index) (?:\w+ '(.+?)' )?\(?a (\w+) value\)?/.exec(body);
+  if (!m) return body;
+  var action = m[1], name = m[2] === '?' ? '' : m[2], kind = m[3], nil = kind === 'nil';
+  if (action === 'call') {
+    if (nil) return name ? "There's no function named " + name + '.' : "This calls a function that doesn't exist.";
+    return name ? name + " isn't a function." : 'This calls ' + errorKind(kind) + ", which isn't a function.";
+  }
+  if (action === 'index') {
+    if (nil) return name ? "There's nothing named " + name + ' to read from.' : "This reads from something that isn't there.";
+    return 'This reads a part of ' + errorKind(kind) + ', which has no parts.';
+  }
+  if (action === 'concatenate') {
+    if (nil && name) return "There's no value named " + name + ' to join with text.';
+    return 'Only text and numbers can be joined, and this has ' + errorKind(kind) + '.';
+  }
+  if (nil && name) return "There's no value named " + name + ", so it can't be used in math.";
+  if (kind === 'string') return "This does math on text: a value here isn't a number.";
+  return 'This does math on ' + errorKind(kind) + '.';
+}
+
+// template and rendered give a device's name to a reason that only has its id.
+function friendlyError(raw, template, rendered) {
+  var text = String(raw == null ? '' : raw), m;
+  if (/^result is not a boolean/.test(text)) return 'Show when has to come out true or false: add a comparison.';
+  m = /^variable ([\s\S]+) not found on device ([\s\S]+)$/.exec(text);
+  if (m) {
+    return (refLabel(m[2], template, rendered) || 'Device ' + m[2]) + ' has no variable ' + (/^\d+$/.test(m[1]) ? '' : 'named ') + m[1] + '.';
+  }
+  m = /^device ([\s\S]+) not found$/.exec(text);
+  if (m) return "There's no device " + m[1] + ' in this project.';
+  m = /^device ([\s\S]+) was removed from the project$/.exec(text);
+  if (m) return (refLabel(m[1], template, rendered) || 'Device ' + m[1]) + ' was removed from the project.';
+  m = /^(compile|runtime) error: (?:[\s\S]*"\]:\d+: )?([\s\S]*)$/.exec(text);
+  if (!m) return text;
+  return (m[1] === 'compile' ? friendlyCompile : friendlyRuntime)(m[2]).replace(/__p(\[\d+\])?/g, 'a variable');
+}
+
+function whenLines(l) {
+  if (!byValue()) return '';
+  var text = l.showWhen ? l.showWhenText || l.showWhen : '';
+  return '<div class="sub" title="' + esc(text) + '">' + (text ? 'Show when ' + esc(text) : 'No Show when') + '</div>' +
+    (l.whenError ? '<div class="sub bad" title="' + esc(l.whenError) + '">' + esc(friendlyError(l.whenError, l.showWhen, l.showWhenText)) + '</div>' : '');
+}
+
+function requestPreview() {
+  clearTimeout(gEvalTimer);
+  gEvalSeq++;
+  var text = $('f-when').value.trim();
+  if (!text || !byValue()) { showPreviewHint(); return; }
+  gEvalTimer = setTimeout(function() {
+    if (!gApiHost) { onEvalResult(Object.assign({ id: String(gEvalSeq) }, demoEval(text))); return; }
+    sendCommand('_EVAL_EXPRESSION', { id: String(gEvalSeq), expression: text });
+  }, 350);
+}
+
+function showPreviewHint() {
+  $('prev-rendered').textContent = 'Preview appears as you type.';
+  $('prev-sub-wrap').hidden = true;
+  $('prev-res-wrap').hidden = true;
+  $('f-when').classList.remove('input-error');
+}
+
+function onEvalResult(p) {
+  if (String(p.id) !== String(gEvalSeq)) return; // an answer to earlier text
+  $('prev-rendered').textContent = String(p.rendered == null ? '' : p.rendered);
+  $('prev-substituted').textContent = String(p.substituted == null ? '' : p.substituted).replace(/ERROR_VARIABLE_NOT_FOUND/g, '(not found)');
+  $('prev-sub-wrap').hidden = false;
+  $('prev-res-wrap').hidden = false;
+  var result = $('prev-result'), error = $('prev-error');
+  result.hidden = !!p.error;
+  error.hidden = !p.error;
+  $('f-when').classList.toggle('input-error', !!p.error);
+  if (p.error) {
+    error.textContent = friendlyError(p.error, $('f-when').value, p.rendered);
+    error.title = p.error;
+  } else {
+    // The socket turns the text "true" into a boolean.
+    var isTrue = String(p.result) === 'true';
+    result.textContent = isTrue ? 'True' : 'False';
+    result.className = 'pres ' + (isTrue ? 'true' : 'false');
+  }
+}
+
+// A narrower pane wraps the text onto more lines, and both layers hide what doesn't fit.
+if (window.ResizeObserver) {
+  var gWhenWidth = 0;
+  new ResizeObserver(function() {
+    var width = $('f-when').clientWidth;
+    if (width && width !== gWhenWidth) { gWhenWidth = width; syncHighlight(); }
+  }).observe($('f-when'));
+}
+
+$('f-when').addEventListener('input', function() {
+  gEditor.look.showWhen = $('f-when').value;
+  syncWhen();
+});
+$('f-default').addEventListener('change', function() { gEditor.look.isDefault = $('f-default').checked; });
+
+$('when-insert').addEventListener('click', function() {
+  var browser = $('fld-when-browser');
+  browser.hidden = !browser.hidden;
+  if (browser.hidden) return;
+  if (!gApiHost) { onDevices(DEMO_DEVICES); return; }
+  // Each opening asks again: devices and values change.
+  sendCommand('_GET_DEVICES');
+  renderVarTree();
+});
+
+function onDevices(devices) {
+  gDevices = devices || [];
+  gVarsByDevice = {};
+  gRequestedVars = {};
+  renderVarTree();
+}
+
+function onDeviceVariables(deviceId, variables) {
+  gVarsByDevice[String(deviceId)] = variables || [];
+  renderVarTree();
+}
+
+function fetchVars(id) {
+  var key = String(id);
+  if (gRequestedVars[key]) return;
+  gRequestedVars[key] = true;
+  if (!gApiHost) { gVarsByDevice[key] = DEMO_VARIABLES[key] || []; return; }
+  sendCommand('_GET_DEVICE_VARIABLES', { deviceId: Number(id) });
+}
+
+function renderVarTree() {
+  var q = $('var-search').value.trim().toLowerCase(), used = usedTokens();
+  var has = function(text) { return String(text || '').toLowerCase().indexOf(q) >= 0; };
+  var lastRoom = null, html = '';
+  gDevices.forEach(function(d) {
+    var room = d.roomName || 'No Room', key = String(d.id), vars = gVarsByDevice[key];
+    var deviceHits = !q || has(room) || has(d.name);
+    // A search reads the names of the variables already loaded.
+    var varHits = q && !deviceHits && vars ? vars.filter(function(v) { return has(v.name); }) : null;
+    if (!deviceHits && !(varHits && varHits.length)) return;
+    if (room !== lastRoom) { html += '<div class="troom">' + esc(room) + '</div>'; lastRoom = room; }
+    var open = gExpanded[key] || !!varHits;
+    html += '<div class="tdev" data-device="' + Number(d.id) + '"><span class="chev">' + (open ? '&#9662;' : '&#9656;') + '</span>' + esc(d.name) + '</div>';
+    if (!open) return;
+    if (!vars) { fetchVars(d.id); vars = gVarsByDevice[key]; }
+    if (!vars) { html += '<div class="tloading">Loading variables…</div>'; return; }
+    var list = varHits || vars, section = null;
+    if (!list.length) html += '<div class="tloading">No variables</div>';
+    list.forEach(function(v) {
+      // An entry can span a driver and the proxies restating it: a token names the one owning the variable.
+      if (v.section && v.section !== section) { html += '<div class="tsection">' + esc(v.section) + '</div>'; section = v.section; }
+      var owner = v.deviceId != null ? v.deviceId : d.id;
+      var isUsed = used[owner + ':' + v.id] || used[owner + ':' + v.name];
+      html += '<button type="button" class="tvar' + (isUsed ? ' used' : '') + '" data-token="PARAM{' + Number(owner) + ',' + Number(v.id) + '}" title="' + esc(d.name) + ' > ' + esc(v.name) + '">' +
+        '<span class="vname">' + esc(v.name) + '</span><span class="vval">' + esc(v.value == null ? '' : v.value) + '</span><span class="ins">Insert</span></button>';
+    });
+  });
+  $('var-tree').innerHTML = html || '<div class="tloading">' + (gDevices.length ? 'No matches' : 'Loading devices…') + '</div>';
+}
+$('var-search').addEventListener('input', renderVarTree);
+
+$('var-tree').addEventListener('click', function(e) {
+  var device = e.target.closest('[data-device]'), token = e.target.closest('[data-token]');
+  if (device) {
+    var key = device.dataset.device;
+    if (gExpanded[key]) delete gExpanded[key]; else gExpanded[key] = true;
+    renderVarTree();
+  } else if (token) {
+    var box = $('f-when'), start = box.selectionStart, end = box.selectionEnd, text = token.dataset.token;
+    box.value = box.value.slice(0, start) + text + box.value.slice(end);
+    box.focus();
+    box.setSelectionRange(start + text.length, start + text.length);
+    gEditor.look.showWhen = box.value;
+    syncWhen();
+  }
+});
+
+// Opened outside Composer: a made-up device stands in for the project's.
+var DEMO_DEVICES = [{ id: 9001, name: 'Sample Battery', roomName: 'Demo Room' }];
+var DEMO_VARIABLES = { 9001: [
+  { id: 1, deviceId: 9001, section: 'Device', name: 'LEVEL', type: 'NUMBER', value: '62' },
+  { id: 2, deviceId: 9001, section: 'Device', name: 'STATE', type: 'STRING', value: 'Charging' }
+] };
+
+var DEMO_TOKEN = /PARAM\s*\{\s*([^,}]*?)\s*,\s*([^}]*?)\s*\}/g;
+
+function demoVariable(ref) {
+  return DEMO_VARIABLES[9001].find(function(v) { return String(v.id) === ref || v.name === ref; });
+}
+
+function demoRendered(text) {
+  return String(text || '').replace(DEMO_TOKEN, function(m, device, ref) {
+    if (device !== '9001') return '[Device ' + device + ' > ' + ref + ']';
+    var v = demoVariable(ref);
+    return '[Demo Room > Sample Battery > ' + (v ? v.name : ref) + ']';
+  });
+}
+
+// A small part of the syntax, answering as the driver does so it takes the same path to the page.
+function demoEval(text) {
+  var missing = '', slot = 0;
+  var substituted = text.replace(DEMO_TOKEN, function(m, device, ref) {
+    var v = device === '9001' && demoVariable(ref);
+    if (!v) missing = missing || (device === '9001' ? 'variable ' + ref + ' not found on device 9001' : 'device ' + device + ' not found');
+    return v ? v.value : 'ERROR_VARIABLE_NOT_FOUND';
+  });
+  var answer = function(result, error) {
+    return { rendered: demoRendered(text), substituted: substituted, result: result, error: error || '' };
+  };
+  if (missing) return answer('', missing);
+  var source = text.replace(DEMO_TOKEN, function() { return '__p[' + (++slot) + ']'; });
+  var fail = function(kind, message) { return answer('', kind + ' error: [string "return ' + source + '"]:1: ' + message); };
+  if ((text.match(/"/g) || []).length % 2) return fail('compile', "unfinished string near '<eof>'");
+  if (/(?:[<>=~+\-*\/%^(]|\band|\bor|\bnot)\s*$/.test(text)) return fail('compile', "unexpected symbol near '<eof>'");
+  if ((text.match(/\(/g) || []).length > (text.match(/\)/g) || []).length) return fail('compile', "')' expected near '<eof>'");
+  var call = /\b(?!and\b|or\b|not\b)([A-Za-z_]\w*)\s*\(/.exec(text);
+  if (call && !new RegExp('^(' + WHEN_NAMES + ')$').test(call[1])) return fail('runtime', "attempt to call global '" + call[1] + "' (a nil value)");
+  var value = function(side) {
+    var t = new RegExp('^' + DEMO_TOKEN.source + '$').exec(side.trim());
+    if (t) {
+      var v = demoVariable(t[2]);
+      return v.type === 'NUMBER' ? Number(v.value) : v.value;
+    }
+    if (/^-?\d+(\.\d+)?$/.test(side.trim())) return Number(side);
+    return /^"[^"]*"$/.test(side.trim()) ? side.trim().slice(1, -1) : undefined;
+  };
+  if (value(text) !== undefined) return answer('', 'result is not a boolean (got ' + typeof value(text) + ')');
+  var unsure = false, mismatch = '';
+  var truth = function(clause) {
+    var m = /^(.+?)\s*(==|~=|>=|<=|>|<)\s*(.+)$/.exec(clause.trim());
+    var a = m ? value(m[1]) : undefined, b = m ? value(m[3]) : undefined;
+    if (a === undefined || b === undefined) { unsure = true; return false; }
+    if (m[2] === '==') return a === b;
+    if (m[2] === '~=') return a !== b;
+    if (typeof a !== typeof b) { mismatch = mismatch || 'attempt to compare ' + typeof a + ' with ' + typeof b; return false; }
+    return { '>=': a >= b, '<=': a <= b, '>': a > b, '<': a < b }[m[2]];
+  };
+  var result = text.split(/\s+or\s+/).map(function(group) {
+    return group.split(/\s+and\s+/).map(truth).every(Boolean);
+  }).some(Boolean);
+  if (unsure) return answer('', 'Opened outside Composer, the preview only compares values, with and and or.');
+  if (mismatch) return fail('runtime', mismatch);
+  return answer(String(result));
 }
 
 // ============================================================
@@ -1918,6 +2441,11 @@ function initTabs() {
     }).filter(function(l) { return l.icon; });
     gState.shown = gState.looks.length ? 1 : null;
     gState.lookControl = 'On Select';
+    [['Full', 'PARAM{9001,1} >= 80'], ['Low', 'PARAM{9001,1} < 20'], ['Charging', 'PARAM{9001,2} == "Charging" and PARAM{9001,1} < 100']].forEach(function(d) {
+      var look = gState.looks.find(function(l) { return l.name === d[0]; });
+      if (look) { look.showWhen = d[1]; look.showWhenText = demoRendered(d[1]); }
+    });
+    gState.defaultLook = 1;
     gState.properties = [
       // #ifdef DRIVERCENTRAL
       ['Cloud Settings', 'Cloud Status', 'License Activated'],
@@ -1933,7 +2461,7 @@ function initTabs() {
       // #ifdef DRIVERCENTRAL
       ['Driver Settings', 'Cloud Monitoring', 'Enabled', ['Disabled', 'Enabled']],
       // #endif
-      ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual']],
+      ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual', 'By Value']],
       ['Button Settings', 'Shown Look', 'Full']
     ].map(function(d) { return { group: d[0], name: d[1], value: d[2], choices: d[3], readonly: !d[3] }; });
     renderList();

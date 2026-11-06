@@ -47,6 +47,8 @@ the programming you attach to it.
     - [Icon Packs](#icon-packs)
     - [Free Icon Libraries](#free-icon-libraries)
   - [Cycling Through Looks](#cycling-through-looks)
+  - [Following a Value](#following-a-value)
+    - [Show When Syntax](#show-when-syntax)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
       - [Cloud Settings](#cloud-settings)
@@ -79,8 +81,9 @@ the programming you attach to it.
 - Three icon packs of 100 subjects each: Classic Device and Classic Tile, which
   match the OS 3 look, and Modern, which matches the X4 look, with on, off and
   alert pictures where a subject has states
-- Look Control: each press shows the next look in the cycle, or the look changes
-  only from programming
+- Look Control: each press shows the next look in the cycle, the look follows
+  other devices' variables through an expression on each look, or the look
+  changes only from programming
 - Show Look, Next Look and Previous Look programming commands, a Look variable,
   a Look Changed event, an event for each look and a Look Is conditional
 - The button's picture updates in Navigator as soon as programming changes it
@@ -184,9 +187,9 @@ The Support Code is entered in Composer's "Properties" tab only.
 
 1. **Shown now** - the button as the Control4 app shows it, with the name of the
    look it shows, or `Driver icon` until a look has a picture.
-1. **Look Control** - what a press of the button does. It sets the
-   [Look Control](#look-control--on-select--manual-) property, and a change to
-   the property in Composer shows here.
+1. **Look Control** - what changes the look. It sets the
+   [Look Control](#look-control--on-select--manual--by-value-) property, and a
+   change to the property in Composer shows here.
 1. **Looks** - each look with its picture, name, icon and tile shape. `Shown`
    marks the look the button shows. `No picture yet` marks a look whose picture
    has not reached the driver, and `Picture out of date` a look edited since its
@@ -319,13 +322,15 @@ one applies. They work with no internet.
 
 ## Cycling Through Looks
 
-Set the [Look Control](#look-control--on-select--manual-) property to
+Set the [Look Control](#look-control--on-select--manual--by-value-) property to
 `On Select` to make each press of the button show the next look. The button
 steps through the looks in the order the Button tab lists them, wrapping from
 the last look back to the first, and passes over a look with **In cycle** off or
 with no picture yet. With `Manual`, a press leaves the look as it is and only
-programming changes it. Show Look, Next Look and Previous Look work in both
-modes.
+programming changes it. With `By Value`, a press also leaves the look as it is,
+and each look's expression changes it, as
+[Following a Value](#following-a-value) describes. Show Look, Next Look and
+Previous Look work in all three modes.
 
 Each look has its own event: the look's name followed by `Shown`. It fires when
 that look becomes the shown look, from a press, from programming or from the
@@ -339,6 +344,67 @@ Button tab. To run something different for each look:
 Renaming a look renames its event and keeps its programming. Deleting a look
 deletes its event and the programming on it. The shown look stays through a
 Director restart and a driver update, and no event fires when the driver starts.
+
+## Following a Value
+
+Set the [Look Control](#look-control--on-select--manual--by-value-) property to
+`By Value` to make the button's look follow other devices' variables. Each look
+gets a **Show when** expression. The first look in the Button tab's list whose
+expression is true shows. When none is true, the look set as the default shows,
+and with no default the shown look stays.
+
+<img alt="Button tab - By Value" src="./images/ui-by-value.png" width="640"/>
+
+1. **Look Control** - `By Value` shows the rows below, and a press no longer
+   changes the look.
+1. **Show when** - each look's expression in the list, with device and variable
+   names in place of their ids. A look without one only shows as the default or
+   from programming.
+1. **Default** - marks the look that shows when no expression is true.
+1. **Problem** - why a look's expression can't be worked out, in plain words. It
+   counts as not true. Hover over it to read the exact message.
+1. **Show when** - the look's expression, in color, in the
+   [syntax below](#show-when-syntax). Moving a look in the list changes which
+   expression is checked first.
+1. **Syntax help** - opens a summary of the syntax beside the expression.
+1. **Browse Variables** - opens the list of the project's devices, by room.
+1. **Variables** - select a device to see its variables and their current
+   values, and select a variable to put it in the expression at the cursor. A
+   check mark shows the ones the expression already reads.
+1. **Preview** - as you type: the expression with device and variable names, the
+   same with current values, and a **True** or **False** result, or why it can't
+   be worked out. Below that is how many references the look watches.
+1. **Default look** - makes this look the default, in place of any other.
+
+Show Look, Next Look, Previous Look and the Button tab's `Show` button still
+work. The look they show stays until the expressions call for a different look.
+That holds through a Director restart and a driver update.
+
+After a Director restart, other drivers add their variables as they start. For
+10 minutes, a look whose variable isn't there yet keeps the button on its
+current look, unless a look above it is true. After that, it counts as not true.
+
+### Show When Syntax
+
+An expression gives `true` or `false`. Any other result is reported as a
+problem.
+
+| Write                                        | For                                                     |
+| -------------------------------------------- | ------------------------------------------------------- |
+| `PARAM{device id,variable}`                  | A variable's current value, by its id or its exact name |
+| `==` `~=` `<` `<=` `>` `>=`                  | Comparing, where `~=` is not equal                      |
+| `and` `or` `not`                             | Combining                                               |
+| `+` `-` `*` `/` `%` `^`                      | Arithmetic                                              |
+| `"text"`                                     | Text to compare a value with, and it's matched exactly  |
+| `abs` `ceil` `floor` `sqrt` `min` `max`      | Math on numbers                                         |
+| `pi` `huge`                                  | Pi, and a number larger than any other                  |
+| `round(x, places)`                           | Rounding                                                |
+| `c2f(x)` `f2c(x)`                            | Converting between Celsius and Fahrenheit               |
+| `device_name(id)` `room_name(id)`            | A device's name or room                                 |
+| `tonumber` `tostring` `type` `math` `string` | Lua's own functions and libraries of those names        |
+
+A value that is a number or `true` or `false` compares as one. Any other value
+compares as text.
 
 ## Driver Setup
 
@@ -410,11 +476,12 @@ address is removed.
 
 #### Button Settings
 
-##### Look Control \[ On Select | **_Manual_** \]
+##### Look Control \[ On Select | **_Manual_** | By Value \]
 
-Sets what a press of the button does. `On Select` shows the next look in the
-cycle, and `Manual` leaves the look as it is for programming to change. The
-button's own Selected event fires on every press in both modes.
+Sets what changes the look. `On Select` shows the next look in the cycle on each
+press, `Manual` leaves the look for programming to change, and `By Value` shows
+the first look whose [Show when](#following-a-value) expression is true. The
+button's own Selected event fires on every press in every mode.
 
 ##### Shown Look (read-only)
 
