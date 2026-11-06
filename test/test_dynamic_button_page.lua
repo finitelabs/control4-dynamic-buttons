@@ -56,6 +56,95 @@ T.truthy("a default or match that's gone doesn't carry over", has("{ shown: null
 T.truthy("an answer to earlier text is dropped", has("if (String(p.id) !== String(gEvalSeq)) return;"))
 T.truthy("from the moment the text changes", has("clearTimeout(gEvalTimer);\n  gEvalSeq++;"))
 
+T.section("Show when's editor")
+T.truthy("a textarea over a colored copy of its text", has('<pre id="when-hl"') and has('id="f-when"'))
+T.truthy(
+  "the text itself is transparent",
+  has("background: transparent; color: transparent; caret-color: var(--text);")
+)
+T.truthy("and the two stay the same height", has("box.style.height = Math.max(64, box.scrollHeight) + 'px';"))
+T.truthy("what's colored is escaped", has("escMin(text).replace(HL_RE"))
+T.truthy("the help opens beside the label", has('id="when-help-toggle"') and has('id="fld-when-help" hidden'))
+T.truthy("the preview shows its references", has(">References<") and has("With current values"))
+T.truthy("and a plain result", has("p.result === 'true' ? 'True' : 'False'"))
+T.truthy("how many it watches", has("'Watching ' + n + ' reference'"))
+T.truthy("and marks what's used in the browser", has("(isUsed ? ' used' : '')") and has('class="ins">Insert'))
+
+T.section("What the sandbox has, the help and the highlighter have")
+local sandboxFile =
+  assert(io.open(H.DRIVER:gsub("drivers/dynamic_button/driver%.lua$", "src/lib/expression-sandbox.lua"), "r"))
+local sandbox = sandboxFile:read("*a")
+sandboxFile:close()
+local help = page:match('id="when%-help">(.-)id="fld%-when%-browser"')
+local names = page:match("var WHEN_NAMES = '([^']*)'")
+local found = 0
+for name in sandbox:match("return {\n    __p = bindings,(.-)\n  }"):gmatch("\n%s+([%w_]+) = ") do
+  found = found + 1
+  T.truthy(name .. " is in the help", help:find("<code>" .. name, 1, true))
+  if name ~= "math" and name ~= "string" then
+    T.truthy(name .. " is colored", ("|" .. names .. "|"):find("|" .. name .. "|", 1, true))
+  end
+end
+T.truthy("the sandbox's names were read", found >= 18)
+T.truthy("the words a condition uses are colored", has("'|and|or|not|true|false)"))
+T.falsy(
+  "names it no longer has aren't",
+  ("|" .. names .. "|"):find("|value|", 1, true) or ("|" .. names .. "|"):find("|map|", 1, true)
+)
+
+T.section("Errors in plain sentences")
+T.truthy("the preview says it", has("error.textContent = friendlyError(p.error, $('f-when').value, p.rendered);"))
+T.truthy("with the engine's text in its title", has("error.title = p.error;"))
+T.truthy("each look's row says it", has("esc(friendlyError(l.whenError, l.showWhen, l.showWhenText))"))
+T.truthy("with the engine's text in its title too", has('<div class="sub bad" title="\' + esc(l.whenError) + \'">'))
+T.truthy("what isn't recognized stays as it is", has("if (!m) return text;"))
+T.truthy("the engine's name for a value never shows", has(".replace(/__p(\\[\\d+\\])?/g, 'a variable')"))
+
+-- Each mistake as the real engine reports it, and what the page has ready for that text.
+local Expressions = require("lib.expressions")
+ShimSetDevices({
+  [100] = {
+    deviceName = "Battery",
+    roomName = "Garage",
+    variables = {
+      ["1001"] = { name = "LEVEL", value = "62", type = "NUMBER" },
+      ["1002"] = { name = "STATE", value = "Idle", type = "STRING" },
+    },
+  },
+})
+for _, case in ipairs({
+  { "PARAM{100,1001} >=", "unexpected symbol near '<eof>'", "It stops before it's finished" },
+  { "(PARAM{100,1001} > 5", "')' expected near '<eof>'", "It stops before it's finished: " },
+  { "PARAM{100,1001} PARAM{100,1001}", "'<eof>' expected near '__p'", "It reads as finished before " },
+  { '"abc', "unfinished string near", "a closing quote is missing" },
+  { "PARAM{100,1001} = 5", "'<eof>' expected near '='", "Use == to compare, not =." },
+  { "PARAM{100,1002} > 5", "attempt to compare number with string", "This can't compare " },
+  { 'PARAM{100,1001} > "x"', "attempt to compare string with number", "This can't compare " },
+  { "PARAM{100,1002} + 1 > 5", "attempt to perform arithmetic on a string value", "This does math on text" },
+  { "nope(1) > 5", "attempt to call global 'nope' (a nil value)", "There's no function named " },
+  { "nope.level > 5", "attempt to index global 'nope' (a nil value)", "There's nothing named " },
+  {
+    "PARAM{100,1001}",
+    "result is not a boolean (got number)",
+    "Show when has to come out true or false: add a comparison.",
+  },
+  { "PARAM{100,NOPE} > 5", "variable NOPE not found on device 100", " has no variable " },
+  { "PARAM{200,1} > 5", "device 200 not found", "There's no device " },
+}) do
+  local reported = Expressions.evaluate("condition", case[1]).error or ""
+  T.truthy(case[2], reported:find(case[2], 1, true))
+  T.truthy("has its sentence", has(case[3]))
+end
+Expressions:new({
+  getExpressions = function()
+    return {}
+  end,
+  recompute = function() end,
+}):handleDeviceRemoved(100)
+local removed = Expressions.evaluate("condition", "PARAM{100,1001} > 5").error or ""
+T.truthy("a device removed says so", removed:find("was removed from the project", 1, true))
+T.truthy("and the page reads it", has("was removed from the project$/"))
+
 T.section("Every command goes through sendCommand, which wraps it")
 local _, posts = page:gsub("api%('POST'", "")
 T.eq("one place sends commands", posts, 1)

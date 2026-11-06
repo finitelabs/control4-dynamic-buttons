@@ -361,15 +361,19 @@ and with no default the shown look stays.
    names in place of their ids. A look without one only shows as the default or
    from programming.
 1. **Default** - marks the look that shows when no expression is true.
-1. **Show when** - the look's expression, in the
+1. **Problem** - why a look's expression can't be worked out, in plain words. It
+   counts as not true. Hover over it to read the exact message.
+1. **Show when** - the look's expression, in color, in the
    [syntax below](#show-when-syntax). Moving a look in the list changes which
    expression is checked first.
+1. **Syntax help** - opens a summary of the syntax beside the expression.
 1. **Insert Variable** - opens the list of the project's devices, by room.
 1. **Variables** - select a device to see its variables and their current
-   values, and select a variable to put it in the expression at the cursor.
-1. **Preview** - whether the expression is true right now, as you type, or why
-   it can't be worked out. An expression with a problem counts as not true, and
-   the Button tab lists the reason under the look.
+   values, and select a variable to put it in the expression at the cursor. A
+   check mark shows the ones the expression already reads.
+1. **Preview** - as you type: the expression with device and variable names, the
+   same with current values, and a **True** or **False** result, or why it can't
+   be worked out. Below that is how many references the look watches.
 1. **Default look** - makes this look the default, in place of any other.
 
 Show Look, Next Look, Previous Look and the Button tab's `Show` button still
@@ -393,6 +397,7 @@ problem.
 | `+` `-` `*` `/` `%` `^`                      | Arithmetic                                              |
 | `"text"`                                     | Text to compare a value with, and it's matched exactly  |
 | `abs` `ceil` `floor` `sqrt` `min` `max`      | Math on numbers                                         |
+| `pi` `huge`                                  | Pi, and a number larger than any other                  |
 | `round(x, places)`                           | Rounding                                                |
 | `c2f(x)` `f2c(x)`                            | Converting between Celsius and Fahrenheit               |
 | `device_name(id)` `room_name(id)`            | A device's name or room                                 |

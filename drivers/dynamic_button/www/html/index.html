@@ -11,6 +11,7 @@
     --border: #d1d5db; --text: #1a1a1a; --text-muted: #6b7280;
     --accent: #2563eb; --accent-hover: #1d4ed8; --danger: #dc2626;
     --success: #16a34a; --warning: #d97706;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
     --radius: 6px; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --shadow: 0 1px 3px rgba(0,0,0,0.08);
     --tile: #1c1c1e; --tile-text: #ffffff;
@@ -71,7 +72,7 @@
 
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field label, .flabel { font-size: 11px; color: var(--text-muted); font-weight: 500; }
-  select, input[type="text"], input[type="search"], textarea { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
+  select, input[type="text"], input[type="search"] { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
   input[type="color"] { width: 44px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
   .colorrow { display: flex; align-items: center; gap: 8px; }
   .colorrow code { font-size: 12px; color: var(--text-muted); }
@@ -89,11 +90,40 @@
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .control select { width: auto; min-width: 110px; }
-  #f-when { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; flex: 1; min-width: 0; resize: vertical; }
-  .whenbox { align-items: flex-start; }
-  .whenpreview { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 22px; font-size: 11px; color: var(--text-muted); }
-  .whenpreview .bad { color: var(--danger); font-weight: 500; }
-  .lookrow .sub.bad { color: var(--danger); }
+  .whenlabel { align-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding-top: 9px; }
+  .whenlabel label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .lookform .fctl.whenbox { align-items: flex-start; }
+  /* Show when's editor: a transparent textarea over a <pre> of the same text in color. Both layers
+     share their font metrics so the caret and selection stay aligned. */
+  .edwrap { position: relative; flex: 1; min-width: 0; }
+  .edwrap textarea, .edwrap pre { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; padding: 9px 10px; margin: 0; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; min-height: 64px; box-sizing: border-box; width: 100%; border-radius: var(--radius); tab-size: 2; }
+  .edwrap pre { position: absolute; inset: 0; border: 1px solid transparent; background: var(--surface); overflow: hidden; pointer-events: none; color: var(--text); }
+  .edwrap textarea { position: relative; z-index: 1; display: block; background: transparent; color: transparent; caret-color: var(--text); border: 1px solid var(--border); resize: none; overflow: hidden; }
+  .edwrap textarea::placeholder { color: #9ca3af; }
+  .edwrap textarea::selection { background: rgba(37,99,235,0.22); }
+  .edwrap textarea.input-error { border-color: var(--danger); }
+  .hl-tok { background: #dbeafe; border-radius: 4px; box-shadow: 0 0 0 1.5px #dbeafe; color: #1d4ed8; }
+  .hl-fn { color: #6d28d9; }
+  .hl-num { color: #0f766e; }
+  .hl-str { color: #059669; }
+  .hl-op { color: #6b7280; }
+  .help-toggle { background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font); font-size: 11px; font-weight: 500; color: var(--accent); text-align: left; }
+  .help-toggle:hover { text-decoration: underline; }
+  .help { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius); padding: 10px 12px; columns: 2; column-gap: 24px; min-width: 0; }
+  @media (max-width: 740px) { .help { columns: 1; } }
+  .help section { break-inside: avoid; margin-bottom: 10px; }
+  .help h4 { font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #94a3b8; margin: 0 0 3px; }
+  .help p { font-size: 11.5px; color: #475569; margin: 0 0 4px; }
+  .help code { font-family: var(--mono); font-size: 10.5px; color: #1e293b; background: #eef2f7; border-radius: 3px; padding: 0 3px; }
+  .prev { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
+  .prev .pl { font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+  .prev .pv { font-family: var(--mono); font-size: 11px; color: #475569; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .prev .pres { font-family: var(--mono); font-size: 16px; font-weight: 700; }
+  .prev .pres.true { color: var(--success); }
+  .prev .pres.false { color: #475569; }
+  .prev .perr { font-size: 12px; font-weight: 600; color: var(--danger); overflow-wrap: anywhere; }
+  .prev .pub { font-size: 11px; color: var(--text-muted); border-top: 1px dashed #e2e8f0; margin-top: 9px; padding-top: 8px; }
+  .lookrow .sub.bad { color: var(--danger); white-space: normal; }
   .varbrowser { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; min-width: 0; }
   .vartree { max-height: 220px; overflow-y: auto; margin-top: 6px; }
   .troom { padding: 8px 4px 2px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
@@ -102,10 +132,11 @@
   .tdev:hover { background: var(--surface-hover); }
   .tdev .chev { color: var(--text-muted); font-size: 10px; width: 10px; }
   .tvar { display: flex; align-items: center; gap: 8px; width: 100%; padding: 3px 4px 3px 22px; background: none; border: 0; font: inherit; text-align: left; color: inherit; cursor: pointer; border-radius: 4px; }
-  .tvar:hover { background: var(--surface-hover); }
-  .tvar .vname { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tvar:hover { background: #eef2ff; outline: 1px solid #c7d2fe; }
+  .tvar .vname { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tvar .vval { max-width: 40%; color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tvar .ins { visibility: hidden; color: var(--accent); font-size: 11px; font-weight: 600; }
+  .tvar .ins { visibility: hidden; flex: none; font-size: 10px; font-weight: 600; color: #fff; background: var(--accent); border-radius: 4px; padding: 1px 6px; }
+  .tvar.used .vname::after { content: " \2713"; color: var(--success); }
   .tvar:hover .ins { visibility: visible; }
   .tloading { padding: 4px 22px; font-size: 11px; color: var(--text-muted); font-style: italic; }
   .pgroup { font-size: 11px; font-weight: 600; color: var(--text); margin: 12px 0 6px; }
@@ -225,10 +256,48 @@
             <div class="fctl"><label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label></div>
           </div>
           <div class="frow" id="fld-when" hidden>
-            <label for="f-when">Show when</label>
+            <div class="whenlabel">
+              <label for="f-when">Show when</label>
+              <button type="button" class="help-toggle" id="when-help-toggle" aria-expanded="false">Syntax help</button>
+            </div>
             <div class="fctl whenbox">
-              <textarea id="f-when" rows="2" maxlength="2000" spellcheck="false" placeholder="PARAM{device,variable} > 50"></textarea>
+              <div class="edwrap">
+                <pre id="when-hl" aria-hidden="true"></pre>
+                <textarea id="f-when" rows="2" maxlength="2000" spellcheck="false" placeholder="PARAM{device,variable} > 50"></textarea>
+              </div>
               <button class="btn btn-secondary sm" id="when-insert" type="button">Insert Variable</button>
+            </div>
+          </div>
+          <div class="frow" id="fld-when-help" hidden>
+            <span></span>
+            <div class="help" id="when-help">
+              <section>
+                <h4>True or false</h4>
+                <p>A Show when has to come out <code>true</code> or <code>false</code>, so it usually ends in a comparison. A variable that already holds true or false can stand alone.</p>
+              </section>
+              <section>
+                <h4>Variables</h4>
+                <p><code>PARAM{device id,variable id}</code> reads a variable's current value. Insert Variable puts one at the cursor.</p>
+                <p>A variable can also go by its exact name, case and all: <code>PARAM{device id,LEVEL}</code>.</p>
+              </section>
+              <section>
+                <h4>Comparing</h4>
+                <p><code>==</code> <code>~=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code>, where <code>~=</code> means not equal.</p>
+                <p>Join them with <code>and</code> <code>or</code> <code>not</code>.</p>
+                <p>Math: <code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> <code>^</code> <code>( )</code></p>
+              </section>
+              <section>
+                <h4>Text</h4>
+                <p>Put text in double quotes: <code>== "Charging"</code>. It matches exactly, case and all.</p>
+                <p>A value that is a number or true or false compares as one. Any other value compares as text.</p>
+              </section>
+              <section>
+                <h4>Functions</h4>
+                <p><code>abs</code> <code>ceil</code> <code>floor</code> <code>sqrt</code> <code>min</code> <code>max</code> <code>round(x, places)</code> <code>pi</code> <code>huge</code></p>
+                <p><code>c2f</code> <code>f2c</code> convert between Celsius and Fahrenheit.</p>
+                <p><code>device_name(id)</code> <code>room_name(id)</code> give a device's name and room.</p>
+                <p><code>tonumber</code> <code>tostring</code> <code>type</code>, and the <code>math</code> and <code>string</code> libraries: <code>math.fmod</code>, <code>string.lower</code> and the rest.</p>
+              </section>
             </div>
           </div>
           <div class="frow" id="fld-when-browser" hidden>
@@ -240,7 +309,20 @@
           </div>
           <div class="frow" id="fld-when-preview" hidden>
             <span></span>
-            <div class="whenpreview" id="when-preview"></div>
+            <div class="prev" id="when-preview">
+              <div class="pl">References</div>
+              <div class="pv" id="prev-rendered"></div>
+              <div id="prev-sub-wrap">
+                <div class="pl">With current values</div>
+                <div class="pv" id="prev-substituted"></div>
+              </div>
+              <div id="prev-res-wrap">
+                <div class="pl">Result</div>
+                <div class="pres" id="prev-result"></div>
+                <div class="perr" id="prev-error"></div>
+              </div>
+              <div class="pub" id="when-watch"></div>
+            </div>
           </div>
           <div class="frow" id="fld-default" hidden>
             <label for="f-default">Default look</label>
@@ -1808,7 +1890,6 @@ function openEditor(look) {
   $('f-when').value = gEditor.look.showWhen || '';
   $('f-default').checked = gEditor.look.isDefault;
   $('fld-when-browser').hidden = true;
-  requestPreview();
   renderShapes();
   renderPicker();
   markPicked();
@@ -1819,6 +1900,7 @@ function openEditor(look) {
   syncCustom();
   measureBounds();
   $('editor').hidden = false;
+  syncWhen();
   preview();
   $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1928,6 +2010,7 @@ function demoSave(fields) {
     if (!gState.shown) gState.shown = id;
   }
   existing.showWhenText = demoRendered(fields.showWhen);
+  existing.whenError = fields.showWhen ? demoEval(fields.showWhen.trim()).error : '';
   if (fields.isDefault) gState.defaultLook = id;
   else if (gState.defaultLook === id) gState.defaultLook = null;
   gState.looks.forEach(withIconBody);
@@ -1943,39 +2026,216 @@ function byValue() { return gState.lookControl === 'By Value'; }
 
 // These only apply under By Value, so they're hidden otherwise.
 function syncWhenRows() {
+  var wasHidden = $('fld-when').hidden;
   ['fld-when', 'fld-when-preview', 'fld-default'].forEach(function(id) { $(id).hidden = !byValue(); });
-  if (!byValue()) $('fld-when-browser').hidden = true;
+  if (!byValue()) {
+    $('fld-when-browser').hidden = true;
+    setHelpOpen(false);
+  } else if (wasHidden) {
+    syncWhen(); // a hidden box had no height to measure
+  }
+}
+
+// Every name an expression can use, which the highlighter colors and the demo knows.
+var WHEN_NAMES = 'abs|ceil|floor|sqrt|min|max|round|pi|huge|c2f|f2c|device_name|room_name|tonumber|tostring|type';
+
+// Escape for a <pre>'s text. Quotes stay as they are, so the highlighter can still see a string.
+function escMin(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+var HL_RE = new RegExp(
+  '(PARAM\\s*\\{[^}]*\\})'                                  // 1 token
+  + '|("[^"\\n]*"|\'[^\'\\n]*\')'                           // 2 text
+  + '|((?:math|string)\\.\\w+'                              // 3 name
+  + '|\\b(?:' + WHEN_NAMES + '|and|or|not|true|false)\\b)'
+  + '|(\\d+(?:\\.\\d+)?)'                                   // 4 number
+  + '|(&lt;=?|&gt;=?|==|~=|[+\\-*/%^(),])',                 // 5 operator
+  'g');
+
+function hlRender(text) {
+  var out = escMin(text).replace(HL_RE, function(m, tok, str, fn, num, op) {
+    if (tok) return '<span class="hl-tok">' + tok + '</span>';
+    if (str) return '<span class="hl-str">' + str + '</span>';
+    if (fn) return '<span class="hl-fn">' + fn + '</span>';
+    if (num) return '<span class="hl-num">' + num + '</span>';
+    if (op) return '<span class="hl-op">' + op + '</span>';
+    return m;
+  });
+  // A trailing newline needs a filler so the two layers stay the same height.
+  if (out.slice(-1) === '\n' || out === '') out += '\u200b';
+  return out;
+}
+
+function syncHighlight() {
+  var box = $('f-when');
+  $('when-hl').innerHTML = hlRender(box.value);
+  // Grown to fit, so the layers never scroll apart.
+  box.style.height = 'auto';
+  box.style.height = Math.max(64, box.scrollHeight) + 'px';
+}
+
+// The variables the text reads, by "device:variable" as it writes them.
+function usedTokens() {
+  var used = {}, re = /PARAM\s*\{\s*([^,}]*?)\s*,\s*([^}]*?)\s*\}/g, m;
+  while ((m = re.exec($('f-when').value)) !== null) used[m[1] + ':' + m[2]] = true;
+  return used;
+}
+
+function updateWatchCount() {
+  var n = Object.keys(usedTokens()).length;
+  $('when-watch').hidden = !n;
+  $('when-watch').textContent = 'Watching ' + n + ' reference' + (n === 1 ? '' : 's');
+}
+
+// All that follows the text.
+function syncWhen() {
+  syncHighlight();
+  updateWatchCount();
+  if (!$('fld-when-browser').hidden) renderVarTree();
+  requestPreview();
+}
+
+function setHelpOpen(open) {
+  $('fld-when-help').hidden = !open;
+  $('when-help-toggle').textContent = open ? 'Hide syntax help' : 'Syntax help';
+  $('when-help-toggle').setAttribute('aria-expanded', String(open));
+}
+$('when-help-toggle').addEventListener('click', function() { setHelpOpen($('fld-when-help').hidden); });
+
+// The engine's errors in plain sentences. What it doesn't recognize stays as it is.
+var ERROR_KINDS = { number: 'a number', string: 'text', boolean: 'true or false', nil: 'nothing', table: 'a table', 'function': 'a function' };
+function errorKind(kind) { return ERROR_KINDS[kind] || kind; }
+
+// A device as the rendered text names it, for the first token reading it.
+function refLabel(device, template, rendered) {
+  var tokens = String(template || '').match(/PARAM\s*\{[^}]*\}/g) || [];
+  var labels = String(rendered || '').match(/\[[^\[\]]* > [^\[\]]*\]/g) || [];
+  if (tokens.length !== labels.length) return '';
+  for (var i = 0; i < tokens.length; i++) {
+    var m = /\{\s*([^,}]*?)\s*,/.exec(tokens[i]);
+    if (m && m[1] === device) return labels[i].slice(1, labels[i].lastIndexOf(' > '));
+  }
+  return '';
+}
+
+function friendlyCompile(body) {
+  var m = /^([\s\S]*?) near '?([\s\S]*?)'?$/.exec(body);
+  if (!m) return body;
+  var what = m[1], near = m[2], expected = /^'(.+?)' expected/.exec(what);
+  if (near === '<eof>') {
+    if (/^unfinished string/.test(what)) return "It stops before it's finished: a closing quote is missing.";
+    if (expected) return "It stops before it's finished: " + expected[1] + ' is missing.';
+    return "It stops before it's finished: something should follow the last part.";
+  }
+  if (expected && expected[1] === '<eof>') {
+    if (near === '=') return 'Use == to compare, not =.';
+    if (near === '!') return 'Use ~= for not equal, not !=.';
+    return 'It reads as finished before ' + near + ': that part is extra, or something before it is missing.';
+  }
+  if (expected) return expected[1] + ' is missing near ' + near + '.';
+  if (/^unexpected symbol/.test(what)) return 'Something is out of place near ' + near + '.';
+  if (/^malformed number/.test(what)) return near + " isn't a number.";
+  if (/^unfinished string/.test(what)) return 'A closing quote is missing near ' + near + '.';
+  return 'Something is wrong near ' + near + ': ' + what + '.';
+}
+
+function friendlyRuntime(body) {
+  var m = /attempt to compare (\w+) with (\w+)/.exec(body);
+  if (m) {
+    var kinds = [m[1], m[2]].sort();
+    if (kinds.indexOf('nil') >= 0) {
+      return 'This compares ' + errorKind(kinds[0] === 'nil' ? kinds[1] : kinds[0]) + ' with something that has no value. A name may be misspelled, or text may need quotes.';
+    }
+    return "This can't compare " + errorKind(kinds[0]) + ' with ' + errorKind(kinds[1]) + '. Both sides of < or > have to be the same kind.';
+  }
+  if (/attempt to compare two /.test(body)) return '< and > only work on numbers or text.';
+  m = /bad argument #\d+ to '(.+?)' \((\w+) expected, got (.+?)\)/.exec(body);
+  if (m) return m[1] + ' needs ' + errorKind(m[2]) + ' there, and this gives it ' + errorKind(m[3]) + '.';
+  m = /attempt to (perform arithmetic on|concatenate|call|index) (?:\w+ '(.+?)' )?\(?a (\w+) value\)?/.exec(body);
+  if (!m) return body;
+  var action = m[1], name = m[2] === '?' ? '' : m[2], kind = m[3], nil = kind === 'nil';
+  if (action === 'call') {
+    if (nil) return name ? "There's no function named " + name + '.' : "This calls a function that doesn't exist.";
+    return name ? name + " isn't a function." : 'This calls ' + errorKind(kind) + ", which isn't a function.";
+  }
+  if (action === 'index') {
+    if (nil) return name ? "There's nothing named " + name + ' to read from.' : "This reads from something that isn't there.";
+    return 'This reads a part of ' + errorKind(kind) + ', which has no parts.';
+  }
+  if (action === 'concatenate') {
+    if (nil && name) return "There's no value named " + name + ' to join with text.';
+    return 'Only text and numbers can be joined, and this has ' + errorKind(kind) + '.';
+  }
+  if (nil && name) return "There's no value named " + name + ", so it can't be used in math.";
+  if (kind === 'string') return "This does math on text: a value here isn't a number.";
+  return 'This does math on ' + errorKind(kind) + '.';
+}
+
+// template and rendered give a device's name to a reason that only has its id.
+function friendlyError(raw, template, rendered) {
+  var text = String(raw == null ? '' : raw), m;
+  if (/^result is not a boolean/.test(text)) return 'Show when has to come out true or false: add a comparison.';
+  m = /^variable ([\s\S]+) not found on device ([\s\S]+)$/.exec(text);
+  if (m) {
+    return (refLabel(m[2], template, rendered) || 'Device ' + m[2]) + ' has no variable ' + (/^\d+$/.test(m[1]) ? '' : 'named ') + m[1] + '.';
+  }
+  m = /^device ([\s\S]+) not found$/.exec(text);
+  if (m) return "There's no device " + m[1] + ' in this project.';
+  m = /^device ([\s\S]+) was removed from the project$/.exec(text);
+  if (m) return (refLabel(m[1], template, rendered) || 'Device ' + m[1]) + ' was removed from the project.';
+  m = /^(compile|runtime) error: (?:[\s\S]*"\]:\d+: )?([\s\S]*)$/.exec(text);
+  if (!m) return text;
+  return (m[1] === 'compile' ? friendlyCompile : friendlyRuntime)(m[2]).replace(/__p(\[\d+\])?/g, 'a variable');
 }
 
 function whenLines(l) {
   if (!byValue()) return '';
   var text = l.showWhen ? l.showWhenText || l.showWhen : '';
   return '<div class="sub" title="' + esc(text) + '">' + (text ? 'Show when ' + esc(text) : 'No Show when') + '</div>' +
-    (l.whenError ? '<div class="sub bad" title="' + esc(l.whenError) + '">' + esc(l.whenError) + '</div>' : '');
+    (l.whenError ? '<div class="sub bad" title="' + esc(l.whenError) + '">' + esc(friendlyError(l.whenError, l.showWhen, l.showWhenText)) + '</div>' : '');
 }
 
 function requestPreview() {
   clearTimeout(gEvalTimer);
   gEvalSeq++;
   var text = $('f-when').value.trim();
-  if (!text || !byValue()) { $('when-preview').textContent = 'Preview appears as you type.'; return; }
+  if (!text || !byValue()) { showPreviewHint(); return; }
   gEvalTimer = setTimeout(function() {
     if (!gApiHost) { onEvalResult(Object.assign({ id: String(gEvalSeq) }, demoEval(text))); return; }
     sendCommand('_EVAL_EXPRESSION', { id: String(gEvalSeq), expression: text });
   }, 350);
 }
 
+function showPreviewHint() {
+  $('prev-rendered').textContent = 'Preview appears as you type.';
+  $('prev-sub-wrap').hidden = true;
+  $('prev-res-wrap').hidden = true;
+  $('f-when').classList.remove('input-error');
+}
+
 function onEvalResult(p) {
   if (String(p.id) !== String(gEvalSeq)) return; // an answer to earlier text
-  var verdict = p.error
-    ? '<span class="bad">' + esc(p.error) + '</span>'
-    : '<span class="pill ' + (p.result === 'true' ? 'online' : 'info') + '">' + (p.result === 'true' ? 'True now' : 'False now') + '</span>';
-  $('when-preview').innerHTML = verdict + '<span>' + esc(p.rendered || '') + '</span>';
+  $('prev-rendered').textContent = p.rendered || '';
+  $('prev-substituted').textContent = String(p.substituted || '').replace(/ERROR_VARIABLE_NOT_FOUND/g, '(not found)');
+  $('prev-sub-wrap').hidden = false;
+  $('prev-res-wrap').hidden = false;
+  var result = $('prev-result'), error = $('prev-error');
+  result.hidden = !!p.error;
+  error.hidden = !p.error;
+  $('f-when').classList.toggle('input-error', !!p.error);
+  if (p.error) {
+    error.textContent = friendlyError(p.error, $('f-when').value, p.rendered);
+    error.title = p.error;
+  } else {
+    result.textContent = p.result === 'true' ? 'True' : 'False';
+    result.className = 'pres ' + (p.result === 'true' ? 'true' : 'false');
+  }
 }
 
 $('f-when').addEventListener('input', function() {
   gEditor.look.showWhen = $('f-when').value;
-  requestPreview();
+  syncWhen();
 });
 $('f-default').addEventListener('change', function() { gEditor.look.isDefault = $('f-default').checked; });
 
@@ -2010,7 +2270,7 @@ function fetchVars(id) {
 }
 
 function renderVarTree() {
-  var q = $('var-search').value.trim().toLowerCase();
+  var q = $('var-search').value.trim().toLowerCase(), used = usedTokens();
   var has = function(text) { return String(text || '').toLowerCase().indexOf(q) >= 0; };
   var lastRoom = null, html = '';
   gDevices.forEach(function(d) {
@@ -2031,7 +2291,8 @@ function renderVarTree() {
       // An entry can span a driver and the proxies restating it: a token names the one owning the variable.
       if (v.section && v.section !== section) { html += '<div class="tsection">' + esc(v.section) + '</div>'; section = v.section; }
       var owner = v.deviceId != null ? v.deviceId : d.id;
-      html += '<button type="button" class="tvar" data-token="PARAM{' + Number(owner) + ',' + Number(v.id) + '}" title="' + esc(d.name) + ' > ' + esc(v.name) + '">' +
+      var isUsed = used[owner + ':' + v.id] || used[owner + ':' + v.name];
+      html += '<button type="button" class="tvar' + (isUsed ? ' used' : '') + '" data-token="PARAM{' + Number(owner) + ',' + Number(v.id) + '}" title="' + esc(d.name) + ' > ' + esc(v.name) + '">' +
         '<span class="vname">' + esc(v.name) + '</span><span class="vval">' + esc(v.value == null ? '' : v.value) + '</span><span class="ins">Insert</span></button>';
     });
   });
@@ -2051,7 +2312,7 @@ $('var-tree').addEventListener('click', function(e) {
     box.focus();
     box.setSelectionRange(start + text.length, start + text.length);
     gEditor.look.showWhen = box.value;
-    requestPreview();
+    syncWhen();
   }
 });
 
@@ -2062,25 +2323,65 @@ var DEMO_VARIABLES = { 9001: [
   { id: 2, deviceId: 9001, section: 'Device', name: 'STATE', type: 'STRING', value: 'Charging' }
 ] };
 
-function demoVariable(id) {
-  return DEMO_VARIABLES[9001].find(function(v) { return v.id === Number(id); });
+var DEMO_TOKEN = /PARAM\s*\{\s*([^,}]*?)\s*,\s*([^}]*?)\s*\}/g;
+
+function demoVariable(ref) {
+  return DEMO_VARIABLES[9001].find(function(v) { return String(v.id) === ref || v.name === ref; });
 }
 
 function demoRendered(text) {
-  return String(text || '').replace(/PARAM\{\s*9001\s*,\s*(\d+)\s*\}/g, function(m, id) {
-    var v = demoVariable(id);
-    return v ? '[Sample Battery > ' + v.name + ']' : m;
+  return String(text || '').replace(DEMO_TOKEN, function(m, device, ref) {
+    if (device !== '9001') return '[Device ' + device + ' > ' + ref + ']';
+    var v = demoVariable(ref);
+    return '[Demo Room > Sample Battery > ' + (v ? v.name : ref) + ']';
   });
 }
 
-// A variable compared with one value is all an example needs: the driver evaluates the real thing.
+// A small part of the syntax, answering as the driver does so it takes the same path to the page.
 function demoEval(text) {
-  var m = /^PARAM\{\s*9001\s*,\s*(\d+)\s*\}\s*(==|~=|>=|<=|>|<)\s*("([^"]*)"|-?[\d.]+)$/.exec(text);
-  var v = m && demoVariable(m[1]);
-  if (!v) return { rendered: demoRendered(text), result: '', error: 'Opened outside Composer, the preview only compares a variable with one value.' };
-  var a = m[3].charAt(0) === '"' ? v.value : Number(v.value), b = m[3].charAt(0) === '"' ? m[4] : Number(m[3]);
-  var result = { '==': a === b, '~=': a !== b, '>=': a >= b, '<=': a <= b, '>': a > b, '<': a < b }[m[2]];
-  return { rendered: demoRendered(text), result: String(result), error: '' };
+  var missing = '', slot = 0;
+  var substituted = text.replace(DEMO_TOKEN, function(m, device, ref) {
+    var v = device === '9001' && demoVariable(ref);
+    if (!v) missing = missing || (device === '9001' ? 'variable ' + ref + ' not found on device 9001' : 'device ' + device + ' not found');
+    return v ? v.value : 'ERROR_VARIABLE_NOT_FOUND';
+  });
+  var answer = function(result, error) {
+    return { rendered: demoRendered(text), substituted: substituted, result: result, error: error || '' };
+  };
+  if (missing) return answer('', missing);
+  var source = text.replace(DEMO_TOKEN, function() { return '__p[' + (++slot) + ']'; });
+  var fail = function(kind, message) { return answer('', kind + ' error: [string "return ' + source + '"]:1: ' + message); };
+  if ((text.match(/"/g) || []).length % 2) return fail('compile', "unfinished string near '<eof>'");
+  if (/(?:[<>=~+\-*\/%^(]|\band|\bor|\bnot)\s*$/.test(text)) return fail('compile', "unexpected symbol near '<eof>'");
+  if ((text.match(/\(/g) || []).length > (text.match(/\)/g) || []).length) return fail('compile', "')' expected near '<eof>'");
+  var call = /\b(?!and\b|or\b|not\b)([A-Za-z_]\w*)\s*\(/.exec(text);
+  if (call && !new RegExp('^(' + WHEN_NAMES + ')$').test(call[1])) return fail('runtime', "attempt to call global '" + call[1] + "' (a nil value)");
+  var value = function(side) {
+    var t = new RegExp('^' + DEMO_TOKEN.source + '$').exec(side.trim());
+    if (t) {
+      var v = demoVariable(t[2]);
+      return v.type === 'NUMBER' ? Number(v.value) : v.value;
+    }
+    if (/^-?\d+(\.\d+)?$/.test(side.trim())) return Number(side);
+    return /^"[^"]*"$/.test(side.trim()) ? side.trim().slice(1, -1) : undefined;
+  };
+  if (value(text) !== undefined) return answer('', 'result is not a boolean (got ' + typeof value(text) + ')');
+  var unsure = false, mismatch = '';
+  var truth = function(clause) {
+    var m = /^(.+?)\s*(==|~=|>=|<=|>|<)\s*(.+)$/.exec(clause.trim());
+    var a = m ? value(m[1]) : undefined, b = m ? value(m[3]) : undefined;
+    if (a === undefined || b === undefined) { unsure = true; return false; }
+    if (m[2] === '==') return a === b;
+    if (m[2] === '~=') return a !== b;
+    if (typeof a !== typeof b) { mismatch = mismatch || 'attempt to compare ' + typeof a + ' with ' + typeof b; return false; }
+    return { '>=': a >= b, '<=': a <= b, '>': a > b, '<': a < b }[m[2]];
+  };
+  var result = text.split(/\s+or\s+/).map(function(group) {
+    return group.split(/\s+and\s+/).map(truth).every(Boolean);
+  }).some(Boolean);
+  if (unsure) return answer('', 'Opened outside Composer, the preview only compares values, with and and or.');
+  if (mismatch) return fail('runtime', mismatch);
+  return answer(String(result));
 }
 
 // ============================================================
@@ -2125,7 +2426,7 @@ function initTabs() {
     }).filter(function(l) { return l.icon; });
     gState.shown = gState.looks.length ? 1 : null;
     gState.lookControl = 'On Select';
-    [['Full', 'PARAM{9001,1} >= 80'], ['Low', 'PARAM{9001,1} < 20'], ['Charging', 'PARAM{9001,2} == "Charging"']].forEach(function(d) {
+    [['Full', 'PARAM{9001,1} >= 80'], ['Low', 'PARAM{9001,1} < 20'], ['Charging', 'PARAM{9001,2} == "Charging" and PARAM{9001,1} < 100']].forEach(function(d) {
       var look = gState.looks.find(function(l) { return l.name === d[0]; });
       if (look) { look.showWhen = d[1]; look.showWhenText = demoRendered(d[1]); }
     });
