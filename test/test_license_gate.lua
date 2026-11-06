@@ -136,6 +136,11 @@ EC.Reset_Driver({ ["Are You Sure?"] = "Yes" })
 T.eq("Reset Driver is turned away", #H.state().looks, 2)
 T.eq("the proxy still hears nothing", #H.proxy, 0)
 T.eq("the tab still reads the state", JSON:decode(H.tab("_GET_STATE"))._command, "STATE")
+T.eq(
+  "and the other Dynamic Buttons, whose own licenses decide a copy",
+  JSON:decode(H.tab("_GET_BUTTONS"))._command,
+  "BUTTONS"
+)
 H.tab("_SET_DRIVER", { property = "Log Level", value = "4 - Debug" })
 T.eq("and still sets a property, as Composer's Properties tab can", Properties["Log Level"], "4 - Debug")
 H.tab("_SET_DRIVER", { property = "Log Level", value = "3 - Info" })

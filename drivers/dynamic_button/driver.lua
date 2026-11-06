@@ -1001,6 +1001,39 @@ function UIR._GET_DEVICES()
   return uiRespond("DEVICES_DATA", { devices = JSON:encode(devices) })
 end
 
+--- The other Dynamic Buttons in the project, by room and name, for Copy To, and this one's own name
+--- for an export's file. C4iNames lists every device of a driver alongside any ids asked for, so each
+--- entry is checked as this driver's.
+function UIR._GET_BUTTONS()
+  log:trace("UIR._GET_BUTTONS()")
+  local own, file = tointeger(C4:GetDeviceID()), C4:GetDriverFileName()
+  local buttons, self = {}, { id = own, name = "", roomName = "" }
+  for id, device in pairs(C4:GetDevices({ C4iNames = file }) or {}) do
+    if device.driverFileName == file then
+      local entry = {
+        id = tointeger(id),
+        name = tostring(device.deviceName or ("Dynamic Button " .. tostring(id))),
+        roomName = tostring(device.roomName or ""),
+      }
+      if entry.id == own then
+        self = entry
+      else
+        table.insert(buttons, entry)
+      end
+    end
+  end
+  table.sort(buttons, function(a, b)
+    if a.roomName ~= b.roomName then
+      return a.roomName < b.roomName
+    end
+    if a.name ~= b.name then
+      return a.name < b.name
+    end
+    return a.id < b.id
+  end)
+  return uiRespond("BUTTONS", { buttons = JSON:encode(buttons), self = JSON:encode(self) })
+end
+
 --- @param text string
 --- @param bytes integer
 --- @return string cut At most that many bytes, on a whole character: a UTF-8 lead byte left on its own isn't valid text.
@@ -1284,7 +1317,9 @@ followAllowed = function()
 end
 
 -- _GET_STATE and _SET_DRIVER stay open while stopped: they only do what Composer's own Properties tab can.
--- _GET_PICTURE does too: it only shows the tab a picture the button already keeps.
+-- _GET_PICTURE does too: it only shows the tab a picture the button already keeps. So does _GET_BUTTONS, which only
+-- names this driver's items: a copy changes another button through that button's own commands, which its own
+-- license decides.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
 EC.Next_Look = whileLicensed(EC.Next_Look)
