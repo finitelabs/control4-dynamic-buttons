@@ -110,8 +110,11 @@ T.eq("Show Look offers no looks", GCPL.Show_Look("Look"), {})
 local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("New")))
 T.eq("the tab can't add a look", refused._command, "ERROR")
 T.contains("and is told why", refused.message, UNLICENSED)
+-- Each would fail on its own with these parameters, so only the reason tells the gate stopped it.
 for _, command in ipairs({ "_PUT_IMAGE", "_PUT_PICTURE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
-  T.eq(command .. " is refused", JSON:decode(H.tab(command, { id = 1, look = 1, ids = { 2, 1 } }))._command, "ERROR")
+  local answer = JSON:decode(H.tab(command, { id = 1, look = 1, ids = { 2, 1 } }))
+  T.eq(command .. " is refused", answer._command, "ERROR")
+  T.contains(command .. " because there's no license", answer.message, UNLICENSED)
 end
 local search = JSON:decode(H.tab("_ICONIFY", { request = "r1", kind = "search", value = "battery" }))
 T.eq("an icon search answers at once", search._command, "ICONIFY")
