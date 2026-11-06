@@ -267,7 +267,7 @@
                 <pre id="when-hl" aria-hidden="true"></pre>
                 <textarea id="f-when" rows="2" maxlength="2000" spellcheck="false" placeholder="PARAM{device,variable} > 50"></textarea>
               </div>
-              <button class="btn btn-secondary sm" id="when-insert" type="button">Insert Variable</button>
+              <button class="btn btn-secondary sm" id="when-insert" type="button">Browse Variables</button>
             </div>
           </div>
           <div class="frow" id="fld-when-help" hidden>
@@ -279,7 +279,7 @@
               </section>
               <section>
                 <h4>Variables</h4>
-                <p><code>PARAM{device id,variable id}</code> reads a variable's current value. Insert Variable puts one at the cursor.</p>
+                <p><code>PARAM{device id,variable id}</code> reads a variable's current value. Browse Variables puts one at the cursor.</p>
                 <p>A variable can also go by its exact name, case and all: <code>PARAM{device id,LEVEL}</code>.</p>
               </section>
               <section>
@@ -2219,7 +2219,7 @@ function showPreviewHint() {
 function onEvalResult(p) {
   if (String(p.id) !== String(gEvalSeq)) return; // an answer to earlier text
   $('prev-rendered').textContent = p.rendered || '';
-  $('prev-substituted').textContent = String(p.substituted || '').replace(/ERROR_VARIABLE_NOT_FOUND/g, '(not found)');
+  $('prev-substituted').textContent = String(p.substituted == null ? '' : p.substituted).replace(/ERROR_VARIABLE_NOT_FOUND/g, '(not found)');
   $('prev-sub-wrap').hidden = false;
   $('prev-res-wrap').hidden = false;
   var result = $('prev-result'), error = $('prev-error');
@@ -2230,8 +2230,10 @@ function onEvalResult(p) {
     error.textContent = friendlyError(p.error, $('f-when').value, p.rendered);
     error.title = p.error;
   } else {
-    result.textContent = p.result === 'true' ? 'True' : 'False';
-    result.className = 'pres ' + (p.result === 'true' ? 'true' : 'false');
+    // The socket turns the text "true" into a boolean.
+    var isTrue = String(p.result) === 'true';
+    result.textContent = isTrue ? 'True' : 'False';
+    result.className = 'pres ' + (isTrue ? 'true' : 'false');
   }
 }
 

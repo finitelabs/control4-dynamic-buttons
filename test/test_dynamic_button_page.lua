@@ -172,4 +172,12 @@ T.falsy(
 T.section("Which look is shown")
 T.truthy("the page takes the small message", has("if (cmd === 'SHOWN') onShown(params);"))
 
+T.section("The preview's result")
+T.truthy("it reads the socket's boolean as well as text", has("String(p.result) === 'true'"))
+T.falsy("nothing compares the result to text alone", has("p.result === 'true'"))
+T.truthy(
+  "the button that opens the list isn't named like a row's Insert",
+  has("Browse Variables") and not has("Insert Variable")
+)
+
 T.finish()
