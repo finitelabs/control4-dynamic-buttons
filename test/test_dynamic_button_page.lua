@@ -165,8 +165,12 @@ T.truthy(
 T.truthy("that doesn't repeat", arrowRule:find("background-repeat: no-repeat;", 1, true))
 T.truthy("and a long choice stops short of it", arrowRule:find("padding-right: 28px;", 1, true))
 T.falsy(
-  "no later rule sets a select's background or padding",
-  page:find("\n[^\n]*select[^\n{]*{[^\n}]*padding:", arrow + #arrowRule, false)
+  "no later rule sets a select's padding",
+  page:find("\n[^\n]*%f[%w]select%f[%W][^\n{]*{[^\n}]*padding:", arrow + #arrowRule, false)
+)
+T.falsy(
+  "or its background",
+  page:find("\n[^\n]*%f[%w]select%f[%W][^\n{]*{[^\n}]*background", arrow + #arrowRule, false)
 )
 
 T.section("Which look is shown")
@@ -174,10 +178,16 @@ T.truthy("the page takes the small message", has("if (cmd === 'SHOWN') onShown(p
 
 T.section("The preview's result")
 T.truthy("it reads the socket's boolean as well as text", has("String(p.result) === 'true'"))
+T.truthy("and a rendered expression the socket turned falsy", has("String(p.rendered == null ? '' : p.rendered)"))
+T.truthy("the box measures again when its width changes", has("}).observe($('f-when'));"))
 T.falsy("nothing compares the result to text alone", has("p.result === 'true'"))
 T.truthy(
   "the button that opens the list isn't named like a row's Insert",
   has("Browse Variables") and not has("Insert Variable")
 )
+
+T.section("Icon licenses")
+T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
+T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
 
 T.finish()
