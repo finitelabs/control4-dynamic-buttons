@@ -2624,8 +2624,17 @@ function closeColorPicker(keep) {
   if (keep) {
     var now = INPUT_VALUE.get.call(pop.input).toUpperCase();
     if (now !== pop.start) rememberColor(now);
-  } else {
-    pickColor(pop.input, pop.start);
+  } else if (pop.before && gEditor.look) {
+    // The look as it was, not the box's value: a badge with no background, or a glow that
+    // follows Color, has no value of its own to put back.
+    var was = JSON.parse(pop.before), l = gEditor.look;
+    l.custom = was.custom;
+    l.iconColor = was.iconColor;
+    l.tileColor = was.tileColor;
+    $('f-icon-color').value = String(l.iconColor || '').toLowerCase();
+    $('f-tile-color').value = String(l.tileColor || '').toLowerCase();
+    syncCustom();
+    preview();
   }
   pop.input.colorSwatch.focus();
 }
@@ -2638,6 +2647,7 @@ function openColorPicker(input) {
   pop.setAttribute('aria-label', 'Choose a color');
   pop.input = input;
   pop.start = start;
+  pop.before = gEditor.look ? JSON.stringify({ custom: gEditor.look.custom || {}, iconColor: gEditor.look.iconColor, tileColor: gEditor.look.tileColor }) : null;
   var chips = function(title, list) {
     if (!list.length) return '';
     return '<div class="clabel">' + title + '</div><div class="crow">' + list.map(function(hex) {
