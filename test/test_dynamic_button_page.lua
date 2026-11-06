@@ -217,6 +217,14 @@ for note in page:gmatch('<span class="fnote"') do
   T.truthy("a note isn't inside its control's row, where it would push the label down: " .. note, false)
 end
 
+T.section("Pictures drawn into a canvas")
+T.truthy("go through a bitmap, which Edge on Windows draws whole", has("createImageBitmap(img).then(resolve"))
+local loaded = 0
+for _ in page:gmatch("await loadImage%(svgUrl%(") do
+  loaded = loaded + 1
+end
+T.eq("both of drawLook's pictures load that way", loaded, 2)
+
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))

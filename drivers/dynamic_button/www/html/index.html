@@ -1004,10 +1004,15 @@ function drawBadge(ctx, size, b, face) {
   ctx.restore();
 }
 
+// An SVG as something a canvas can draw. Edge on Windows, which Composer embeds, loses some gradient
+// fills when it draws an SVG image into a canvas, but not when it draws a bitmap made from it.
 function loadImage(src) {
   return new Promise(function(resolve, reject) {
     var img = new Image();
-    img.onload = function() { resolve(img); };
+    img.onload = function() {
+      if (!window.createImageBitmap) { resolve(img); return; }
+      createImageBitmap(img).then(resolve, function() { resolve(img); });
+    };
     img.onerror = reject;
     img.src = src;
   });
