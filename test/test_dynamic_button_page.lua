@@ -9,6 +9,7 @@
 local T = require("testlib")
 local H = require("dynamic_button_harness")
 local Images = require("dynamic_button.images")
+local Looks = require("dynamic_button.looks")
 
 local file = assert(io.open(H.DRIVER:gsub("driver%.lua$", "www/html/index.html"), "r"))
 local page = file:read("*a")
@@ -185,6 +186,18 @@ T.truthy(
   "the button that opens the list isn't named like a row's Insert",
   has("Browse Variables") and not has("Insert Variable")
 )
+
+T.section("The editor's sections")
+T.truthy("the icon's changes have their own section", has("<summary>Icon</summary>"))
+T.truthy("and the badge has its own", has("<summary>Badge</summary>"))
+T.truthy("reset leaves the badge, which isn't in its section", has("l.custom = badge ? { badge: badge } : {};"))
+T.truthy(
+  "the slider's range is the driver's",
+  has(string.format('id="c-badge-size" min="%d" max="%d"', Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE))
+)
+for note in page:gmatch('<span class="fnote"') do
+  T.truthy("a note isn't inside its control's row, where it would push the label down: " .. note, false)
+end
 
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))

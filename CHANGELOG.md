@@ -45,8 +45,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Glow and Grayscale to each look: Glow sets a Classic Device picture's
   glow from none to twice its own, and Grayscale draws any picture in grays with
   no glow, its gray version beside the packs' own on and off pictures
-- Added Customize to each look: the picture's colors with its shading kept, the
-  glow's color, its size and position, and a badge of up to five characters
+- Added Icon and Badge sections to each look: the picture's colors with its
+  shading kept, the glow's color, its size and position, and a badge of up to
+  five characters in the size you pick
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
 - Added DriverCentral licensing: without an active license the button shows the

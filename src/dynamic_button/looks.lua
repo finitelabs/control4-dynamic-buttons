@@ -33,6 +33,7 @@ local log = require("lib.logging")
 --- @field place string One of `Looks.BADGE_PLACES`.
 --- @field color string The text's color, `#RRGGBB`.
 --- @field background string The badge's color, `#RRGGBB`, or `None`.
+--- @field size? integer The badge's size, `Looks.MIN_BADGE_SIZE` to `Looks.MAX_BADGE_SIZE` percent.
 
 --- @class LookCustom A missing field keeps the picture's own.
 --- @field color? string The picture's color, `#RRGGBB`.
@@ -76,6 +77,10 @@ Looks.MAX_SHIFT = 10
 
 --- The longest badge, in characters.
 Looks.MAX_BADGE = 5
+
+--- The smallest and largest badge, in percent.
+Looks.MIN_BADGE_SIZE = 50
+Looks.MAX_BADGE_SIZE = 150
 
 --- Where a badge can sit.
 Looks.BADGE_PLACES = { "Top Right", "Bottom Right", "Under" }
@@ -211,7 +216,17 @@ local function checkBadge(raw)
   if not color or not background then
     return nil, "a badge's colors are #RRGGBB, and its background can be None"
   end
-  return { text = text, place = place, color = color, background = background }
+  if raw.size ~= nil and not wholeBetween(raw.size, Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE) then
+    return nil,
+      string.format("a badge's size is a whole percent from %d to %d", Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE)
+  end
+  return {
+    text = text,
+    place = place,
+    color = color,
+    background = background,
+    size = raw.size ~= 100 and raw.size or nil,
+  }
 end
 
 --- Check a look's customization. What the tab doesn't set, and keys this driver doesn't know,
@@ -387,6 +402,7 @@ function Looks.customKey(look)
   table.insert(parts, tostring(badge.place or ""))
   table.insert(parts, tostring(badge.color or ""))
   table.insert(parts, tostring(badge.background or ""))
+  table.insert(parts, tostring(badge.size or 100))
   return table.concat(parts, "\n")
 end
 
