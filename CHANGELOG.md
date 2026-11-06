@@ -54,6 +54,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   again every minute, 5 minutes, 15 minutes or hour while its look shows, and
   shows it as the site sends it, with Refresh Web Picture and Set Web Address
   commands
+- Added Copy To, Export and Import to the Looks card: chosen looks, with their
+  own pictures, go to other Dynamic Buttons in the project, added to or
+  replacing theirs, or to a file that another button imports
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick
