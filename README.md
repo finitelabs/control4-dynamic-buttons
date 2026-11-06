@@ -298,7 +298,8 @@ one applies. They work with no internet.
    parts and as a PNG when it does, and can be at most 512 KB.
 1. **This button's pictures** - every picture the button's looks use, and those
    added since the editor opened. Select one to use it again.
-1. **Your picture** - the picked picture's file name or web address.
+1. **Your picture** - the picked picture's file name, or the last part of its
+   web address.
 1. **Preview** - the look as the Control4 app shows it, drawn larger.
 
 `Paste SVG` takes SVG markup and `Use This SVG` adds it. The SVG needs a
@@ -309,8 +310,9 @@ colors.
 
 `Web address` takes an http or https address, and `Fetch` adds the picture
 there. The controller fetches it, so an address on the home network works. It
-can be up to 2 MB and is kept as an uploaded file is. The look keeps the picture
-as it was when fetched.
+can be up to 2 MB and is kept as an uploaded file is. A web page, a camera's
+video stream or anything larger is refused as soon as the answer shows it. The
+look keeps the picture as it was when fetched.
 
 `Tile shape`, `Tile color`, `Grayscale`, `Size`, `Position` and the badge work
 on your pictures as they do on an icon. `Icon color` shows only for an SVG in
