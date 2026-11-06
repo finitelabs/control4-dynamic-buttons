@@ -262,7 +262,7 @@ function Images.address(driverName, deviceId, lookId, version, key)
 end
 
 --- The address of the driver's own icon, for a button with no look. The proxy's own icon is
---- transparent, since a tile shows it while it waits for a picture.
+--- transparent.
 --- @param driverName string The driver's file name without `.c4z`.
 --- @return string address
 function Images.ownIcon(driverName)
