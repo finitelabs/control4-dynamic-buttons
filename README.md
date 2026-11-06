@@ -66,7 +66,7 @@ the programming you attach to it.
 - About 280 included icons that work with no internet, and a search across
   fourteen free icon packs
 - Your own pictures: an uploaded file, pasted SVG, or a picture from a web
-  address
+  address, kept as fetched or refreshed on a schedule
 - Three icon packs of 100 subjects each: Classic Device and Classic Tile, which
   match the OS 3 look, and Modern, which matches the X4 look, with on, off and
   alert pictures where a subject has states
@@ -310,16 +310,32 @@ colors.
 
 `Web address` takes an http or https address, and `Fetch` adds the picture
 there. The controller fetches it, so an address on the home network works. It
-can be up to 2 MB and is kept as an uploaded file is. A web page, a camera's
-video stream or anything larger is refused as soon as the answer shows it. The
-look keeps the picture as it was when fetched.
+can be up to 2 MB. A web page, a camera's video stream or anything larger is
+refused as soon as the answer shows it.
 
-`Tile shape`, `Tile color`, `Grayscale`, `Size`, `Position` and the badge work
-on your pictures as they do on an icon. `Icon color` shows only for an SVG in
-one color, and `Glow` never shows. `Save Look` sends a new picture to the
-controller before the look. Your pictures are kept with the button: one that no
-look uses is deleted 10 minutes after it was added, and all of them go when the
-button is deleted or reset.
+`Refresh` says what happens to it after that:
+
+- **Once, when saved** - the picture is kept as an uploaded file is, and the
+  look keeps it as it was when fetched.
+- **Every minute / Every 5 minutes / Every 15 minutes / Every hour** - the
+  controller fetches the address again this often while the look shows, and at
+  once when the look shows and its picture is older than that. The Control4 app
+  shows the picture as the site sends it, so it has to be a PNG or JPEG, and
+  `Tile shape`, the colors, the Icon section and the Badge section don't apply.
+  A fetch that brings the same picture changes nothing. A failed fetch keeps the
+  last picture, and the look's row and the editor show why it failed. Each new
+  picture is written to the controller's storage and loaded by every Navigator,
+  so less often is better.
+
+The editor shows how often a picture refreshes and when it last did, and its
+cell in `This button's pictures` is tagged with how often.
+
+Except on a picture that refreshes, `Tile shape`, `Tile color`, `Grayscale`,
+`Size`, `Position` and the badge work on your pictures as they do on an icon.
+`Icon color` shows only for an SVG in one color, and `Glow` never shows.
+`Save Look` sends a new picture to the controller before the look. Your pictures
+are kept with the button: one that no look uses is deleted 10 minutes after it
+was added, and all of them go when the button is deleted or reset.
 
 ## Cycling Through Looks
 
@@ -482,15 +498,22 @@ the same name: choose the new look in that programming.
 
 ### Commands
 
-| Command       | Parameters | Description                                                |
-| ------------- | ---------- | ---------------------------------------------------------- |
-| Show Look     | Look       | Shows the look on the button, in the cycle or not          |
-| Next Look     |            | Shows the next look in the cycle, wrapping to the first    |
-| Previous Look |            | Shows the previous look in the cycle, wrapping to the last |
+| Command             | Parameters    | Description                                                          |
+| ------------------- | ------------- | -------------------------------------------------------------------- |
+| Show Look           | Look          | Shows the look on the button, in the cycle or not                    |
+| Next Look           |               | Shows the next look in the cycle, wrapping to the first              |
+| Previous Look       |               | Shows the previous look in the cycle, wrapping to the last           |
+| Refresh Web Picture |               | Fetches the shown look's picture from its web address now            |
+| Set Web Address     | Look, Address | Points a look's refreshing picture at another address and fetches it |
 
 Looks show in programming as their name and number. Show Look finds the look by
 its number, so programming keeps working after the look is renamed. Next Look
 and Previous Look work whatever Look Control is set to.
+
+Refresh Web Picture and Set Web Address work on a look whose picture refreshes
+from a web address, and Set Web Address lists only those looks. Set Web Address
+takes an http or https address and keeps the look's last picture until the new
+address answers with a PNG or JPEG.
 
 ### Variables
 
@@ -618,6 +641,10 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Duplicate to each look, which opens a copy of it in the editor
 - Added My images: a look's picture can be a file you upload, SVG you paste, or
   a picture from a web address the controller fetches, kept with the button
+- Added a refresh to a picture from a web address: the controller fetches it
+  again every minute, 5 minutes, 15 minutes or hour while its look shows, and
+  shows it as the site sends it, with Refresh Web Picture and Set Web Address
+  commands
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick

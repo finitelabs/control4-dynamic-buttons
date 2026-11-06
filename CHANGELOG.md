@@ -50,6 +50,10 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Duplicate to each look, which opens a copy of it in the editor
 - Added My images: a look's picture can be a file you upload, SVG you paste, or
   a picture from a web address the controller fetches, kept with the button
+- Added a refresh to a picture from a web address: the controller fetches it
+  again every minute, 5 minutes, 15 minutes or hour while its look shows, and
+  shows it as the site sends it, with Refresh Web Picture and Set Web Address
+  commands
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick
