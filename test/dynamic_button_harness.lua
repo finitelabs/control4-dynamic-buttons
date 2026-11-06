@@ -113,6 +113,10 @@ end
 USER_AGENT = "test"
 H.fetched = {}
 H.iconifyBody = '{"icons":["mdi:battery"],"total":1}'
+--- A web server's answer to a fetch, by address: { code, headers, body }, or { unreachable = true }; nil
+--- answers as Iconify does.
+--- @type fun(url: string): table|nil
+H.urlAnswer = nil
 C4.url = function()
   local transfer = {}
   function transfer:SetOptions() end
@@ -121,6 +125,21 @@ C4.url = function()
   end
   function transfer:Get(url)
     table.insert(H.fetched, url)
+    local answer = H.urlAnswer and H.urlAnswer(url)
+    if answer and answer.unreachable then
+      pcall(self.onDone, self, {}, 6, "Could not resolve host")
+      return
+    end
+    if answer then
+      pcall(
+        self.onDone,
+        self,
+        { { code = answer.code or 200, headers = answer.headers or {}, body = answer.body } },
+        0,
+        nil
+      )
+      return
+    end
     local headers = { ["Content-Type"] = "application/json; charset=utf-8" }
     pcall(self.onDone, self, { { code = 200, headers = headers, body = H.iconifyBody } }, 0, nil)
   end

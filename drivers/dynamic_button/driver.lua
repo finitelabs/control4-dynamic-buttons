@@ -35,6 +35,7 @@ local driverFilenames = require("lib.driver-filenames")
 
 local Looks = require("dynamic_button.looks")
 local Images = require("dynamic_button.images")
+local Pictures = require("dynamic_button.pictures")
 local Button = require("dynamic_button.button")
 local Iconify = require("dynamic_button.iconify")
 local Follow = require("dynamic_button.follow")
@@ -62,7 +63,21 @@ local PRESS_ACTIONS = {}
 
 gInitialized = false
 
-local looks = Looks:new(persist)
+--- @type Looks
+local looks
+local pictures = Pictures:new({
+  store = persist,
+  used = function()
+    local used = {}
+    for _, look in ipairs(looks:list()) do
+      used[look.icon.id] = true
+    end
+    return used
+  end,
+})
+looks = Looks:new(persist, function(id)
+  return pictures:get(id) ~= nil
+end)
 local images = Images:new()
 
 --- @type Button
@@ -85,6 +100,7 @@ local gLookIsItems = nil
 
 -- Chunks are large and carry nothing a log needs.
 UIR.suppressDebug["_PUT_IMAGE"] = true
+UIR.suppressDebug["_PUT_PICTURE"] = true
 
 --- @return string name The driver's file name without `.c4z`, which names its web folder.
 local function driverName()
@@ -255,10 +271,21 @@ local function tabState()
       value = Properties[property.name] or "",
     })
   end
+  local own = {}
+  for _, picture in ipairs(pictures:list()) do
+    table.insert(own, {
+      id = picture.id,
+      kind = picture.kind,
+      width = picture.width,
+      height = picture.height,
+      name = picture.name,
+    })
+  end
   local shown = button:shown()
   return {
     properties = properties,
     looks = list,
+    pictures = own,
     shown = shown and shown.id or nil,
     lookControl = lookControl(),
     defaultLook = looks:defaultId(),
@@ -327,6 +354,26 @@ end
 local function pushError(message)
   log:warn("Button tab: %s", message)
   return reply("ERROR", { message = message })
+end
+
+--- The most base64 characters in one message to the Button tab.
+local PIECE = 48 * 1024
+
+--- Send the Button tab data in pieces of base64, each wrapped in lines for the controller's broker,
+--- whose time grows with the longest unbroken run of characters in a message.
+--- @param command string
+--- @param fields table<string, string> What each piece carries besides its data.
+--- @param data string
+local function sendPieces(command, fields, data)
+  local b64 = C4:Base64Encode(data)
+  local count = math.max(1, math.ceil(#b64 / PIECE))
+  for i = 1, count do
+    local piece = TableDeepCopy(fields)
+    piece.index = tostring(i)
+    piece.count = tostring(count)
+    piece.data = (b64:sub((i - 1) * PIECE + 1, i * PIECE):gsub(string.rep(".", 76), "%0\n"))
+    C4:SendDataToUI(command, piece)
+  end
 end
 
 --- @param tParams table
@@ -484,6 +531,7 @@ function OnDriverLateInit()
   })
   badges:boot()
   button:restore()
+  pictures:collect()
   events:restoreEvents()
   syncLookEvents()
   announceShown(nil)
@@ -543,6 +591,7 @@ function OnDriverRemovedFromProject()
   if button then
     button:removed()
   end
+  pictures:clear()
 end
 
 -- An update or a restart keeps the served picture: the next start serves it again anyway.
@@ -719,6 +768,7 @@ function UIR._SAVE_LOOK(tParams)
   registerLookIs(lookChoices())
   syncLookEvents()
   follow:lookSaved(look.id)
+  pictures:collect()
   local shown = button:shown()
   if shown and shown.id == look.id then
     badges:watch(look)
@@ -756,6 +806,66 @@ function UIR._PUT_IMAGE(tParams)
   return reply("IMAGE_STORED", { look = tostring(look.id) })
 end
 
+--- One chunk of a picture for the button's own list. The last one keeps it and answers with its id.
+--- @param tParams table
+function UIR._PUT_PICTURE(tParams)
+  local params = tabParams(tParams)
+  local data, err = images:accept("picture", params.upload, params.index, params.count, params.data, function(whole)
+    if not Pictures.kindOf(whole) then
+      return "picture is not a PNG, JPEG or SVG"
+    end
+    return nil
+  end)
+  if err then
+    return pushError(string.format("the picture did not arrive: %s", err))
+  end
+  if not data then
+    return
+  end
+  local picture, addErr = pictures:add(data, { width = params.width, height = params.height, name = params.name })
+  if not picture then
+    return pushError(string.format("the picture was not kept: %s", addErr))
+  end
+  log:info("Kept picture %s (%d bytes)", picture.name, picture.bytes)
+  return reply("PICTURE_STORED", { picture = picture.id })
+end
+
+--- One of the button's own pictures, for the Button tab to draw.
+--- @param tParams table
+function UIR._GET_PICTURE(tParams)
+  local id = tostring(tabParams(tParams).id or "")
+  local picture = pictures:get(id)
+  local data = picture and pictures:load(id)
+  if not data then
+    return uiRespond("PICTURE", { id = id, error = "the picture is gone" })
+  end
+  sendPieces("PICTURE", { id = id, kind = picture.kind }, data)
+end
+
+--- A picture from a web address, fetched by the controller so an address on the home network works,
+--- for the Button tab to draw and keep as it does a file.
+--- @param tParams table
+function UIR._FETCH_PICTURE(tParams)
+  log:trace("UIR._FETCH_PICTURE()")
+  local params = tabParams(tParams)
+  local request = tostring(params.request or "")
+  local address, err = Pictures.checkAddress(params.url)
+  if not address then
+    return uiRespond("FETCHED", { request = request, error = err })
+  end
+  http:get(address, nil, { timeout = 20 }):next(function(response)
+    local refused = Pictures.checkFetched(response.body)
+    if refused then
+      C4:SendDataToUI("FETCHED", { request = request, error = refused })
+      return
+    end
+    sendPieces("FETCHED", { request = request }, response.body)
+  end, function(failure)
+    log:warn("Fetching a picture failed: %s", Select(failure, "error") or failure)
+    C4:SendDataToUI("FETCHED", { request = request, error = Pictures.fetchError(failure) })
+  end)
+end
+
 --- @param tParams table
 function UIR._DELETE_LOOK(tParams)
   log:trace("UIR._DELETE_LOOK()")
@@ -765,6 +875,7 @@ function UIR._DELETE_LOOK(tParams)
     return pushError("no such look")
   end
   log:info("Deleted look %s", removed.name)
+  pictures:collect()
   announceShown(before and before.id or nil)
   registerLookIs(lookChoices())
   syncLookEvents()
@@ -997,6 +1108,7 @@ function EC.Reset_Driver(params)
   log:print("Resetting driver to initial state")
   follow:stop()
   button:reset()
+  pictures:clear()
   values:reset()
   conditionals:reset()
   events:reset()
@@ -1042,6 +1154,7 @@ followAllowed = function()
 end
 
 -- _GET_STATE and _SET_DRIVER stay open while stopped: they only do what Composer's own Properties tab can.
+-- _GET_PICTURE does too: it only shows the tab a picture the button already keeps.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
 EC.Next_Look = whileLicensed(EC.Next_Look)
@@ -1053,6 +1166,7 @@ end)
 for _, name in ipairs({
   "_SAVE_LOOK",
   "_PUT_IMAGE",
+  "_PUT_PICTURE",
   "_DELETE_LOOK",
   "_ORDER_LOOKS",
   "_SHOW_LOOK",
@@ -1066,5 +1180,8 @@ for _, name in ipairs({
 end
 UIR._ICONIFY = whileLicensed(UIR._ICONIFY, function(tParams)
   return uiRespond("ICONIFY", { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
+end)
+UIR._FETCH_PICTURE = whileLicensed(UIR._FETCH_PICTURE, function(tParams)
+  return uiRespond("FETCHED", { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
 end)
 --#endif

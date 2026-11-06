@@ -110,12 +110,17 @@ T.eq("Show Look offers no looks", GCPL.Show_Look("Look"), {})
 local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("New")))
 T.eq("the tab can't add a look", refused._command, "ERROR")
 T.contains("and is told why", refused.message, UNLICENSED)
-for _, command in ipairs({ "_PUT_IMAGE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
+for _, command in ipairs({ "_PUT_IMAGE", "_PUT_PICTURE", "_DELETE_LOOK", "_ORDER_LOOKS", "_SHOW_LOOK" }) do
   T.eq(command .. " is refused", JSON:decode(H.tab(command, { id = 1, look = 1, ids = { 2, 1 } }))._command, "ERROR")
 end
 local search = JSON:decode(H.tab("_ICONIFY", { request = "r1", kind = "search", value = "battery" }))
 T.eq("an icon search answers at once", search._command, "ICONIFY")
 T.contains("with the reason, and asks Iconify nothing", search.error, UNLICENSED)
+local fetched = #H.fetched
+local fetch = JSON:decode(H.tab("_FETCH_PICTURE", { request = "r2", url = "http://camera.local/a.png" }))
+T.eq("a web address answers at once", fetch._command, "FETCHED")
+T.contains("with the reason", fetch.error, UNLICENSED)
+T.eq("and is not fetched", #H.fetched, fetched)
 EC.Reset_Driver({ ["Are You Sure?"] = "Yes" })
 T.eq("Reset Driver is turned away", #H.state().looks, 2)
 T.eq("the proxy still hears nothing", #H.proxy, 0)
