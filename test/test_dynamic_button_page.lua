@@ -429,7 +429,12 @@ T.truthy(
   has("'/api/v1/items/' + id + '/datatoui?SubscriptionClient=' + engine.id")
     and has("gSocket.emit('startSubscription', ev);")
 )
-T.truthy("which ends when the copy does", has("finally { link.close(); }") and has("gSocket.off(ev)"))
+T.truthy(
+  "which stays for the socket's life and is used again, since Director documents no way to end one",
+  has("if (ev && engineId === engine.id) return true;") and has("if (gLinks[id]) return gLinks[id];")
+)
+T.truthy("and a stale one is let go of by its own handler alone", has("gSocket.off(ev, onEvent)"))
+T.falsy("never every handler on the event", has("gSocket.off(ev);") or has("gSocket.off(ev) "))
 T.truthy(
   "and its commands go through the one sender",
   has("send: function(cmd, params) { return sendCommandTo(id, cmd, params); }")
@@ -468,6 +473,83 @@ T.truthy(
 T.truthy(
   "an unknown version from a newer driver says so",
   has("That file comes from a newer Dynamic Buttons driver. Update this one first.")
+)
+
+T.section("Import brings nothing that runs or reaches out unless asked")
+T.truthy(
+  "the opt-in starts off",
+  has(
+    '<input type="checkbox" id="im-trust"> Bring Show when, live badge text and web addresses with these looks</label>'
+  ) and has("$('im-trust').checked = false;")
+)
+T.truthy(
+  "without it, Show when is cleared and a live badge dropped",
+  has("look.showWhen = '';") and has("if (liveBadgeText(look)) delete look.custom.badge;")
+)
+T.truthy(
+  "and a look with a refreshing picture is left out by name",
+  has("if (it.picture && it.picture.every) { cut.push(it.look.name); return false; }")
+    and has("'Left out without their web addresses: '")
+)
+T.truthy("only the opt-in sends them as they are", has("var items = trusted ? chosen : chosen.filter("))
+T.truthy(
+  "each look shows its Show when, live badge text and web address, escaped",
+  has("reach.push(['Show when', it.look.showWhen]);")
+    and has("reach.push(['Web address', it.picture.url]);")
+    and has("<code>' + esc(r[1]) + '</code>")
+)
+
+T.section("Replace deletes the shown look last")
+T.truthy(
+  "the others go first, so no delete shows another look and runs its Shown programming",
+  has(
+    "var order = existing.filter(function(l) { return l.id !== state.shown; }).concat(existing.filter(function(l) { return l.id === state.shown; }));"
+  ) and has("{ id: order[d].id }")
+)
+
+T.section("A file's looks meet the driver's rules before anything is deleted")
+local Looks2 = require("dynamic_button.looks")
+T.truthy("the problem check runs as the file is read", has("var problem = lookProblem(l, refreshes);"))
+T.truthy(
+  "and a look with one is left out by name",
+  has("if (problem) { skipped.push(label + ': ' + problem); continue; }")
+)
+T.truthy("glow is whole, from 0 to the driver's most", has("!wholeIn(l.glow, 0, " .. Looks2.MAX_GLOW .. ")"))
+T.truthy(
+  "size, position and badge size have the driver's bounds",
+  has("!wholeIn(c.size, " .. Looks2.MIN_SIZE .. ", 100)")
+    and has("!wholeIn(c[k], -" .. Looks2.MAX_SHIFT .. ", " .. Looks2.MAX_SHIFT .. ")")
+    and has("!wholeIn(b.size, " .. Looks2.MIN_BADGE_SIZE .. ", " .. Looks2.MAX_BADGE_SIZE .. ")")
+)
+T.truthy(
+  "and so do a name, a badge's text and a Show when",
+  has("Array.from(name).length > " .. Looks2.MAX_NAME)
+    and has("utf8Bytes(text) > " .. Looks2.MAX_LIVE_BADGE)
+    and has("utf8Bytes(l.showWhen.trim()) > " .. Looks2.MAX_SHOW_WHEN)
+)
+local everyChoices = page:match("BADGE_EVERY_CHOICES = %[([%d, ]+)%]")
+T.eq("the badge's update choices are the driver's", everyChoices, table.concat(Looks2.BADGE_EVERY, ", "))
+
+T.section("Replace asks twice, Export warns of addresses, and a copy shuts the card")
+T.truthy(
+  "Replace's first press says what goes",
+  has("if (replace && !confirmed($('cp-go'), 'cp-confirm', 'Replaces the looks on ")
+    and has("if (replace && !confirmed($('im-go'), 'im-confirm', 'Replaces this button’s looks")
+)
+T.truthy("Export says the file holds addresses", has("' that refresh, which can carry a login or token.'"))
+T.truthy(
+  "a look whose picture is gone is left out by name",
+  has("if (!rec || (!rec.every && !src.b64)) { missing.push(l.name); return; }")
+)
+T.truthy("the Copy panel keeps its ticks when the list comes again", has("renderCopyPanel(true)"))
+T.truthy(
+  "while looks are given, the card's buttons are off, not just unclickable",
+  has("if (gApplying) Array.prototype.forEach.call(el.querySelectorAll('button'), function(b) { b.disabled = true; });")
+)
+T.falsy("no pointer-events trick", has("#looks-card.busy"))
+T.truthy(
+  "an id the page carries uses its own markup",
+  has("var own = carriedIcon(id);\n  if (own) return Object.assign({}, own, { carried: true });")
 )
 
 T.section("Icon licenses")
