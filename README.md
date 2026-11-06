@@ -30,7 +30,8 @@ the programming you attach to it.
     - [Properties](#properties)
     - [Looks](#looks)
     - [Look Editor](#look-editor)
-    - [Customize](#customize)
+    - [Icon](#icon)
+    - [Badge](#badge)
     - [Icon Packs](#icon-packs)
     - [Free Icon Libraries](#free-icon-libraries)
   - [Cycling Through Looks](#cycling-through-looks)
@@ -166,24 +167,22 @@ the button's looks.
 1. **Search free icon libraries** - looks for the same words in the free icon
    libraries online, when the included pictures don't have what you need.
 1. **Icon** - the picked picture and its license.
-1. **Preview** - the look as the Control4 app shows it.
-1. **The picture at 300 px** - the picture the driver keeps, at the size the app
-   loads.
+1. **Preview** - the look as the Control4 app shows it, drawn larger.
 1. **Save Look / Cancel** - `Save Look` saves the look and sends its picture to
    the driver. A look renamed without other changes keeps its picture. The
    button's first look shows as soon as its picture arrives.
 
-### Customize
+### Icon
 
-<img alt="Button tab - Customize" src="./images/ui-customize.png" width="640"/>
+<img alt="Button tab - Icon" src="./images/ui-customize.png" width="640"/>
 
-`Customize`, under the picture, changes the look's picture before it is saved.
-It shows only what the picked picture can use, and opens by itself on a look
-that changes its picture.
+`Icon`, under the picture, changes the look's picture before it is saved. It
+shows only what the picked picture can use, and opens by itself on a look that
+changes its picture.
 
 1. **Reset to the pack's look** - puts the picture back as it comes: no changes,
-   its own glow and in color. For a basic or library icon it reads
-   `Reset to the icon's look`.
+   its own glow and in color. The look keeps its badge. For a basic or library
+   icon it reads `Reset to the icon's look`.
 1. **Color** - the picture's color, for a Classic Device or Modern picture. Its
    shading stays, and the charging bolt, the warning mark and the sun keep
    theirs. A Classic Tile picture shows `Tile` and `Symbol` here instead, the
@@ -202,7 +201,16 @@ that changes its picture.
 1. **Position** - moves the picture 2% of the picture area at a time, up to 10%
    each way, and stops where a Classic picture's shadow would run out of room.
    `Center` puts it back.
-1. **Badge** - up to 5 characters drawn over the picture. Empty means no badge.
+
+### Badge
+
+<img alt="Button tab - Badge" src="./images/ui-badge.png" width="640"/>
+
+`Badge`, under `Icon`, draws text over the picture. It opens by itself on a look
+that has a badge.
+
+1. **Text** - up to 5 characters. Empty means no badge.
+1. **Size** - the badge's size, from `50%` to `150%`.
 1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
 1. **Text color** - the color of the badge's text.
 1. **Background** - the badge's color, or `None` for the text alone. A gray
@@ -229,10 +237,9 @@ one applies. They work with no internet.
 1. **Pictures** - select one to use it for the look. The look is named after it
    when the name is empty.
 1. **Pack note** - how many pictures show, and what the pack looks like.
-1. **The picture at 300 px** - a pack picture keeps its own colors, so
-   `Tile shape`, `Icon color` and `Tile color` are hidden for it, and the
-   picture shows on a dark background. The Classic packs add the soft shadow the
-   OS 3 look has. [Customize](#customize) can change its colors.
+1. **Preview** - a pack picture keeps its own colors, so `Tile shape`,
+   `Icon color` and `Tile color` are hidden for it. The Classic packs add the
+   soft shadow the OS 3 look has. [Icon](#icon) can change its colors.
 
 ### Free Icon Libraries
 
@@ -544,8 +551,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Glow and Grayscale to each look: Glow sets a Classic Device picture's
   glow from none to twice its own, and Grayscale draws any picture in grays with
   no glow, its gray version beside the packs' own on and off pictures
-- Added Customize to each look: the picture's colors with its shading kept, the
-  glow's color, its size and position, and a badge of up to five characters
+- Added Icon and Badge sections to each look: the picture's colors with its
+  shading kept, the glow's color, its size and position, and a badge of up to
+  five characters in the size you pick
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
 - Added DriverCentral licensing: without an active license the button shows the

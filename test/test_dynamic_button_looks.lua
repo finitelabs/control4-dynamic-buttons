@@ -420,4 +420,27 @@ T.eq(
   nextId
 )
 
+T.section("A badge's size")
+local function sizedBadge(size)
+  return { text = "1", place = "Under", color = "#FFFFFF", background = "None", size = size }
+end
+T.eq(
+  "a badge keeps its size",
+  looks:update(a.id, withDrawn({ custom = { badge = sizedBadge(130) } })).custom.badge.size,
+  130
+)
+T.eq(
+  "100 percent isn't kept, since it's what a badge has anyway",
+  looks:update(a.id, withDrawn({ custom = { badge = sizedBadge(100) } })).custom.badge.size,
+  nil
+)
+for _, size in ipairs({ 40, 160, 75.5, "big" }) do
+  T.contains("a size of " .. tostring(size) .. " is refused", badgeWhy(sizedBadge(size)), "whole percent")
+end
+looks:setImage(a.id, 5678)
+T.truthy(
+  "a new size asks for a new picture",
+  looks:update(a.id, withDrawn({ custom = { badge = sizedBadge(120) } })).image.stale
+)
+
 T.finish()

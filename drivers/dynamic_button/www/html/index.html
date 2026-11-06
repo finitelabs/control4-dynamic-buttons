@@ -48,6 +48,8 @@
   /* As a tile in the Control4 app: a dark card, the picture, the name under it. */
   .navtile { width: 160px; height: 124px; background: var(--tile); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin: 0 auto; }
   .navtile img, .navtile .noimg { width: 56px; height: 56px; }
+  .navtile.large { width: 200px; height: 216px; gap: 12px; }
+  .navtile.large img, .navtile.large .noimg { width: 150px; height: 150px; }
   .navtile .noimg { border: 1px dashed #4b5563; border-radius: 8px; }
   .navtile .nm { color: var(--tile-text); font-size: 12px; font-weight: 500; max-width: 144px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -76,6 +78,7 @@
   /* The browser's own arrow sits where it likes, so every select draws this one. It comes after the rule above, whose background shorthand would reset it. */
   select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 6px; padding-right: 28px; text-overflow: ellipsis; }
   input[type="color"] { width: 44px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
+  input[type="color"].no-color::-webkit-color-swatch { border: 1px solid var(--border); background: linear-gradient(to top right, transparent calc(50% - 1px), #9ca3af calc(50% - 1px), #9ca3af calc(50% + 1px), transparent calc(50% + 1px)), #fff !important; }
   .colorrow { display: flex; align-items: center; gap: 8px; }
   .colorrow code { font-size: 12px; color: var(--text-muted); }
   .rangerow { display: flex; align-items: center; gap: 8px; min-height: 28px; }
@@ -174,10 +177,12 @@
   .packlist .all { grid-column: 1 / -1; display: flex; gap: 8px; margin-bottom: 4px; }
   .customize { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
   .customize > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text); }
+  #badge-form { margin-top: 10px; }
   .custom-head { display: flex; justify-content: flex-end; margin: -18px 0 8px; }
-  .lookform .fnote { font-size: 11px; color: var(--text-muted); }
+  /* A note sits under its control, on its own grid row, so its label stays level with the control. */
+  .lookform .fnote { grid-column: 2; margin-top: -4px; font-size: 11px; line-height: 1.4; color: var(--text-muted); }
   #c-badge { width: 110px; }
-  #fld-c-size .rangerow { width: 280px; max-width: 100%; }
+  #fld-c-size .rangerow, #fld-c-badge-size .rangerow { width: 280px; max-width: 100%; }
   #c-pos code { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
   .icongrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; max-height: 300px; overflow-y: auto; padding: 2px; }
   .icon { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); height: 56px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
@@ -193,8 +198,6 @@
   .picked .lic { color: var(--text-muted); }
   .status { font-size: 12px; color: var(--text-muted); margin-top: 8px; min-height: 18px; }
   .status.bad { color: var(--danger); }
-  .big { display: block; width: 150px; height: 150px; margin: 10px auto 0; border-radius: 8px; background-color: #e5e7eb; background-image: linear-gradient(45deg, #d1d5db 25%, transparent 25%), linear-gradient(-45deg, #d1d5db 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d1d5db 75%), linear-gradient(-45deg, transparent 75%, #d1d5db 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
-  .big.dark { background-color: #1f2a36; background-image: linear-gradient(45deg, #2b3a4a 25%, transparent 25%), linear-gradient(-45deg, #2b3a4a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2b3a4a 75%), linear-gradient(-45deg, transparent 75%, #2b3a4a 75%); }
   #lic-card summary { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; cursor: pointer; }
   #lic-card[open] summary { margin-bottom: 10px; }
   .lic-list { margin-top: 4px; padding-left: 18px; color: var(--text-muted); font-size: 11px; }
@@ -370,16 +373,18 @@
           </div>
         </div>
         <details class="customize" id="customize">
-          <summary>Customize</summary>
+          <summary>Icon</summary>
           <div class="custom-head"><button type="button" class="linkbtn" id="c-reset">Reset to the pack’s look</button></div>
           <div class="lookform" id="custom-form">
             <div class="frow" id="fld-c-color">
               <label for="c-color">Color</label>
-              <div class="fctl colorrow"><input type="color" id="c-color"><code id="c-color-v"></code><span class="fnote">Its shading stays.</span></div>
+              <div class="fctl colorrow"><input type="color" id="c-color"><code id="c-color-v"></code></div>
+              <div class="fnote">Its shading stays.</div>
             </div>
             <div class="frow" id="fld-c-body">
               <label for="c-body">Body</label>
-              <div class="fctl colorrow"><input type="color" id="c-body"><code id="c-body-v"></code><span class="fnote">Tints the metal or plastic.</span></div>
+              <div class="fctl colorrow"><input type="color" id="c-body"><code id="c-body-v"></code></div>
+              <div class="fnote">Tints the metal or plastic.</div>
             </div>
             <div class="frow" id="fld-c-tile">
               <label for="c-tile">Tile</label>
@@ -395,7 +400,8 @@
             </div>
             <div class="frow" id="fld-c-glowcolor">
               <label for="c-glowColor">Glow color</label>
-              <div class="fctl colorrow"><input type="color" id="c-glowColor"><code id="c-glowColor-v"></code><span class="fnote" id="c-glow-note">Follows Color unless set.</span></div>
+              <div class="fctl colorrow"><input type="color" id="c-glowColor"><code id="c-glowColor-v"></code></div>
+              <div class="fnote" id="c-glow-note">Follows Color unless set.</div>
             </div>
             <div class="frow" id="fld-grayscale">
               <label for="f-grayscale">Grayscale</label>
@@ -416,9 +422,19 @@
                 <code id="c-pos-v"></code>
               </div>
             </div>
+          </div>
+        </details>
+        <details class="customize" id="badge-section">
+          <summary>Badge</summary>
+          <div class="lookform" id="badge-form">
             <div class="frow" id="fld-c-badge">
-              <label for="c-badge">Badge</label>
-              <div class="fctl"><input type="text" id="c-badge" placeholder="None" autocomplete="off"><span class="fnote">Up to 5 characters.</span></div>
+              <label for="c-badge">Text</label>
+              <div class="fctl"><input type="text" id="c-badge" placeholder="None" autocomplete="off"></div>
+              <div class="fnote">Up to 5 characters.</div>
+            </div>
+            <div class="frow" id="fld-c-badge-size">
+              <label for="c-badge-size">Size</label>
+              <div class="fctl rangerow"><input type="range" id="c-badge-size" min="50" max="150" step="10" value="100"><code id="c-badge-size-v">100%</code></div>
             </div>
             <div class="frow" id="fld-c-place">
               <label>Place</label>
@@ -436,9 +452,8 @@
         </details>
       </div>
       <div>
-        <div class="navtile" id="edit-tile"></div>
-        <canvas class="big" id="edit-big" width="300" height="300" aria-label="The picture at full size"></canvas>
-        <div class="note" style="text-align:center">The picture at 300 px, the size the app loads.</div>
+        <div class="navtile large" id="edit-tile"></div>
+        <div class="note" style="text-align:center">As the Control4 app shows the button.</div>
       </div>
     </div>
     <div class="actions">
@@ -857,11 +872,12 @@ function cleanCustom(icon, raw) {
   if (raw.y) c.y = Number(raw.y);
   var b = raw.badge, text = b ? String(b.text || '').trim() : '';
   if (text) c.badge = { text: text, place: b.place || 'Top Right', color: (b.color || '#FFFFFF').toUpperCase(), background: b.background === 'None' ? 'None' : (b.background || '#DC2626').toUpperCase() };
+  if (text && b.size && Number(b.size) !== 100) c.badge.size = Number(b.size);
   return Object.keys(c).length ? c : null;
 }
 function customKey(look) {
   var c = look.custom || {}, b = c.badge || {};
-  return [c.color, c.body, c.tile, c.symbol, c.glowColor, c.size || 100, c.x || 0, c.y || 0, b.text, b.place, b.color, b.background].join('|');
+  return [c.color, c.body, c.tile, c.symbol, c.glowColor, c.size || 100, c.x || 0, c.y || 0, b.text, b.place, b.color, b.background, b.size || 100].join('|');
 }
 
 // The pack picture's SVG with its customization: colors, then the glow's strength.
@@ -945,7 +961,7 @@ function placedBody(body, look, viewSize) {
   return '<g transform="translate(' + (half + dx) + ' ' + (half + dy) + ') scale(' + s + ') translate(' + (-half) + ' ' + (-half) + ')">' + body + '</g>';
 }
 function drawBadge(ctx, size, b, face) {
-  var under = b.place === 'Under', h = Math.round(size * (under ? 0.2 : 0.24));
+  var under = b.place === 'Under', h = Math.round(size * (under ? 0.2 : 0.24) * (b.size || 100) / 100);
   ctx.save();
   ctx.font = '700 ' + Math.round(h * 0.68) + 'px ' + (face ? face + ', ' : '') + '"Segoe UI", Roboto, Arial, sans-serif';
   var w = Math.min(size * 0.94, Math.max(h, ctx.measureText(b.text).width + h * 0.7)), x, y;
@@ -1087,14 +1103,14 @@ async function lookDataUrl(look, size) {
   await drawLook(c, look);
   return c.toDataURL('image/png');
 }
-async function navTile(el, look) {
+async function navTile(el, look, size) {
   // Draws overlap while a slider moves: only the latest may paint the tile.
   var turn = el.drawTurn = (el.drawTurn || 0) + 1;
   if (!look || !look.icon || look.icon.missing) {
     el.innerHTML = '<div class="noimg"></div><div class="nm">' + esc(look ? look.name : 'Dynamic Button') + '</div>';
     return;
   }
-  var url = await lookDataUrl(look, 112);
+  var url = await lookDataUrl(look, size || 112);
   if (turn !== el.drawTurn) return;
   el.innerHTML = '<img alt="" src="' + url + '"><div class="nm">' + esc(look.name || 'Unnamed') + '</div>';
 }
@@ -1691,7 +1707,7 @@ $('f-glow').addEventListener('input', function() { gEditor.look.glow = Number($(
 $('f-grayscale').addEventListener('change', function() { gEditor.look.grayscale = $('f-grayscale').checked; syncCustom(); preview(); });
 
 // ============================================================
-// The look editor: Customize
+// The look editor: Icon and Badge
 // ============================================================
 var CUSTOM_COLORS = ['color', 'body', 'tile', 'symbol', 'glowColor'];
 var BADGE_PLACES = ['Top Right', 'Bottom Right', 'Under'];
@@ -1725,12 +1741,16 @@ function syncCustom() {
   $('c-size-v').textContent = (c.size || 100) + '%';
   $('c-pos-v').textContent = positionText(c);
   $('c-badge').value = b.text;
+  $('c-badge-size').value = b.size || 100;
+  $('c-badge-size-v').textContent = (b.size || 100) + '%';
   $('c-place').innerHTML = BADGE_PLACES.map(function(p) { return '<button type="button" data-place="' + p + '"' + (p === b.place ? ' class="on"' : '') + '>' + p + '</button>'; }).join('');
   $('c-badge-color').value = b.color.toLowerCase();
   $('c-badge-color-v').textContent = b.color.toUpperCase();
   var none = b.background === 'None';
   if (!none) $('c-badge-bg').value = b.background.toLowerCase();
-  $('c-badge-bg-v').textContent = none ? 'None' : b.background.toUpperCase();
+  $('c-badge-bg').classList.toggle('no-color', none);
+  $('c-badge-bg-v').hidden = none;
+  if (!none) $('c-badge-bg-v').textContent = b.background.toUpperCase();
   $('c-badge-none').classList.toggle('on', none);
 }
 // Keep the picture inside its margins at its size, once its drawing's bounds are known.
@@ -1793,6 +1813,12 @@ $('c-place').addEventListener('click', function(e) {
   syncCustom();
   preview();
 });
+$('c-badge-size').addEventListener('input', function() {
+  var b = badgeOf(gEditor.look);
+  b.size = Number($('c-badge-size').value);
+  $('c-badge-size-v').textContent = b.size + '%';
+  preview();
+});
 $('c-badge-color').addEventListener('input', function() {
   badgeOf(gEditor.look).color = $('c-badge-color').value.toUpperCase();
   syncCustom();
@@ -1810,8 +1836,8 @@ $('c-badge-none').addEventListener('click', function() {
   preview();
 });
 $('c-reset').addEventListener('click', function() {
-  var l = gEditor.look;
-  l.custom = {};
+  var l = gEditor.look, badge = customOf(l).badge;
+  l.custom = badge ? { badge: badge } : {};
   l.glow = 100;
   l.grayscale = false;
   $('f-glow').value = 100;
@@ -1853,14 +1879,14 @@ function preview() {
   $('fld-shape').hidden = whole;
   $('fld-icon-color').hidden = whole;
   $('fld-tile-color').hidden = whole || !tiled;
-  $('edit-big').classList.toggle('dark', whole);
   $('fld-glow').hidden = !hasGlow(l.icon) || !!l.grayscale;
   var keys = customKeysFor(l.icon), badgeOn = !!String(badgeOf(l).text || '').trim();
   $('customize').hidden = !l.icon;
+  $('badge-section').hidden = !l.icon;
   ['color', 'body', 'tile', 'symbol'].forEach(function(key) { $('fld-c-' + key).hidden = keys.indexOf(key) < 0; });
   $('fld-c-glowcolor').hidden = keys.indexOf('glowColor') < 0 || !!l.grayscale;
   $('c-glow-note').hidden = !pictureKind(l.icon).glowFollows;
-  ['fld-c-place', 'fld-c-textcolor', 'fld-c-bg'].forEach(function(id) { $(id).hidden = !badgeOn; });
+  ['fld-c-badge-size', 'fld-c-place', 'fld-c-textcolor', 'fld-c-bg'].forEach(function(id) { $(id).hidden = !badgeOn; });
   $('c-reset').textContent = whole ? 'Reset to the pack\u2019s look' : 'Reset to the icon\u2019s look';
   $('f-glow-v').textContent = $('f-glow').value + '%';
   $('f-icon-color-v').textContent = l.iconColor;
@@ -1870,8 +1896,7 @@ function preview() {
     : 'No icon picked.';
   // Drawn as it will be saved: only what the picture can use, and nothing for its own look.
   var drawn = Object.assign({}, l, { custom: cleanCustom(l.icon, l.custom) });
-  navTile($('edit-tile'), drawn);
-  drawLook($('edit-big'), drawn).catch(function() {});
+  navTile($('edit-tile'), drawn, 300);
 }
 
 function openEditor(look) {
@@ -1899,8 +1924,10 @@ function openEditor(look) {
   markPicked();
   setStatus('');
   showError('');
-  // Opened on a look that changes its picture, the Customize section shows how.
-  $('customize').open = !!(cleanCustom(gEditor.look.icon, gEditor.look.custom) || gEditor.look.grayscale || savedGlow(gEditor.look) !== 100);
+  // Opened on a look that changes its picture or has a badge, the section shows how.
+  var kept = cleanCustom(gEditor.look.icon, gEditor.look.custom) || {};
+  $('customize').open = Object.keys(kept).some(function(key) { return key !== 'badge'; }) || gEditor.look.grayscale || savedGlow(gEditor.look) !== 100;
+  $('badge-section').open = !!kept.badge;
   syncCustom();
   measureBounds();
   $('editor').hidden = false;
