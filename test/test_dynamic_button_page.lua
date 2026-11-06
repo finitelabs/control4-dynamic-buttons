@@ -243,6 +243,7 @@ T.truthy(
 )
 T.truthy("Escape puts the color back", has("if (e.key === 'Escape') { e.preventDefault(); closeColorPicker(false); }"))
 T.truthy("as the look had it, not as the box's value", has("var was = JSON.parse(pop.before), l = gEditor.look;"))
+T.truthy("and only onto that look, if another is open by then", has("pop.before && gEditor.look === pop.look"))
 T.truthy("recent colors survive a browser that refuses storage", has("try { localStorage.setItem(RECENT_COLORS_KEY"))
 
 T.section("Icon licenses")
