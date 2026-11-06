@@ -536,6 +536,12 @@ T.truthy(
   has("if (replace && !confirmed($('cp-go'), 'cp-confirm', 'Replaces the looks on ")
     and has("if (replace && !confirmed($('im-go'), 'im-confirm', 'Replaces this button’s looks")
 )
+T.truthy(
+  "and a change to what's ticked ends a Replace waiting for its second press",
+  has("function syncCopyGo() {\n  unconfirm($('cp-go'));")
+    and has("function syncImportGo() {\n  unconfirm($('im-go'));")
+    and has("$('im-trust').addEventListener('change', syncImportGo);")
+)
 T.truthy("Export says the file holds addresses", has("' that refresh, which can carry a login or token.'"))
 T.truthy(
   "a look whose picture is gone is left out by name",

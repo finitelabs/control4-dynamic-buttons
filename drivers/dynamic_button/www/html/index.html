@@ -3138,7 +3138,9 @@ function renderCopyPanel(keepTicks) {
   $('cp-note').textContent = 'A button keeps up to ' + gState.max + ' looks. Pictures of your own go with the looks.';
   syncCopyGo();
 }
+// A change to what's ticked ends a Replace waiting for its second press: its note named the first choice.
 function syncCopyGo() {
+  unconfirm($('cp-go'));
   var looks = checkedIn('cp-looks', 'look').length, buttons = checkedIn('cp-buttons', 'button').length;
   $('cp-go').disabled = gApplying || !looks || !buttons;
   if (!$('cp-go').dataset.confirm) $('cp-go').textContent = 'Copy ' + plural(looks, 'Look') + ' to ' + plural(buttons, 'Button');
@@ -3377,6 +3379,7 @@ function renderImportPanel() {
   syncImportGo();
 }
 function syncImportGo() {
+  unconfirm($('im-go'));
   var n = gImport ? checkedIn('im-looks', 'item').length : 0;
   $('im-go').disabled = gApplying || !n;
   if (!$('im-go').dataset.confirm) $('im-go').textContent = 'Import ' + plural(n, 'Look');
@@ -3421,6 +3424,7 @@ $('import-file').addEventListener('change', async function() {
   }
 });
 $('im-looks').addEventListener('change', syncImportGo);
+$('im-trust').addEventListener('change', syncImportGo);
 $('im-go').addEventListener('click', runImport);
 $('im-cancel').addEventListener('click', function() { openPanel(null); gImport = null; });
 
