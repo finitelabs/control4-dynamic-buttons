@@ -77,8 +77,24 @@
   select, input[type="text"], input[type="search"] { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
   /* The browser's own arrow sits where it likes, so every select draws this one. It comes after the rule above, whose background shorthand would reset it. */
   select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 6px; padding-right: 28px; text-overflow: ellipsis; }
-  input[type="color"] { width: 44px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
-  input[type="color"].no-color::-webkit-color-swatch { border: 1px solid var(--border); background: linear-gradient(to top right, transparent calc(50% - 1px), #9ca3af calc(50% - 1px), #9ca3af calc(50% + 1px), transparent calc(50% + 1px)), #fff !important; }
+  /* The page's own color picker: a swatch button over each color input, which only holds the value. */
+  .cswatch { width: 44px; height: 28px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; flex: none; }
+  .cswatch span { display: block; width: 100%; height: 100%; border-radius: 3px; border: 1px solid rgba(0,0,0,0.12); }
+  .cswatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cswatch.no-color span { background: linear-gradient(to top right, transparent calc(50% - 1px), #9ca3af calc(50% - 1px), #9ca3af calc(50% + 1px), transparent calc(50% + 1px)), #fff !important; }
+  .cpop { position: absolute; z-index: 50; width: 264px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
+  .cpop .crow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .cpop .clabel { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+  .cpop .cchip { width: 22px; height: 22px; padding: 0; border-radius: 4px; border: 1px solid rgba(0,0,0,0.18); cursor: pointer; }
+  .cpop .cchip:focus-visible, .cpop .cchip.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cpop .chex { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .cpop .chex span { width: 28px; height: 28px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.18); flex: none; }
+  .cpop .chex input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); }
+  .cpop .chex input.input-error { border-color: var(--danger); }
+  .cpop .cslider { display: grid; grid-template-columns: 14px minmax(0, 1fr) 34px; align-items: center; gap: 8px; margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+  .cpop .cslider input { -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.15); margin: 0; }
+  .cpop .cslider input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #374151; box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; }
+  .cpop .cslider code { text-align: right; font-size: 11px; }
   .colorrow { display: flex; align-items: center; gap: 8px; }
   .colorrow code { font-size: 12px; color: var(--text-muted); }
   .rangerow { display: flex; align-items: center; gap: 8px; min-height: 28px; }
@@ -2560,6 +2576,184 @@ function showTab(tab) {
   document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.toggle('active', t === tab); });
   document.querySelectorAll('.panel').forEach(function(p) { p.classList.toggle('active', p.id === tab.dataset.panel); });
 }
+
+// ============================================================
+// Color picker: the dropper in Edge's own picker, which Composer embeds, reads the wrong place in
+// Composer's window, so every color input gets this picker instead
+// ============================================================
+var RECENT_COLORS_KEY = 'dynamicButtonRecentColors';
+var gColorPop = null;
+var INPUT_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+function normalHex(v) {
+  var m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(String(v || '').trim());
+  if (!m) return null;
+  var h = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1];
+  return '#' + h.toUpperCase();
+}
+function recentColors() {
+  try { return (JSON.parse(localStorage.getItem(RECENT_COLORS_KEY)) || []).map(normalHex).filter(Boolean).slice(0, 10); }
+  catch (e) { return []; }
+}
+function rememberColor(hex) {
+  var list = [hex].concat(recentColors().filter(function(c) { return c !== hex; })).slice(0, 10);
+  try { localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(list)); } catch (e) {}
+}
+// The colors of the look being edited and of its picture, each once, darkest first.
+function pictureColors() {
+  var l = gEditor.look;
+  if (!l) return [];
+  // Only what the picture shows: a pack picture has no icon or tile color, an empty badge no colors.
+  var found = [], pack = l.icon && packOf(l.icon), b = (l.custom || {}).badge || {};
+  if (!pack) found.push(l.iconColor);
+  if (!pack && l.tileShape && l.tileShape !== 'None') found.push(l.tileColor);
+  if (l.icon) {
+    var c = shownColors(l);
+    customKeysFor(l.icon).forEach(function(key) { found.push(c[key]); });
+    found = found.concat((pack ? customBody(l.icon, l) : String(l.icon.body || '')).match(/#[0-9a-f]{6}\b/gi) || []);
+  }
+  if (String(b.text || '').trim()) found.push(b.color, b.background);
+  var seen = {}, out = [];
+  found.map(normalHex).filter(Boolean).forEach(function(hex) {
+    var key = rgbOf(hex).map(function(v) { return Math.round(v / 24); }).join(',');
+    if (!seen[key]) { seen[key] = true; out.push(hex); }
+  });
+  return out.sort(function(a, b) { return hslOf(a).l - hslOf(b).l; }).slice(0, 20);
+}
+function paintSwatch(input) {
+  var btn = input.colorSwatch;
+  if (!btn) return;
+  btn.firstChild.style.background = INPUT_VALUE.get.call(input);
+  btn.classList.toggle('no-color', input.classList.contains('no-color'));
+}
+// Set the input as a person picking a color would, so its own handler runs.
+function pickColor(input, hex) {
+  if (INPUT_VALUE.get.call(input).toUpperCase() === hex) return;
+  INPUT_VALUE.set.call(input, hex.toLowerCase());
+  paintSwatch(input);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+function closeColorPicker(keep) {
+  var pop = gColorPop;
+  if (!pop) return;
+  gColorPop = null;
+  pop.remove();
+  document.removeEventListener('mousedown', pop.outside, true);
+  document.removeEventListener('keydown', pop.keys, true);
+  if (keep) {
+    var now = INPUT_VALUE.get.call(pop.input).toUpperCase();
+    if (now !== pop.start) rememberColor(now);
+  } else if (pop.before && gEditor.look === pop.look) {
+    // The look as it was, not the box's value: a badge with no background, or a glow that
+    // follows Color, has no value of its own to put back.
+    var was = JSON.parse(pop.before), l = gEditor.look;
+    l.custom = was.custom;
+    l.iconColor = was.iconColor;
+    l.tileColor = was.tileColor;
+    $('f-icon-color').value = String(l.iconColor || '').toLowerCase();
+    $('f-tile-color').value = String(l.tileColor || '').toLowerCase();
+    syncCustom();
+    preview();
+  }
+  pop.input.colorSwatch.focus();
+}
+function openColorPicker(input) {
+  closeColorPicker(true);
+  var start = INPUT_VALUE.get.call(input).toUpperCase();
+  var pop = document.createElement('div');
+  pop.className = 'cpop';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', 'Choose a color');
+  pop.input = input;
+  pop.start = start;
+  pop.look = gEditor.look;
+  pop.before = gEditor.look ? JSON.stringify({ custom: gEditor.look.custom || {}, iconColor: gEditor.look.iconColor, tileColor: gEditor.look.tileColor }) : null;
+  var chips = function(title, list) {
+    if (!list.length) return '';
+    return '<div class="clabel">' + title + '</div><div class="crow">' + list.map(function(hex) {
+      return '<button type="button" class="cchip" data-hex="' + hex + '" title="' + hex + '" aria-label="' + hex + '" style="background:' + hex + '"></button>';
+    }).join('') + '</div>';
+  };
+  pop.innerHTML = chips('This look', pictureColors()) + chips('Recent', recentColors()) +
+    '<div class="chex"><span></span><input type="text" maxlength="7" spellcheck="false" aria-label="Hex color"></div>' +
+    ['H', 'S', 'L'].map(function(k) {
+      return '<label class="cslider"><span>' + k + '</span><input type="range" data-k="' + k + '" min="0" max="' + (k === 'H' ? 359 : 100) + '" aria-label="' + ({ H: 'Hue', S: 'Saturation', L: 'Lightness' })[k] + '"><code></code></label>';
+    }).join('');
+  var hexBox = pop.querySelector('.chex input'), sliders = pop.querySelectorAll('.cslider input');
+  var hsl = hslOf(start);
+  var show = function(hex, from) {
+    pop.querySelector('.chex span').style.background = hex;
+    if (from !== 'hex') { hexBox.value = hex; hexBox.classList.remove('input-error'); }
+    if (from !== 'slider') hsl = hslOf(hex);
+    var v = { H: Math.round(hsl.h), S: Math.round(hsl.s * 100), L: Math.round(hsl.l * 100) };
+    Array.prototype.forEach.call(sliders, function(r) {
+      if (from !== 'slider') r.value = v[r.dataset.k];
+      r.nextElementSibling.textContent = v[r.dataset.k] + (r.dataset.k === 'H' ? '' : '%');
+    });
+    sliders[0].style.background = 'linear-gradient(to right,' + [0, 60, 120, 180, 240, 300, 359].map(function(d) { return 'hsl(' + d + ',100%,50%)'; }).join(',') + ')';
+    sliders[1].style.background = 'linear-gradient(to right,hsl(' + v.H + ',0%,' + v.L + '%),hsl(' + v.H + ',100%,' + v.L + '%))';
+    sliders[2].style.background = 'linear-gradient(to right,#000,hsl(' + v.H + ',' + v.S + '%,50%),#fff)';
+    Array.prototype.forEach.call(pop.querySelectorAll('.cchip'), function(c) { c.classList.toggle('on', c.dataset.hex === hex); });
+  };
+  pop.addEventListener('click', function(e) {
+    var chip = e.target.closest('.cchip');
+    if (!chip) return;
+    pickColor(input, chip.dataset.hex);
+    show(chip.dataset.hex);
+  });
+  hexBox.addEventListener('input', function() {
+    var hex = normalHex(hexBox.value);
+    hexBox.classList.toggle('input-error', !hex);
+    if (hex) { pickColor(input, hex); show(hex, 'hex'); }
+  });
+  hexBox.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); closeColorPicker(true); } });
+  Array.prototype.forEach.call(sliders, function(r) {
+    r.addEventListener('input', function() {
+      hsl = { h: Number(sliders[0].value), s: Number(sliders[1].value) / 100, l: Number(sliders[2].value) / 100 };
+      var hex = normalHex(hexFromHsl(hsl));
+      pickColor(input, hex);
+      show(hex, 'slider');
+    });
+  });
+  pop.outside = function(e) { if (!pop.contains(e.target) && !input.colorSwatch.contains(e.target)) closeColorPicker(true); };
+  pop.keys = function(e) { if (e.key === 'Escape') { e.preventDefault(); closeColorPicker(false); } };
+  document.addEventListener('mousedown', pop.outside, true);
+  document.addEventListener('keydown', pop.keys, true);
+  document.body.appendChild(pop);
+  var at = input.colorSwatch.getBoundingClientRect();
+  var left = Math.max(8, Math.min(at.left, document.documentElement.clientWidth - pop.offsetWidth - 8));
+  pop.style.left = (left + window.scrollX) + 'px';
+  pop.style.top = (at.bottom + 6 + window.scrollY) + 'px';
+  gColorPop = pop;
+  show(start);
+  hexBox.focus();
+  hexBox.select();
+}
+function attachColorPicker(input) {
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'cswatch';
+  btn.id = input.id + '-swatch';
+  btn.appendChild(document.createElement('span'));
+  var label = document.querySelector('label[for="' + input.id + '"]');
+  if (label) { label.htmlFor = btn.id; btn.setAttribute('aria-label', label.textContent); }
+  input.colorSwatch = btn;
+  input.hidden = true;
+  input.tabIndex = -1;
+  input.parentNode.insertBefore(btn, input);
+  // The page also sets the value from code, and the swatch follows.
+  Object.defineProperty(input, 'value', {
+    configurable: true,
+    get: function() { return INPUT_VALUE.get.call(this); },
+    set: function(v) { INPUT_VALUE.set.call(this, v); paintSwatch(this); },
+  });
+  new MutationObserver(function() { paintSwatch(input); }).observe(input, { attributes: true, attributeFilter: ['class'] });
+  btn.addEventListener('click', function() {
+    if (gColorPop && gColorPop.input === input) closeColorPicker(true);
+    else openColorPicker(input);
+  });
+  paintSwatch(input);
+}
+document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
 
 function initTabs() {
   var tabs = document.querySelectorAll('.nav-tab');

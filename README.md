@@ -175,6 +175,10 @@ the button's looks.
    the driver. A look renamed without other changes keeps its picture. The
    button's first look shows as soon as its picture arrives.
 
+Every color box opens a picker with the look's own colors and your recent colors
+as swatches, a hex box, and hue, saturation and lightness sliders. The picture
+changes as you pick, and `Esc` puts the color back.
+
 ### Icon
 
 <img alt="Button tab - Icon" src="./images/ui-customize.png" width="640"/>
@@ -568,6 +572,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Glow and Grayscale to each look: Glow sets a Classic Device picture's
   glow from none to twice its own, and Grayscale draws any picture in grays with
   no glow, its gray version beside the packs' own on and off pictures
+- Added a color picker for every color: the look's own colors and recent colors
+  as swatches, a hex box, and hue, saturation and lightness sliders
 - Added Duplicate to each look, which opens a copy of it in the editor
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to

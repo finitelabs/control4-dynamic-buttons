@@ -240,6 +240,10 @@ The Support Code is entered in Composer's "Properties" tab only.
    the driver. A look renamed without other changes keeps its picture. The
    button's first look shows as soon as its picture arrives.
 
+Every color box opens a picker with the look's own colors and your recent colors
+as swatches, a hex box, and hue, saturation and lightness sliders. The picture
+changes as you pick, and `Esc` puts the color back.
+
 ### Icon
 
 <img alt="Button tab - Icon" src="./images/ui-customize.png" width="640"/>
