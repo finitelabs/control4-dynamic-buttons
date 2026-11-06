@@ -199,6 +199,9 @@ The Support Code is entered in Composer's "Properties" tab only.
 1. **Show** - shows the look now. It is off for the shown look and for a look
    with no picture.
 1. **Edit** - opens the look in the editor.
+1. **Duplicate** - opens the editor on a copy of the look, named with the next
+   number, and `Save Look` adds it as a new look. It is off when the button has
+   eight looks.
 1. **↑ / ↓** - moves the look up or down. The button cycles through the looks in
    this order, and programming lists them in it.
 1. **Delete** - deletes the look, its picture, and its `Shown` event with the

@@ -1312,6 +1312,7 @@ async function renderList() {
       '<div class="acts">' +
         '<button class="btn btn-secondary sm" type="button" data-act="show" data-id="' + id + '"' + (l.hasImage && id !== gState.shown ? '' : ' disabled') + '>Show</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
+        '<button class="btn btn-secondary sm" type="button" data-act="copy" data-id="' + id + '"' + (list.length >= gState.max ? ' disabled title="A button has up to ' + gState.max + ' looks."' : '') + '>Duplicate</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="up" data-id="' + id + '"' + (i === 0 ? ' disabled' : '') + ' aria-label="Move up">&uarr;</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="down" data-id="' + id + '"' + (i === list.length - 1 ? ' disabled' : '') + ' aria-label="Move down">&darr;</button>' +
         '<button class="btn danger sm" type="button" data-act="delete" data-id="' + id + '" title="' + esc(deleteWarning(l.name)) + '">Delete</button>' +
@@ -1331,6 +1332,7 @@ $('look-list').addEventListener('click', function(e) {
   var id = Number(b.dataset.id), act = b.dataset.act;
   if (act === 'show') command('_SHOW_LOOK', { id: id }, function() { gState.shown = id; });
   else if (act === 'edit') openEditor(gState.looks.find(function(l) { return l.id === id; }));
+  else if (act === 'copy') duplicateLook(gState.looks.find(function(l) { return l.id === id; }));
   else if (act === 'up' || act === 'down') move(id, act === 'up' ? -1 : 1);
   else if (act === 'delete') {
     if (b.dataset.confirm) {
@@ -1989,7 +1991,23 @@ function preview() {
   navTile($('edit-tile'), drawn, 300);
 }
 
-function openEditor(look) {
+// A name no other look has: the next number after the look's own, "Fan" to "Fan 2", "Fan 2" to "Fan 3".
+function copyName(name) {
+  var m = /^(.*?)(?: (\d+))?$/.exec(name), n = m[2] ? Number(m[2]) + 1 : 2, out;
+  var taken = function(x) { return gState.looks.some(function(o) { return o.name.toLowerCase() === x.toLowerCase(); }); };
+  do {
+    var suffix = ' ' + n++;
+    out = Array.from(m[1]).slice(0, 40 - suffix.length).join('') + suffix;
+  } while (taken(out));
+  return out;
+}
+// The editor on a copy of a look, saved as a new look with its own picture.
+function duplicateLook(look) {
+  if (!look || gState.looks.length >= gState.max) return;
+  var copy = Object.assign(JSON.parse(JSON.stringify(look)), { id: null, name: copyName(look.name) });
+  openEditor(copy, 'Copy of ' + look.name);
+}
+function openEditor(look, title) {
   gEditor.look = look
     ? JSON.parse(JSON.stringify(look))
     : { id: null, name: '', icon: null, iconColor: '#FFFFFF', tileShape: 'Rounded Square', tileColor: '#109EFF', inCycle: true, glow: 100, grayscale: false };
@@ -1998,14 +2016,14 @@ function openEditor(look) {
   gEditor.look.custom = gEditor.look.custom || {};
   gEditor.icon = gEditor.look.icon;
   gEditor.shapeBefore = null;
-  $('editor-title').textContent = look ? 'Edit ' + look.name : 'New look';
+  $('editor-title').textContent = title || (look ? 'Edit ' + look.name : 'New look');
   $('f-name').value = gEditor.look.name;
   $('f-icon-color').value = gEditor.look.iconColor.toLowerCase();
   $('f-tile-color').value = gEditor.look.tileColor.toLowerCase();
   $('f-in-cycle').checked = gEditor.look.inCycle !== false;
   $('f-glow').value = gEditor.look.glow;
   $('f-grayscale').checked = gEditor.look.grayscale;
-  gEditor.look.isDefault = !!look && gState.defaultLook === look.id;
+  gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;
   $('f-when').value = gEditor.look.showWhen || '';
   $('f-default').checked = gEditor.look.isDefault;
   $('fld-when-browser').hidden = true;

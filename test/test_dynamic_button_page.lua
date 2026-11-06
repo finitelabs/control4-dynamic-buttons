@@ -246,6 +246,19 @@ T.truthy("as the look had it, not as the box's value", has("var was = JSON.parse
 T.truthy("and only onto that look, if another is open by then", has("pop.before && gEditor.look === pop.look"))
 T.truthy("recent colors survive a browser that refuses storage", has("try { localStorage.setItem(RECENT_COLORS_KEY"))
 
+T.section("Duplicate")
+T.truthy("each look's row has Duplicate", has('data-act="copy"'))
+T.truthy("which is off at the most looks a button has", has("(list.length >= gState.max ? ' disabled"))
+T.truthy(
+  "and opens the editor on a copy with no id, which saves as a new look",
+  has("{ id: null, name: copyName(look.name) }")
+)
+
+T.truthy(
+  "a copy isn't the default, even on a button with none",
+  has("gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;")
+)
+
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
