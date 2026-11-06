@@ -47,6 +47,7 @@ the programming you attach to it.
     - [Badge](#badge)
     - [Icon Packs](#icon-packs)
     - [Free Icon Libraries](#free-icon-libraries)
+    - [My Images](#my-images)
   - [Cycling Through Looks](#cycling-through-looks)
   - [Following a Value](#following-a-value)
     - [Show When Syntax](#show-when-syntax)
@@ -79,6 +80,8 @@ the programming you attach to it.
   colors and tile shape you pick
 - About 280 included icons that work with no internet, and a search across
   fourteen free icon packs
+- Your own pictures: an uploaded file, pasted SVG, or a picture from a web
+  address
 - Three icon packs of 100 subjects each: Classic Device and Classic Tile, which
   match the OS 3 look, and Modern, which matches the X4 look, with on, off and
   alert pictures where a subject has states
@@ -226,9 +229,10 @@ The Support Code is entered in Composer's "Properties" tab only.
    over the look. Show Look can still show it.
 1. **Picture** - where the picture comes from: `All included`, the default, one
    of the driver's three icon packs (see [Icon Packs](#icon-packs)),
-   `Basic icons`, or `Free icon libraries` online (see
-   [Free Icon Libraries](#free-icon-libraries)). Everything but the libraries
-   works with no internet.
+   `Basic icons`, `Free icon libraries` online (see
+   [Free Icon Libraries](#free-icon-libraries)), or `My images`, your own
+   pictures (see [My Images](#my-images)). Everything but the libraries works
+   with no internet.
 1. **All categories** - narrows the pictures to one subject group.
 1. **Search pictures** - narrows the pictures by name as you type.
 1. **Pictures** - select one to use it for the look.
@@ -254,7 +258,8 @@ changes its picture.
 
 1. **Reset to the pack's look** - puts the picture back as it comes: no changes,
    its own glow and in color. The look keeps its badge. For a basic or library
-   icon it reads `Reset to the icon's look`.
+   icon it reads `Reset to the icon's look`, and for one of your own pictures
+   `Reset`.
 1. **Color** - the picture's color, for a Classic Device or Modern picture. Its
    shading stays, and the charging bolt, the warning mark and the sun keep
    theirs. A Classic Tile picture shows `Tile` and `Symbol` here instead, the
@@ -344,6 +349,40 @@ one applies. They work with no internet.
    the look.
 1. **Icons found** - how many icons the search found, and how many of them the
    style shows.
+
+### My Images
+
+<img alt="Button tab - My Images" src="./images/ui-my-images.png" width="640"/>
+
+1. **My images** - in the `Picture` list: your own pictures, from a file, pasted
+   SVG or a web address.
+1. **Upload / Paste SVG / Web address** - how to add a picture.
+1. **Upload** - drop a picture on the box, select `choose a file`, or paste a
+   picture while `My images` shows. PNG, JPEG, GIF, WebP and SVG work. A picture
+   is kept at most 600 px on its long side, as a JPEG when it has no see-through
+   parts and as a PNG when it does, and can be at most 512 KB.
+1. **This button's pictures** - every picture the button's looks use, and those
+   added since the editor opened. Select one to use it again.
+1. **Your picture** - the picked picture's file name or web address.
+1. **Preview** - the look as the Control4 app shows it, drawn larger.
+
+`Paste SVG` takes SVG markup and `Use This SVG` adds it. The SVG needs a
+`viewBox`, or a `width` and `height`, and can be at most 64 KB. Scripts, event
+handlers, embedded pages and anything loaded from another address are taken out.
+An SVG in one color takes the look's `Icon color`, and any other keeps its own
+colors.
+
+`Web address` takes an http or https address, and `Fetch` adds the picture
+there. The controller fetches it, so an address on the home network works. It
+can be up to 2 MB and is kept as an uploaded file is. The look keeps the picture
+as it was when fetched.
+
+`Tile shape`, `Tile color`, `Grayscale`, `Size`, `Position` and the badge work
+on your pictures as they do on an icon. `Icon color` shows only for an SVG in
+one color, and `Glow` never shows. `Save Look` sends a new picture to the
+controller before the look. Your pictures are kept with the button: one that no
+look uses is deleted 10 minutes after it was added, and all of them go when the
+button is deleted or reset.
 
 ## Cycling Through Looks
 
