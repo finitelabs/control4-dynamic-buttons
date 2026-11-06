@@ -437,7 +437,10 @@ T.eq(
 for _, size in ipairs({ 40, 160, 75.5, "big" }) do
   T.contains("a size of " .. tostring(size) .. " is refused", badgeWhy(sizedBadge(size)), "whole percent")
 end
-local sized = looks:update(a.id, withDrawn({ custom = { badge = sizedBadge(130) } }))
-T.truthy("a new size asks for a new picture", not sized.image or sized.image.stale)
+looks:setImage(a.id, 5678)
+T.truthy(
+  "a new size asks for a new picture",
+  looks:update(a.id, withDrawn({ custom = { badge = sizedBadge(120) } })).image.stale
+)
 
 T.finish()
