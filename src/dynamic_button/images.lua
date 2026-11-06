@@ -171,6 +171,12 @@ local function deleteFile(alias, subdir, name)
 end
 
 --- @param lookId integer
+--- @return string name The file of what a live badge's redraw starts from.
+local function cacheName(lookId)
+  return string.format("look-%d.badge", lookId)
+end
+
+--- @param lookId integer
 --- @return string name The stored picture's file name.
 local function sourceName(lookId)
   return string.format("look-%d.png", lookId)
@@ -182,6 +188,7 @@ end
 --- @return boolean ok
 function Images:save(lookId, png)
   C4:FileCreateDir("SANDBOX", SOURCE_DIR)
+  deleteFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
   return writeFile("SANDBOX", SOURCE_DIR, sourceName(lookId), png)
 end
 
@@ -194,6 +201,19 @@ end
 --- @param lookId integer
 function Images:remove(lookId)
   deleteFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
+  deleteFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
+end
+
+--- @param lookId integer
+--- @param data string What a live badge's redraw starts from.
+function Images:saveCache(lookId, data)
+  writeFile("SANDBOX", SOURCE_DIR, cacheName(lookId), data)
+end
+
+--- @param lookId integer
+--- @return string|nil data
+function Images:loadCache(lookId)
+  return readFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
 end
 
 --- @param deviceId integer
@@ -213,6 +233,14 @@ function Images:serve(deviceId, lookId, png)
   return writeFile("C4Z", servedDir(deviceId), string.format("%d.png", lookId), png)
 end
 
+--- @param deviceId integer
+--- @param lookId integer
+--- @return boolean served A picture for the look is in place from before.
+function Images:served(deviceId, lookId)
+  C4:FileSetDir("C4Z", servedDir(deviceId))
+  return C4:FileExists(string.format("%d.png", lookId)) == true
+end
+
 --- Stop serving a look's picture.
 --- @param deviceId integer
 --- @param lookId integer
@@ -225,9 +253,11 @@ end
 --- @param deviceId integer
 --- @param lookId integer
 --- @param version integer
+--- @param key? string Names a live badge's text, so a text seen before needs no new download (optional).
 --- @return string address
-function Images.address(driverName, deviceId, lookId, version)
-  return string.format("controller://driver/%s/buttons/%d/%d.png?v=%d", driverName, deviceId, lookId, version)
+function Images.address(driverName, deviceId, lookId, version, key)
+  local address = string.format("controller://driver/%s/buttons/%d/%d.png?v=%d", driverName, deviceId, lookId, version)
+  return key and (address .. "-" .. key) or address
 end
 
 return Images

@@ -30,6 +30,7 @@ local diagnostics = require("lib.diagnostics")
 --#endif
 --#ifndef DRIVERCENTRAL
 local githubUpdater = require("lib.github-updater")
+local driverFilenames = require("lib.driver-filenames")
 --#endif
 
 local Looks = require("dynamic_button.looks")
@@ -37,6 +38,7 @@ local Images = require("dynamic_button.images")
 local Button = require("dynamic_button.button")
 local Iconify = require("dynamic_button.iconify")
 local Follow = require("dynamic_button.follow")
+local LiveBadges = require("dynamic_button.live_badges")
 local Expressions = require("lib.expressions")
 
 --- The UI Button proxy's binding.
@@ -66,6 +68,8 @@ local images = Images:new()
 --- @type Button
 local button
 
+--- @type LiveBadges
+local badges
 --- @type Follow
 local follow
 
@@ -215,6 +219,11 @@ local function tabState()
   local list = {}
   local byValue = follow ~= nil and lookControl() == "By Value"
   for _, look in ipairs(looks:list()) do
+    local live = Looks.liveBadge(look)
+    local badgeNow, badgeError
+    if live then
+      badgeNow, badgeError = LiveBadges.read(live.text)
+    end
     table.insert(list, {
       id = look.id,
       name = look.name,
@@ -231,6 +240,9 @@ local function tabState()
       showWhen = look.showWhen,
       showWhenText = byValue and look.showWhen and Expressions.render(look.showWhen, "condition") or nil,
       whenError = byValue and follow:whenError(look.id) or nil,
+      badgeNow = badgeNow,
+      badgeError = badgeError,
+      badgeText = live and Expressions.render(live.text, "string") or nil,
     })
   end
   local properties = {}
@@ -352,12 +364,7 @@ end
 function UpdateDrivers(forceUpdate)
   log:trace("UpdateDrivers(%s)", forceUpdate)
   githubUpdater
-    :updateAll(
-      DRIVER_GITHUB_REPO,
-      require("lib.driver-filenames"),
-      Properties["Update Channel"] == "Prerelease",
-      forceUpdate
-    )
+    :updateAll(DRIVER_GITHUB_REPO, driverFilenames, Properties["Update Channel"] == "Prerelease", forceUpdate)
     :next(function(updatedDrivers)
       if updatedDrivers and #updatedDrivers > 0 then
         log:info("Updated driver(s): %s", table.concat(updatedDrivers, ","))
@@ -394,6 +401,7 @@ end
 local function onLicense(licensed)
   if not licensed then
     log:warn("No active license: the button shows the driver's own icon until there is one")
+    badges:watch(nil)
     sendIcon("", "")
     UpdateProperty("Driver Status", drivercentral.UNLICENSED_STATUS)
     pushState()
@@ -422,13 +430,7 @@ function OnDriverLateInit()
   end
 
   for p, _ in pairs(Properties) do
-    local ok, err = pcall(OnPropertyChanged, p)
-    if not ok then
-      log:error("OnPropertyChanged('%s') failed: %s", p, tostring(err))
-      --#ifdef DRIVERCENTRAL
-      diagnostics:captureError(tostring(err), nil, "DynamicButton.OnPropertyChanged")
-      --#endif
-    end
+    OnPropertyChanged(p)
   end
 
   --#ifndef DRIVERCENTRAL
@@ -443,6 +445,35 @@ function OnDriverLateInit()
   end, true)
   --#endif
 
+  -- One engine for Show when and the badges: a variable has one listener in a driver.
+  local engine = Expressions:new({
+    getExpressions = function()
+      local expressions = follow and follow:expressions() or {}
+      for name, config in pairs(badges:expressions()) do
+        expressions[name] = config
+      end
+      return expressions
+    end,
+    recompute = function(name)
+      if name == LiveBadges.EXPRESSION then
+        badges:check()
+      else
+        follow:expressionChanged()
+      end
+    end,
+  })
+  badges = LiveBadges:new({
+    looks = looks,
+    images = images,
+    engine = engine,
+    redraw = function()
+      button:redrawBadge()
+    end,
+    changed = pushState,
+    allowed = function()
+      return followAllowed()
+    end,
+  })
   button = Button:new({
     looks = looks,
     images = images,
@@ -450,7 +481,9 @@ function OnDriverLateInit()
     deviceId = tointeger(C4:GetDeviceID()),
     driverName = driverName(),
     sendIcon = sendIcon,
+    badges = badges,
   })
+  badges:boot()
   button:restore()
   events:restoreEvents()
   syncLookEvents()
@@ -464,6 +497,7 @@ function OnDriverLateInit()
   follow = Follow:new({
     looks = looks,
     store = persist,
+    engine = engine,
     show = function(id)
       local before = button:shown()
       local ok, err = button:show(id)
@@ -686,6 +720,14 @@ function UIR._SAVE_LOOK(tParams)
   registerLookIs(lookChoices())
   syncLookEvents()
   follow:lookSaved(look.id)
+  local shown = button:shown()
+  if shown and shown.id == look.id then
+    badges:watch(look)
+    -- A stale picture is about to be replaced, and showing the new one draws the badge.
+    if not (look.image and look.image.stale) then
+      badges:check()
+    end
+  end
   return reply("SAVED", { look = tostring(look.id) })
 end
 
@@ -796,9 +838,11 @@ end
 function UIR._EVAL_EXPRESSION(tParams)
   log:trace("UIR._EVAL_EXPRESSION()")
   local params = tabParams(tParams)
-  local evaluation = Expressions.evaluate("condition", tostring(params.expression or ""):sub(1, Looks.MAX_SHOW_WHEN))
+  local mode = params.mode == "string" and "string" or "condition"
+  local evaluation = Expressions.evaluate(mode, tostring(params.expression or ""):sub(1, Looks.MAX_SHOW_WHEN))
   return uiRespond("EVAL_RESULT", {
     id = tostring(params.id or ""),
+    fitted = mode == "string" and evaluation.result and LiveBadges.fit(evaluation.result) or nil,
     rendered = evaluation.rendered or "",
     substituted = cutText(evaluation.substituted or "", Looks.MAX_SHOW_WHEN),
     result = evaluation.result ~= nil and tostring(evaluation.result) or "",

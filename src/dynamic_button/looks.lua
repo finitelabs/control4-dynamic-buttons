@@ -29,11 +29,13 @@ local log = require("lib.logging")
 --- stale while the look's fields have changed since it was drawn.
 
 --- @class LookBadge
---- @field text string Up to `Looks.MAX_BADGE` characters.
+--- @field text string Up to `Looks.MAX_BADGE` characters, or with a variable up to
+--- `Looks.MAX_LIVE_BADGE` bytes that the controller draws as they read now.
 --- @field place string One of `Looks.BADGE_PLACES`.
 --- @field color string The text's color, `#RRGGBB`.
 --- @field background string The badge's color, `#RRGGBB`, or `None`.
 --- @field size? integer The badge's size, `Looks.MIN_BADGE_SIZE` to `Looks.MAX_BADGE_SIZE` percent.
+--- @field every? integer For a live badge, the least seconds between pictures, one of `Looks.BADGE_EVERY`.
 
 --- @class LookCustom A missing field keeps the picture's own.
 --- @field color? string The picture's color, `#RRGGBB`.
@@ -77,6 +79,13 @@ Looks.MAX_SHIFT = 10
 
 --- The longest badge, in characters.
 Looks.MAX_BADGE = 5
+
+--- The longest badge text that holds a variable, in bytes.
+Looks.MAX_LIVE_BADGE = 200
+
+--- How often a live badge may draw a new picture, in seconds.
+Looks.BADGE_EVERY = { 30, 60, 300, 900, 3600 }
+Looks.DEFAULT_BADGE_EVERY = 60
 
 --- The smallest and largest badge, in percent.
 Looks.MIN_BADGE_SIZE = 50
@@ -184,8 +193,30 @@ end
 
 --- @param text string
 --- @return integer count Characters, as the tab counts them: UTF-8 continuation bytes don't count.
-local function characters(text)
+function Looks.characters(text)
   return #text:gsub("[\128-\191]", "")
+end
+
+--- @param text string
+--- @return boolean live The badge's text holds a variable.
+function Looks.isLiveText(text)
+  return text:find("PARAM%s*{[^,}]*,[^}]*}") ~= nil
+end
+
+--- @param look Look
+--- @return LookBadge|nil badge The look's badge, if its text holds a variable.
+function Looks.liveBadge(look)
+  local badge = type(look.custom) == "table" and look.custom.badge
+  if type(badge) == "table" and Looks.isLiveText(tostring(badge.text or "")) then
+    return badge
+  end
+  return nil
+end
+
+--- @param badge LookBadge
+--- @return integer seconds The least time between a live badge's pictures.
+function Looks.badgeEvery(badge)
+  return badge.every or Looks.DEFAULT_BADGE_EVERY
 end
 
 --- @param raw any
@@ -196,7 +227,11 @@ local function checkBadge(raw)
     return nil, "a badge needs its text, place and colors"
   end
   local text = tostring(raw.text or ""):match("^%s*(.-)%s*$")
-  if text == "" or characters(text) > Looks.MAX_BADGE then
+  local live = Looks.isLiveText(text)
+  if live and #text > Looks.MAX_LIVE_BADGE then
+    return nil, string.format("a badge with a variable is at most %d characters", Looks.MAX_LIVE_BADGE)
+  end
+  if text == "" or (not live and Looks.characters(text) > Looks.MAX_BADGE) then
     return nil, string.format("a badge is 1 to %d characters", Looks.MAX_BADGE)
   end
   if text:find("%c") then
@@ -220,12 +255,24 @@ local function checkBadge(raw)
     return nil,
       string.format("a badge's size is a whole percent from %d to %d", Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE)
   end
+  local every
+  if live then
+    every = tonumber(raw.every) or Looks.DEFAULT_BADGE_EVERY
+    local known = false
+    for _, seconds in ipairs(Looks.BADGE_EVERY) do
+      known = known or seconds == every
+    end
+    if not known then
+      return nil, "a badge's update choice isn't one the driver knows"
+    end
+  end
   return {
     text = text,
     place = place,
     color = color,
     background = background,
     size = raw.size ~= 100 and raw.size or nil,
+    every = every ~= Looks.DEFAULT_BADGE_EVERY and every or nil,
   }
 end
 
@@ -300,7 +347,7 @@ function Looks:_check(fields, exceptId)
     return nil, "a look needs a name"
   end
   -- Characters, as the tab counts them: UTF-8 continuation bytes don't count.
-  if characters(name) > Looks.MAX_NAME then
+  if Looks.characters(name) > Looks.MAX_NAME then
     return nil, string.format("a look's name can be at most %d characters", Looks.MAX_NAME)
   end
   if name:find(",", 1, true) then

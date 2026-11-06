@@ -12,13 +12,15 @@ local Looks = require("dynamic_button.looks")
 --- @field deviceId integer The button's device id, which names its folder.
 --- @field driverName string The driver's file name without `.c4z`.
 --- @field sendIcon fun(icon: string, description: string) Tells the proxy what to show.
+--- @field badges LiveBadges Draws the shown look's live badge.
+--- @field _badgeKey string|nil Names the shown look's live badge text in its address.
 local Button = {}
 Button.__index = Button
 
 local SHOWN_PERSIST_KEY = "ShownLook"
 local VERSION_PERSIST_KEY = "ImageVersion"
 
---- @param opts { looks: Looks, images: Images, store: table, deviceId: integer, driverName: string, sendIcon: fun(icon: string, description: string) }
+--- @param opts { looks: Looks, images: Images, store: table, deviceId: integer, driverName: string, sendIcon: fun(icon: string, description: string), badges: LiveBadges }
 --- @return Button button
 function Button:new(opts)
   local instance = setmetatable({}, self)
@@ -28,6 +30,7 @@ function Button:new(opts)
   instance.deviceId = opts.deviceId
   instance.driverName = opts.driverName
   instance.sendIcon = opts.sendIcon
+  instance.badges = opts.badges
   return instance
 end
 
@@ -44,12 +47,14 @@ end
 --- @private
 --- @param look Look
 function Button:_tell(look)
-  self.sendIcon(Images.address(self.driverName, self.deviceId, look.id, self:version()), look.name)
+  self.sendIcon(Images.address(self.driverName, self.deviceId, look.id, self:version(), self._badgeKey), look.name)
 end
 
 --- @private
 function Button:_showDefault()
   self.store:set(SHOWN_PERSIST_KEY, nil)
+  self._badgeKey = nil
+  self.badges:watch(nil)
   self.sendIcon("", "")
 end
 
@@ -76,7 +81,8 @@ function Button:show(id, changed)
     self.looks:setImage(look.id, nil)
     return false, "the look's picture is missing"
   end
-  if not self.images:serve(self.deviceId, look.id, png) then
+  local picture, key = self.badges:picture(look, png)
+  if not self.images:serve(self.deviceId, look.id, picture) then
     return false, "the look's picture could not be served"
   end
   if previous and previous ~= look.id then
@@ -84,8 +90,26 @@ function Button:show(id, changed)
   end
   self.store:set(VERSION_PERSIST_KEY, self:version() + 1)
   self.store:set(SHOWN_PERSIST_KEY, look.id)
+  self._badgeKey = key
   self:_tell(look)
+  self.badges:watch(look)
   return true
+end
+
+--- Draw the shown look's live badge again and serve it, under the same version.
+function Button:redrawBadge()
+  local look = self:shown()
+  local png = look and self.images:load(look.id)
+  if not png then
+    return
+  end
+  local picture, key = self.badges:picture(look, png)
+  if not self.images:serve(self.deviceId, look.id, picture) then
+    log:warn("Could not serve look %s's new badge", look.name)
+    return
+  end
+  self._badgeKey = key
+  self:_tell(look)
 end
 
 --- Tell the proxy the shown look again, after its name changed. The picture is unchanged.
@@ -204,12 +228,26 @@ function Button:restore()
       self.images:unserve(self.deviceId, other.id)
     end
   end
-  if not look or not self.images:serve(self.deviceId, look.id, png) then
+  if look and self.badges:holding(look) and self.images:served(self.deviceId, look.id) then
+    -- The picture from before stays until the variable comes.
+    self.store:set(SHOWN_PERSIST_KEY, look.id)
+    self._badgeKey = nil
+    self:_tell(look)
+    self.badges:watch(look)
+    return
+  end
+  local picture, key
+  if look then
+    picture, key = self.badges:picture(look, png)
+  end
+  if not look or not self.images:serve(self.deviceId, look.id, picture) then
     self:_showDefault()
     return
   end
   self.store:set(SHOWN_PERSIST_KEY, look.id)
+  self._badgeKey = key
   self:_tell(look)
+  self.badges:watch(look)
 end
 
 --- The button left the project: remove every stored and served picture.

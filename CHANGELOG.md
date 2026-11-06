@@ -48,6 +48,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick
+- Added live badges: a badge's text can hold a variable, and the controller
+  draws it on the shown look and keeps it current, at most as often as the
+  look's Update setting
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
 - Added DriverCentral licensing: without an active license the button shows the
