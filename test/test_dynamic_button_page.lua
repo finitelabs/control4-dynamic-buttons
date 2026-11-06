@@ -192,6 +192,18 @@ T.truthy("the icon's changes have their own section", has("<summary>Icon</summar
 T.truthy("and the badge has its own", has("<summary>Badge</summary>"))
 T.truthy("reset leaves the badge, which isn't in its section", has("l.custom = badge ? { badge: badge } : {};"))
 T.truthy(
+  "a badge's box holds what the driver takes",
+  has(string.format('id="c-badge" rows="1" maxlength="%d"', Looks.MAX_LIVE_BADGE))
+)
+for _, seconds in ipairs(Looks.BADGE_EVERY) do
+  T.truthy("the Update list offers " .. seconds .. " seconds", has(string.format('<option value="%d">', seconds)))
+end
+T.truthy("and it starts where the driver does", has(string.format("var BADGE_EVERY = %d;", Looks.DEFAULT_BADGE_EVERY)))
+T.truthy(
+  "a live look's picture is stored without its badge",
+  has("lookDataUrl(Object.assign({}, drawn, { badgeNow: null }), 300)")
+)
+T.truthy(
   "the slider's range is the driver's",
   has(string.format('id="c-badge-size" min="%d" max="%d"', Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE))
 )

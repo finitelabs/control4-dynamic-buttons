@@ -181,7 +181,10 @@
   .custom-head { display: flex; justify-content: flex-end; margin: -18px 0 8px; }
   /* A note sits under its control, on its own grid row, so its label stays level with the control. */
   .lookform .fnote { grid-column: 2; margin-top: -4px; font-size: 11px; line-height: 1.4; color: var(--text-muted); }
-  #c-badge { width: 110px; }
+  #badge-ed { flex: 0 1 260px; }
+  #badge-ed textarea, #badge-ed pre { padding: 5px 10px; min-height: 32px; }
+  #c-every { width: 190px; }
+  #c-badge-note.bad { color: var(--danger); }
   #fld-c-size .rangerow, #fld-c-badge-size .rangerow { width: 280px; max-width: 100%; }
   #c-pos code { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
   .icongrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; max-height: 300px; overflow-y: auto; padding: 2px; }
@@ -429,8 +432,27 @@
           <div class="lookform" id="badge-form">
             <div class="frow" id="fld-c-badge">
               <label for="c-badge">Text</label>
-              <div class="fctl"><input type="text" id="c-badge" placeholder="None" autocomplete="off"></div>
-              <div class="fnote">Up to 5 characters.</div>
+              <div class="fctl">
+                <div class="edwrap" id="badge-ed">
+                  <pre id="badge-hl" aria-hidden="true"></pre>
+                  <textarea id="c-badge" rows="1" maxlength="200" spellcheck="false" placeholder="None" autocomplete="off"></textarea>
+                </div>
+                <button class="btn btn-secondary sm" id="badge-insert" type="button">Browse Variables</button>
+              </div>
+              <div class="fnote" id="c-badge-note"></div>
+            </div>
+            <div class="frow" id="fld-c-every" hidden>
+              <label for="c-every">Update</label>
+              <div class="fctl">
+                <select id="c-every">
+                  <option value="30">Every 30 seconds</option>
+                  <option value="60">Every minute</option>
+                  <option value="300">Every 5 minutes</option>
+                  <option value="900">Every 15 minutes</option>
+                  <option value="3600">Every hour</option>
+                </select>
+              </div>
+              <div class="fnote">At most this often. Each update writes to the controller's storage and every Navigator loads the new picture, so less often is better.</div>
             </div>
             <div class="frow" id="fld-c-badge-size">
               <label for="c-badge-size">Size</label>
@@ -873,6 +895,7 @@ function cleanCustom(icon, raw) {
   var b = raw.badge, text = b ? String(b.text || '').trim() : '';
   if (text) c.badge = { text: text, place: b.place || 'Top Right', color: (b.color || '#FFFFFF').toUpperCase(), background: b.background === 'None' ? 'None' : (b.background || '#DC2626').toUpperCase() };
   if (text && b.size && Number(b.size) !== 100) c.badge.size = Number(b.size);
+  if (text && isLiveText(text) && b.every && Number(b.every) !== BADGE_EVERY) c.badge.every = Number(b.every);
   return Object.keys(c).length ? c : null;
 }
 function customKey(look) {
@@ -999,6 +1022,8 @@ async function drawLook(canvas, look) {
   var turn = canvas.drawTurn = (canvas.drawTurn || 0) + 1;
   if (!look.icon || look.icon.missing) { ctx.clearRect(0, 0, size, size); return; }
   var c = look.custom || {}, badge = c.badge && c.badge.text ? c.badge : null;
+  // A live badge draws what it reads now, and nothing until that is known.
+  if (badge && isLiveText(badge.text)) badge = look.badgeNow ? Object.assign({}, badge, { text: look.badgeNow }) : null;
   var face = badge ? await badgeFont() : '';
   if (turn !== canvas.drawTurn) return;
   var pack = packOf(look.icon);
@@ -1262,7 +1287,7 @@ async function renderList() {
       (byValue() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the values call for a different look.">Matched</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
-      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div>' + whenLines(l) + '</div>' +
+      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div>' + whenLines(l) + badgeLines(l) + '</div>' +
       '<div class="acts">' +
         '<button class="btn btn-secondary sm" type="button" data-act="show" data-id="' + id + '"' + (l.hasImage && id !== gState.shown ? '' : ' disabled') + '>Show</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
@@ -1712,6 +1737,8 @@ $('f-grayscale').addEventListener('change', function() { gEditor.look.grayscale 
 var CUSTOM_COLORS = ['color', 'body', 'tile', 'symbol', 'glowColor'];
 var BADGE_PLACES = ['Top Right', 'Bottom Right', 'Under'];
 var BADGE_MAX = 5;
+var BADGE_EVERY = 60;
+function isLiveText(text) { return /PARAM\s*\{/.test(String(text || '')); }
 function customOf(l) { return l.custom || (l.custom = {}); }
 // The colors the pickers show: the look's own, else the picture's, with a glow that follows Color.
 function shownColors(l) {
@@ -1741,6 +1768,8 @@ function syncCustom() {
   $('c-size-v').textContent = (c.size || 100) + '%';
   $('c-pos-v').textContent = positionText(c);
   $('c-badge').value = b.text;
+  $('c-every').value = String(b.every || BADGE_EVERY);
+  syncBadgeText();
   $('c-badge-size').value = b.size || 100;
   $('c-badge-size-v').textContent = (b.size || 100) + '%';
   $('c-place').innerHTML = BADGE_PLACES.map(function(p) { return '<button type="button" data-place="' + p + '"' + (p === b.place ? ' class="on"' : '') + '>' + p + '</button>'; }).join('');
@@ -1801,11 +1830,51 @@ $('c-pos').addEventListener('click', function(e) {
   preview();
 });
 $('c-badge').addEventListener('input', function() {
-  var text = Array.from($('c-badge').value).slice(0, BADGE_MAX).join('');
-  if (text !== $('c-badge').value) $('c-badge').value = text;
-  badgeOf(gEditor.look).text = text;
+  badgeOf(gEditor.look).text = $('c-badge').value.replace(/\s*\n\s*/g, ' ');
+  syncBadgeText();
   preview();
 });
+$('c-badge').addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
+$('c-every').addEventListener('change', function() { badgeOf(gEditor.look).every = Number($('c-every').value); });
+$('badge-insert').addEventListener('click', function() { toggleVarBrowser('c-badge', $('fld-c-badge')); });
+
+// A badge's text colors only its variables: the rest is words, not code.
+function hlBadge(text) {
+  var out = escMin(text).replace(/PARAM\s*\{[^}]*\}/g, function(token) { return '<span class="hl-tok">' + token + '</span>'; });
+  return out || '\u200b';
+}
+// All that follows the badge's text.
+function syncBadgeText() {
+  var box = $('c-badge'), text = box.value, live = isLiveText(text), long = Array.from(text.trim()).length > BADGE_MAX;
+  $('badge-hl').innerHTML = hlBadge(text);
+  box.style.height = 'auto';
+  box.style.height = Math.max(32, box.scrollHeight) + 'px';
+  $('fld-c-every').hidden = !live;
+  if (!$('fld-when-browser').hidden && gVarBox === 'c-badge') renderVarTree();
+  clearTimeout(gBadgeTimer);
+  gBadgeSeq++;
+  if (!live) {
+    gEditor.look.badgeNow = null;
+    $('c-badge-note').textContent = long ? 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.' : 'Up to ' + BADGE_MAX + ' characters, or a variable\u2019s value.';
+    $('c-badge-note').classList.toggle('bad', long);
+    return;
+  }
+  gBadgeTimer = setTimeout(function() {
+    var id = 'b' + gBadgeSeq;
+    if (!gApiHost) { onEvalResult(Object.assign({ id: id }, demoBadge(text))); return; }
+    sendCommand('_EVAL_EXPRESSION', { id: id, expression: text.trim(), mode: 'string' });
+  }, 350);
+}
+// What the driver answers about a badge's text.
+function onBadgeResult(p) {
+  if (!gEditor.look || String(p.id) !== 'b' + gBadgeSeq) return; // an answer to earlier text
+  var note = $('c-badge-note'), now = p.error ? '' : String(p.fitted == null ? '' : p.fitted);
+  note.classList.toggle('bad', !!p.error);
+  note.textContent = p.error ? friendlyError(p.error, $('c-badge').value, p.rendered) : 'Shows ' + (now || 'nothing') + ' now. Up to ' + BADGE_MAX + ' characters, and a number shortens to fit.';
+  note.title = p.error || '';
+  gEditor.look.badgeNow = now;
+  preview();
+}
 $('c-place').addEventListener('click', function(e) {
   var btn = e.target.closest('button[data-place]');
   if (!btn) return;
@@ -1948,6 +2017,8 @@ function checkLook(l) {
   if (clash) return 'Another look is already named ' + clash.name + '.';
   if (!l.icon) return 'Pick an icon.';
   if (l.icon.missing) return 'This driver no longer has the icon ' + l.icon.id + '. Pick another.';
+  var badge = String((l.custom && l.custom.badge && l.custom.badge.text) || '').trim();
+  if (!isLiveText(badge) && Array.from(badge).length > BADGE_MAX) return 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.';
   return null;
 }
 
@@ -1965,7 +2036,8 @@ async function saveLook() {
     var b64 = null;
     if (!before || !before.hasImage || before.stale || !sameDrawing(before, drawn)) {
       setStatus('Drawing the picture…');
-      var dataUrl = await lookDataUrl(drawn, 300);
+      // The picture a live badge goes on is stored without it: the controller draws the badge.
+      var dataUrl = await lookDataUrl(Object.assign({}, drawn, { badgeNow: null }), 300);
       b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
       if (b64.length * 3 / 4 > gState.maxBytes) { setStatus('The picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB.', true); return; }
     }
@@ -2042,6 +2114,10 @@ function demoSave(fields) {
   }
   existing.showWhenText = demoRendered(fields.showWhen);
   existing.whenError = fields.showWhen ? demoEval(fields.showWhen.trim()).error : '';
+  var live = fields.custom && fields.custom.badge && isLiveText(fields.custom.badge.text) ? demoBadge(fields.custom.badge.text) : null;
+  existing.badgeNow = live ? live.fitted : null;
+  existing.badgeError = live ? live.error : '';
+  existing.badgeText = live ? live.rendered : '';
   if (fields.isDefault) gState.defaultLook = id;
   else if (gState.defaultLook === id) gState.defaultLook = null;
   gState.looks.forEach(withIconBody);
@@ -2052,6 +2128,8 @@ function demoSave(fields) {
 // Show when: what By Value reads for each look
 // ============================================================
 var gDevices = [], gVarsByDevice = {}, gExpanded = {}, gRequestedVars = {}, gEvalSeq = 0, gEvalTimer = null;
+// The box the variable browser inserts into, and the badge text's own place in the answers.
+var gVarBox = 'f-when', gBadgeSeq = 0, gBadgeTimer = null;
 
 function byValue() { return gState.lookControl === 'By Value'; }
 
@@ -2109,7 +2187,7 @@ function syncHighlight() {
 // The variables the text reads, by "device:variable" as it writes them.
 function usedTokens() {
   var used = {}, re = /PARAM\s*\{\s*([^,}]*?)\s*,\s*([^}]*?)\s*\}/g, m;
-  while ((m = re.exec($('f-when').value)) !== null) used[m[1] + ':' + m[2]] = true;
+  while ((m = re.exec($(gVarBox).value)) !== null) used[m[1] + ':' + m[2]] = true;
   return used;
 }
 
@@ -2123,7 +2201,7 @@ function updateWatchCount() {
 function syncWhen() {
   syncHighlight();
   updateWatchCount();
-  if (!$('fld-when-browser').hidden) renderVarTree();
+  if (!$('fld-when-browser').hidden && gVarBox === 'f-when') renderVarTree();
   requestPreview();
 }
 
@@ -2220,6 +2298,12 @@ function friendlyError(raw, template, rendered) {
   return (m[1] === 'compile' ? friendlyCompile : friendlyRuntime)(m[2]).replace(/__p(\[\d+\])?/g, 'a variable');
 }
 
+// A live badge's text, and what stops it reading.
+function badgeLines(l) {
+  if (!l.badgeText) return '';
+  return '<div class="sub" title="' + esc(l.badgeText) + '">Badge ' + esc(l.badgeText) + '</div>' +
+    (l.badgeError ? '<div class="sub bad" title="' + esc(l.badgeError) + '">' + esc(friendlyError(l.badgeError, l.custom.badge.text, l.badgeText)) + '</div>' : '');
+}
 function whenLines(l) {
   if (!byValue()) return '';
   var text = l.showWhen ? l.showWhenText || l.showWhen : '';
@@ -2246,6 +2330,7 @@ function showPreviewHint() {
 }
 
 function onEvalResult(p) {
+  if (String(p.id).charAt(0) === 'b') return onBadgeResult(p);
   if (String(p.id) !== String(gEvalSeq)) return; // an answer to earlier text
   $('prev-rendered').textContent = String(p.rendered == null ? '' : p.rendered);
   $('prev-substituted').textContent = String(p.substituted == null ? '' : p.substituted).replace(/ERROR_VARIABLE_NOT_FOUND/g, '(not found)');
@@ -2281,15 +2366,20 @@ $('f-when').addEventListener('input', function() {
 });
 $('f-default').addEventListener('change', function() { gEditor.look.isDefault = $('f-default').checked; });
 
-$('when-insert').addEventListener('click', function() {
+$('when-insert').addEventListener('click', function() { toggleVarBrowser('f-when', $('fld-when')); });
+
+// Opens under the row it's asked from, and inserts into that row's box.
+function toggleVarBrowser(boxId, row) {
   var browser = $('fld-when-browser');
-  browser.hidden = !browser.hidden;
-  if (browser.hidden) return;
+  if (gVarBox === boxId && !browser.hidden) { browser.hidden = true; return; }
+  gVarBox = boxId;
+  row.parentNode.insertBefore(browser, row.nextSibling);
+  browser.hidden = false;
   if (!gApiHost) { onDevices(DEMO_DEVICES); return; }
   // Each opening asks again: devices and values change.
   sendCommand('_GET_DEVICES');
   renderVarTree();
-});
+}
 
 function onDevices(devices) {
   gDevices = devices || [];
@@ -2349,12 +2439,11 @@ $('var-tree').addEventListener('click', function(e) {
     if (gExpanded[key]) delete gExpanded[key]; else gExpanded[key] = true;
     renderVarTree();
   } else if (token) {
-    var box = $('f-when'), start = box.selectionStart, end = box.selectionEnd, text = token.dataset.token;
+    var box = $(gVarBox), start = box.selectionStart, end = box.selectionEnd, text = token.dataset.token;
     box.value = box.value.slice(0, start) + text + box.value.slice(end);
     box.focus();
     box.setSelectionRange(start + text.length, start + text.length);
-    gEditor.look.showWhen = box.value;
-    syncWhen();
+    box.dispatchEvent(new Event('input', { bubbles: true }));
   }
 });
 
@@ -2377,6 +2466,18 @@ function demoRendered(text) {
     var v = demoVariable(ref);
     return '[Demo Room > Sample Battery > ' + (v ? v.name : ref) + ']';
   });
+}
+
+// A badge's text, answering as the driver does.
+function demoBadge(text) {
+  var missing = '';
+  var result = String(text).trim().replace(DEMO_TOKEN, function(m, device, ref) {
+    var v = device === '9001' && demoVariable(ref);
+    if (!v) missing = missing || (device === '9001' ? 'variable ' + ref + ' not found on device 9001' : 'device ' + device + ' not found');
+    return v ? v.value : 'ERROR_VARIABLE_NOT_FOUND';
+  });
+  var fitted = Array.from(result).length <= BADGE_MAX ? result : result.replace(/-?\d+\.\d+/, function(n) { return String(Math.round(Number(n))); });
+  return { rendered: demoRendered(text), substituted: result, result: result, fitted: missing ? '' : Array.from(fitted).slice(0, BADGE_MAX).join(''), error: missing };
 }
 
 // A small part of the syntax, answering as the driver does so it takes the same path to the page.

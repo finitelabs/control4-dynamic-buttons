@@ -209,7 +209,17 @@ changes its picture.
 `Badge`, under `Icon`, draws text over the picture. It opens by itself on a look
 that has a badge.
 
-1. **Text** - up to 5 characters. Empty means no badge.
+1. **Text** - up to 5 characters, or text with a variable's value in it. Empty
+   means no badge. `Browse Variables` picks a variable. The controller draws a
+   badge with a variable on the shown look and keeps it current. A number gives
+   up decimals to fit the 5 characters, and then the end of the text is cut.
+   While a variable is missing, the look shows no badge, and this note and the
+   look's row say why.
+1. **Update** - shows when the text holds a variable: `Every 30 seconds`,
+   `Every minute`, `Every 5 minutes`, `Every 15 minutes` or `Every hour`. The
+   badge changes at most this often, and a change after a quiet spell shows at
+   once. Each update writes to the controller's storage and every Navigator
+   loads the new picture, so less often is better.
 1. **Size** - the badge's size, from `50%` to `150%`.
 1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
 1. **Text color** - the color of the badge's text.
@@ -469,8 +479,11 @@ Design Icons symbol. The Classic Tile pictures use Material Design Icons
 symbols, and the Modern pictures use Lucide, Tabler Icons and Material Design
 Icons symbols. A badge's text is drawn in
 [Roboto](https://github.com/googlefonts/roboto), under the
-[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license. The driver
-includes these notices and the full license texts in its `LICENSES.txt` file.
+[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license, and a badge
+with a variable is compressed with
+[LibDeflate](https://github.com/SafeteeWoW/LibDeflate), under the
+[zlib](https://www.zlib.net/zlib_license.html) license. The driver includes
+these notices and the full license texts in its `LICENSES.txt` file.
 
 **Free icon libraries** uses the free [Iconify](https://iconify.design) service
 and offers only these packs, whose licenses allow their icons to be used without
@@ -554,6 +567,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick
+- Added live badges: a badge's text can hold a variable, and the controller
+  draws it on the shown look and keeps it current, at most as often as the
+  look's Update setting
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
 - Added DriverCentral licensing: without an active license the button shows the

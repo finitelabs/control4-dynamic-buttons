@@ -10,7 +10,7 @@ local Expressions = require("lib.expressions")
 --- @field _show fun(id: integer): boolean, string|nil Shows a look the way programming's Show Look does.
 --- @field _changed fun() Tells the Button tab what changed.
 --- @field _allowed fun(): boolean False while nothing may change the look.
---- @field _engine Expressions
+--- @field _engine Expressions Shared with the live badges, since a variable has one listener in a driver.
 --- @field _active boolean Look Control is By Value.
 --- @field _booting boolean A variable another driver hasn't added yet may still come.
 --- @field _matched integer|nil The look the values call for.
@@ -28,7 +28,7 @@ local BOOT_TIMER = "FollowBootWait"
 --- reading one variable all recompute together.
 local EVALUATE_MS = 50
 
---- @param opts { looks: Looks, store: table, show: fun(id: integer): boolean, string|nil, changed: fun(), allowed: fun(): boolean }
+--- @param opts { looks: Looks, store: table, show: fun(id: integer): boolean, string|nil, changed: fun(), allowed: fun(): boolean, engine: Expressions }
 --- @return Follow follow
 function Follow:new(opts)
   local instance = setmetatable({}, self)
@@ -37,27 +37,24 @@ function Follow:new(opts)
   instance._show = opts.show
   instance._changed = opts.changed
   instance._allowed = opts.allowed
+  instance._engine = opts.engine
   instance._active = false
   instance._booting = false
   instance._matched = nil
   instance._errors = {}
   instance._showFailed = {}
-  instance._engine = Expressions:new({
-    getExpressions = function()
-      return instance:_expressions()
-    end,
-    recompute = function()
-      SetTimer(EVALUATE_TIMER, EVALUATE_MS, function()
-        instance:evaluate()
-      end)
-    end,
-  })
   return instance
 end
 
---- @private
+--- An expression's variable changed.
+function Follow:expressionChanged()
+  SetTimer(EVALUATE_TIMER, EVALUATE_MS, function()
+    self:evaluate()
+  end)
+end
+
 --- @return table<string, table> expressions Each look's Show when, by look id, as the engine reads them.
-function Follow:_expressions()
+function Follow:expressions()
   local expressions = {}
   for _, look in ipairs(self._looks:list()) do
     if look.showWhen then
