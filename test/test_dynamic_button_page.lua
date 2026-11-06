@@ -259,6 +259,93 @@ T.truthy(
   has("gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;")
 )
 
+T.section("My images")
+local Pictures = require("dynamic_button.pictures")
+T.truthy("the picture list offers My images", has([['<option value="' + SOURCE_MINE + '">My images</option>']]))
+local mine = page:match("// My images: the button's own pictures.-// The look editor\n")
+T.truthy("the My images code is found", mine)
+for _, insert in ipairs({ "innerHTML", "outerHTML", "insertAdjacentHTML", "document.write" }) do
+  T.falsy("puts nothing a person added into the page: no " .. insert, mine:find(insert, 1, true))
+end
+T.truthy(
+  "an SVG loses what runs or embeds",
+  has("var SVG_DROP = ['script', 'foreignObject', 'iframe', 'object', 'embed', 'audio', 'video', 'canvas', 'animate',")
+)
+T.truthy("and every event handler", has("if (name.indexOf('on') === 0) { el.removeAttributeNode(a); return; }"))
+T.truthy(
+  "and every link but its own parts and pictures in it",
+  has(
+    [[if (name === 'href') { if (!(/^\s*#/.test(a.value) || SAFE_IMAGE.test(a.value))) el.removeAttributeNode(a); return; }]]
+  )
+)
+T.truthy(
+  "CSS that could load from elsewhere however it's written is unsafe: an escape, an import, image-set or an open url(",
+  has(
+    [[return /\\|@import|image-set\s*\(/i.test(v) || (v.match(/url\s*\(/gi) || []).length !== (v.match(/url\s*\([^)]*\)/gi) || []).length;]]
+  )
+)
+T.truthy("any attribute holding it goes", has("if (cssUnsafe(a.value)) { el.removeAttributeNode(a); return; }"))
+T.truthy("as does a stylesheet", has("if (cssUnsafe(c.textContent)) { c.remove(); return; }"))
+T.truthy(
+  "and a url() in any attribute is checked, a fill or a filter as much as a style",
+  has([[if (/url\s*\(/i.test(a.value)) a.value = safeCss(a.value);]])
+)
+T.truthy(
+  "so it reaches only the drawing's own parts",
+  has([[return String(css || '').replace(/url\s*\((?!\s*['"]?\s*#)[^)]*\)/gi, 'none');]])
+)
+T.truthy(
+  "the 64 KB limit is on the SVG as kept",
+  has("if (new Blob([markup]).size > MINE_SVG_MAX) throw new Error('An SVG can be at most 64 KB.');")
+)
+T.truthy(
+  "one color takes the icon color",
+  has("var one = paints.keys.length === 1 && paints.keys[0] !== 'paint server' ? paints.keys[0] : null;")
+)
+T.truthy("and the editor says so", has("'One color, so Icon color applies.'"))
+T.truthy(
+  "Icon color shows for a picture only when it's one color",
+  has("$('fld-icon-color').hidden = whole || (isPicture(l.icon) && !pictureOneColor(l.icon));")
+)
+T.truthy(
+  "an SVG is at most what the driver keeps",
+  tonumber(page:match("MINE_SVG_MAX = (%d+) %* 1024")) * 1024 == Pictures.MAX_SVG_BYTES
+)
+T.truthy("a raster is kept at most 600 px on its long side", has("var MINE_SIDE = 600"))
+T.truthy("as a JPEG when opaque and a PNG otherwise", has("c.toDataURL(opaque ? 'image/jpeg' : 'image/png', 0.9)"))
+T.truthy(
+  "a fetch's request starts with a letter, so it never arrives as a number",
+  has("var request = 'f' + Date.now()")
+)
+T.truthy(
+  "a fetched picture is named by its address's last part",
+  has("var p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));")
+)
+T.truthy(
+  "never by its login, query or fragment",
+  has("var u = new URL(url), last = u.pathname.split('/').filter(Boolean).pop() || '';")
+)
+T.truthy(
+  "an answer for an editor that closed or moved on is dropped",
+  has("if (!gEditor.look || gEditor.look !== gFetch.look)")
+)
+T.truthy(
+  "a kept picture the driver no longer lists is sent again",
+  has(
+    "var keptHere = l.icon && l.icon.stored && (gState.pictures || []).some(function(p) { return p.id === l.icon.id; });"
+  ) and has("if (l.icon && isPicture(l.icon) && !keptHere) {")
+)
+T.truthy(
+  "a message in pieces drops its line breaks",
+  has([[p.parts[index - 1] = String(params.data || '').replace(/\s+/g, '');]])
+)
+local keep, save = page:find("await keepPicture(l.icon)", 1, true), page:find("call('_SAVE_LOOK'", 1, true)
+T.truthy("Save Look keeps a new picture before the look that names it", keep and save and keep < save)
+T.truthy(
+  "a look names a kept picture by id alone",
+  has("    delete out.body;\n    delete out.carried;\n    out.stored = true;")
+)
+
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))

@@ -48,6 +48,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added a color picker for every color: the look's own colors and recent colors
   as swatches, a hex box, and hue, saturation and lightness sliders
 - Added Duplicate to each look, which opens a copy of it in the editor
+- Added My images: a look's picture can be a file you upload, SVG you paste, or
+  a picture from a web address the controller fetches, kept with the button
 - Added Icon and Badge sections to each look: the picture's colors with its
   shading kept, the glow's color, its size and position, and a badge of up to
   five characters in the size you pick

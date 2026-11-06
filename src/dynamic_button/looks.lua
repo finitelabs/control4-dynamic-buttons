@@ -5,9 +5,10 @@
 local log = require("lib.logging")
 
 --- @class LookIcon
---- @field id string The icon's Iconify name, `<pack>:<name>`.
---- @field body? string The icon's SVG markup, without the outer svg element; none when carried.
+--- @field id string The icon's Iconify name, `<pack>:<name>`, or the id of one of the button's own pictures.
+--- @field body? string The icon's SVG markup, without the outer svg element; none when carried or stored.
 --- @field carried? boolean True for an icon the Button tab carries and draws from its id.
+--- @field stored? boolean True for one of the button's own pictures, which the Button tab draws from its id.
 --- @field width number The icon's view box width.
 --- @field height number The icon's view box height.
 --- @field license string The icon pack's license title.
@@ -51,6 +52,7 @@ local log = require("lib.logging")
 
 --- @class Looks
 --- @field _store table The persist store the looks are kept in.
+--- @field _hasPicture fun(id: string): boolean Whether the button keeps a picture of its own by that id.
 local Looks = {}
 Looks.__index = Looks
 
@@ -107,10 +109,15 @@ Looks.MAX_SHOW_WHEN = 2000
 local LOOKS_PERSIST_KEY = "Looks"
 
 --- @param store table A persist-like store with get(key, default) and set(key, value).
+--- @param hasPicture? fun(id: string): boolean Whether the button keeps a picture of its own by that id
+--- (optional). Without it, a look can't use one.
 --- @return Looks looks
-function Looks:new(store)
+function Looks:new(store, hasPicture)
   local instance = setmetatable({}, self)
   instance._store = store
+  instance._hasPicture = hasPicture or function()
+    return false
+  end
   return instance
 end
 
@@ -367,9 +374,15 @@ function Looks:_check(fields, exceptId)
   if not iconId:match("^[%w%-]+:[%w%-]+$") then
     return nil, "the icon's name is not an icon pack name"
   end
-  local carried = icon.carried == true
+  local carried, stored = icon.carried == true, icon.stored == true
+  if stored and not self._hasPicture(iconId) then
+    return nil, "the look's picture is not one the button keeps"
+  end
+  if not stored and iconId:match("^mine:") then
+    return nil, "the icon's name is not an icon pack name"
+  end
   local body = nil
-  if not carried then
+  if not carried and not stored then
     body = tostring(icon.body or "")
     if body == "" or #body > Looks.MAX_ICON_BODY then
       return nil, "the icon's picture is missing or too large"
@@ -417,6 +430,7 @@ function Looks:_check(fields, exceptId)
       id = iconId,
       body = body,
       carried = carried or nil,
+      stored = stored or nil,
       width = width,
       height = height,
       license = tostring(icon.license or ""):sub(1, 100),
@@ -526,9 +540,9 @@ end
 --- @param b Look
 --- @return boolean
 function Looks._drawnDiffers(a, b)
-  -- A carried icon's id names its markup, so the ids alone tell when either is carried.
-  local carried = a.icon.carried or b.icon.carried
-  if a.icon.id ~= b.icon.id or (not carried and a.icon.body ~= b.icon.body) then
+  -- A carried icon's or a stored picture's id names its markup, so the ids alone tell when either is one.
+  local byId = a.icon.carried or b.icon.carried or a.icon.stored or b.icon.stored
+  if a.icon.id ~= b.icon.id or (not byId and a.icon.body ~= b.icon.body) then
     return true
   end
   for _, field in ipairs(DRAWN_FIELDS) do

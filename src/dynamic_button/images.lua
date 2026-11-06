@@ -16,7 +16,7 @@ local log = require("lib.logging")
 --- @field bytes integer The decoded size so far.
 
 --- @class Images
---- @field _uploads table<integer, Upload> The upload in progress for each look.
+--- @field _uploads table<integer|string, Upload> The upload in progress for each look, or by name.
 --- @field _now fun(): number The clock, in seconds.
 local Images = {}
 Images.__index = Images
@@ -49,53 +49,63 @@ end
 --- @private
 function Images:_dropStale()
   local now = self._now()
-  for lookId, upload in pairs(self._uploads) do
+  for key, upload in pairs(self._uploads) do
     if now - upload.at >= Images.STALE_SECONDS then
-      self._uploads[lookId] = nil
+      self._uploads[key] = nil
     end
   end
 end
 
---- Take one chunk of a look's picture.
---- @param lookId integer
+--- @param data string
+--- @return string|nil err Why a look's picture is refused: it must be a PNG.
+local function checkPng(data)
+  if data:sub(1, #PNG_SIGNATURE) ~= PNG_SIGNATURE then
+    return "picture is not a PNG"
+  end
+  return nil
+end
+
+--- Take one chunk of a picture: a look's, or another upload's by name.
+--- @param key integer|string The look's id, or the upload's name.
 --- @param token string The upload's id; chunk 1 starts a new upload under it.
 --- @param index integer The chunk's place, from 1.
 --- @param count integer How many chunks the picture has.
 --- @param data string The chunk, base64.
---- @return string|nil png The whole picture once its last chunk arrived, else nil.
+--- @param check? fun(data: string): string|nil Why the whole picture is refused; a look's picture must be a PNG.
+--- @return string|nil picture The whole picture once its last chunk arrived, else nil.
 --- @return string|nil err Why the upload was dropped.
-function Images:accept(lookId, token, index, count, data)
+function Images:accept(key, token, index, count, data, check)
   self:_dropStale()
-  lookId, index, count = tonumber(lookId), tonumber(index), tonumber(count)
+  index, count = tonumber(index), tonumber(count)
   token, data = tostring(token or ""), tostring(data or "")
   local maxChunks = math.ceil(Images.MAX_BYTES * 4 / 3 / Images.MAX_CHUNK) + 1
-  if not lookId or not index or not count or token == "" then
+  if key == nil or key == "" or not index or not count or token == "" then
     return nil, "chunk without its look, upload, place or count"
   end
   if count < 1 or count > maxChunks or index < 1 or index > count then
-    self._uploads[lookId] = nil
+    self._uploads[key] = nil
     return nil, "chunk out of range"
   end
   if #data == 0 or #data > Images.MAX_CHUNK or #data % 4 ~= 0 then
-    self._uploads[lookId] = nil
+    self._uploads[key] = nil
     return nil, "chunk is not whole base64 of the allowed size"
   end
-  local upload = self._uploads[lookId]
+  local upload = self._uploads[key]
   if index == 1 then
     upload = { token = token, count = count, nextIndex = 1, parts = {}, bytes = 0, at = self._now() }
-    self._uploads[lookId] = upload
+    self._uploads[key] = upload
   elseif not upload or upload.token ~= token or upload.count ~= count or upload.nextIndex ~= index then
-    self._uploads[lookId] = nil
+    self._uploads[key] = nil
     return nil, "chunk out of order"
   end
   local decoded = C4:Base64Decode(data)
   if decoded == nil or decoded == "" then
-    self._uploads[lookId] = nil
+    self._uploads[key] = nil
     return nil, "chunk is not base64"
   end
   upload.bytes = upload.bytes + #decoded
   if upload.bytes > Images.MAX_BYTES then
-    self._uploads[lookId] = nil
+    self._uploads[key] = nil
     return nil, "picture is larger than 512 KB"
   end
   table.insert(upload.parts, decoded)
@@ -104,12 +114,13 @@ function Images:accept(lookId, token, index, count, data)
   if index < count then
     return nil
   end
-  self._uploads[lookId] = nil
-  local png = table.concat(upload.parts)
-  if png:sub(1, #PNG_SIGNATURE) ~= PNG_SIGNATURE then
-    return nil, "picture is not a PNG"
+  self._uploads[key] = nil
+  local whole = table.concat(upload.parts)
+  local refused = (check or checkPng)(whole)
+  if refused then
+    return nil, refused
   end
-  return png
+  return whole
 end
 
 --- Forget a look's upload in progress.
@@ -123,7 +134,7 @@ end
 --- @param name string
 --- @param data string
 --- @return boolean ok
-local function writeFile(alias, subdir, name, data)
+function Images.writeFile(alias, subdir, name, data)
   C4:FileSetDir(alias, subdir)
   if C4:FileExists(name) then
     C4:FileDelete(name)
@@ -146,7 +157,7 @@ end
 --- @param subdir string The sub-folder of the alias.
 --- @param name string
 --- @return string|nil data
-local function readFile(alias, subdir, name)
+function Images.readFile(alias, subdir, name)
   C4:FileSetDir(alias, subdir)
   if not C4:FileExists(name) then
     return nil
@@ -164,7 +175,7 @@ end
 --- @param alias string A documented path alias.
 --- @param subdir string The sub-folder of the alias.
 --- @param name string
-local function deleteFile(alias, subdir, name)
+function Images.deleteFile(alias, subdir, name)
   C4:FileSetDir(alias, subdir)
   if C4:FileExists(name) then
     C4:FileDelete(name)
@@ -189,32 +200,32 @@ end
 --- @return boolean ok
 function Images:save(lookId, png)
   C4:FileCreateDir("SANDBOX", SOURCE_DIR)
-  deleteFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
-  return writeFile("SANDBOX", SOURCE_DIR, sourceName(lookId), png)
+  Images.deleteFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
+  return Images.writeFile("SANDBOX", SOURCE_DIR, sourceName(lookId), png)
 end
 
 --- @param lookId integer
 --- @return string|nil png The look's stored picture.
 function Images:load(lookId)
-  return readFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
+  return Images.readFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
 end
 
 --- @param lookId integer
 function Images:remove(lookId)
-  deleteFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
-  deleteFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
+  Images.deleteFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
+  Images.deleteFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
 end
 
 --- @param lookId integer
 --- @param data string What a live badge's redraw starts from.
 function Images:saveCache(lookId, data)
-  writeFile("SANDBOX", SOURCE_DIR, cacheName(lookId), data)
+  Images.writeFile("SANDBOX", SOURCE_DIR, cacheName(lookId), data)
 end
 
 --- @param lookId integer
 --- @return string|nil data
 function Images:loadCache(lookId)
-  return readFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
+  return Images.readFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
 end
 
 --- @param deviceId integer
@@ -231,7 +242,7 @@ end
 function Images:serve(deviceId, lookId, png)
   C4:FileCreateDir("C4Z", WWW_ROOT)
   C4:FileCreateDir("C4Z", servedDir(deviceId))
-  return writeFile("C4Z", servedDir(deviceId), string.format("%d.png", lookId), png)
+  return Images.writeFile("C4Z", servedDir(deviceId), string.format("%d.png", lookId), png)
 end
 
 --- @param deviceId integer
@@ -246,7 +257,7 @@ end
 --- @param deviceId integer
 --- @param lookId integer
 function Images:unserve(deviceId, lookId)
-  deleteFile("C4Z", servedDir(deviceId), string.format("%d.png", lookId))
+  Images.deleteFile("C4Z", servedDir(deviceId), string.format("%d.png", lookId))
 end
 
 --- The address Navigator loads a served look from. A new version is a new address to Navigator.

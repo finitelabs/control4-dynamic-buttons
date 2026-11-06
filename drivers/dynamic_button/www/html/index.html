@@ -215,6 +215,19 @@
   .icon .txt { font-size: 9px; color: var(--text-muted); padding: 2px; word-break: break-all; text-align: center; }
   .picked { font-size: 12px; }
   .picked .lic { color: var(--text-muted); }
+  .lookform .fctl.stack { display: block; }
+  .mi-drop { flex: 1; border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 18px 12px; text-align: center; font-size: 12px; background: var(--surface); }
+  .mi-drop.over { border-color: var(--accent); background: #eff6ff; }
+  .mi-drop .note { margin-top: 6px; }
+  .mi-svg { font-family: var(--mono); font-size: 11.5px; line-height: 1.5; width: 100%; box-sizing: border-box; min-height: 120px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); background: var(--surface); resize: vertical; }
+  .mi-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  .mi-urlrow input { flex: 1 1 200px; width: auto; }
+  .mi-msg { font-size: 11px; color: var(--text-muted); }
+  .mi-msg.bad { color: var(--danger); }
+  .mi-head { font-size: 11px; font-weight: 600; color: var(--text-muted); margin: 2px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+  .mi-cell { position: relative; overflow: hidden; }
+  .mi-cell img { width: 44px; height: 44px; object-fit: contain; border-radius: 4px; }
+  .mi-tag { position: absolute; right: 3px; bottom: 2px; font-size: 9px; color: var(--text-muted); background: var(--surface); border-radius: 3px; padding: 0 3px; }
   .status { font-size: 12px; color: var(--text-muted); margin-top: 8px; min-height: 18px; }
   .status.bad { color: var(--danger); }
   #lic-card summary { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; cursor: pointer; }
@@ -365,6 +378,42 @@
               <button class="btn btn-secondary" id="o-go" type="button" hidden>Search</button>
             </div>
           </div>
+          <div class="frow" id="fld-mine-how" hidden>
+            <span></span>
+            <div class="fctl"><div class="seg" id="mi-how">
+              <button type="button" data-how="upload" class="on">Upload</button>
+              <button type="button" data-how="svg">Paste SVG</button>
+              <button type="button" data-how="web">Web address</button>
+            </div></div>
+          </div>
+          <div class="frow" id="fld-mine-upload" hidden>
+            <span></span>
+            <div class="fctl">
+              <div class="mi-drop" id="mi-drop">Drop a picture here, or <button type="button" class="linkbtn" id="mi-choose">choose a file</button>
+                <div class="note">PNG, JPEG, GIF, WebP or SVG.</div>
+              </div>
+              <input type="file" id="mi-file" accept="image/*,.svg" hidden>
+            </div>
+          </div>
+          <div class="frow" id="fld-mine-svg" hidden>
+            <span></span>
+            <div class="fctl stack">
+              <textarea class="mi-svg" id="mi-svg" spellcheck="false" autocomplete="off" aria-label="SVG markup" placeholder="&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 24 24&quot;&gt;…&lt;/svg&gt;"></textarea>
+              <div class="mi-row"><button class="btn btn-secondary sm" id="mi-use-svg" type="button">Use This SVG</button></div>
+            </div>
+          </div>
+          <div class="frow" id="fld-mine-web" hidden>
+            <label for="mi-url">Address</label>
+            <div class="fctl mi-urlrow">
+              <input type="text" id="mi-url" placeholder="https://" autocomplete="off" spellcheck="false">
+              <button class="btn btn-secondary sm" id="mi-fetch" type="button">Fetch</button>
+            </div>
+            <div class="fnote">Fetched by the controller, so an address on the home network works.</div>
+          </div>
+          <div class="frow" id="fld-mine-msg" hidden>
+            <span></span>
+            <div class="mi-msg" id="mi-msg" role="status"></div>
+          </div>
           <div class="frow" id="fld-style" hidden>
             <label>Style</label>
             <div class="fctl"><div class="seg" id="o-style"></div></div>
@@ -379,6 +428,11 @@
               <div id="pick-local">
                 <div class="icongrid" id="pk-grid"></div>
                 <div class="picknote"><span id="pk-note"></span><button type="button" class="linkbtn" id="pk-online" hidden></button></div>
+              </div>
+              <div id="pick-mine" hidden>
+                <div class="mi-head">This button’s pictures</div>
+                <div class="icongrid" id="mi-grid"></div>
+                <div class="note">Every picture a look on this button uses. Pick one to use it again.</div>
               </div>
               <div id="pick-online" hidden>
                 <div class="icongrid" id="o-grid"></div>
@@ -643,6 +697,8 @@ function handleDriverData(cmd, params) {
     }
     if (cmd === 'SHOWN') onShown(params);
     if (cmd === 'ICONIFY') onIconify(params);
+    if (cmd === 'PICTURE') onPicture(params);
+    if (cmd === 'FETCHED') onFetched(params);
     if (cmd === 'EVAL_RESULT') onEvalResult(params);
     if (cmd === 'DEVICES_DATA') onDevices(JSON.parse(params.devices || '[]'));
     if (cmd === 'DEVICE_VARIABLES_DATA') onDeviceVariables(params.deviceId, JSON.parse(params.variables || '[]'));
@@ -1163,7 +1219,7 @@ async function navTile(el, look, size) {
 // A carried icon's id names its markup, so the ids alone tell when either is carried.
 function sameDrawing(a, b) {
   var ia = a.icon || {}, ib = b.icon || {};
-  return ia.id === ib.id && (ia.carried || ib.carried || ia.body === ib.body) && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor &&
+  return ia.id === ib.id && (ia.carried || ib.carried || ia.stored || ib.stored || ia.body === ib.body) && a.iconColor === b.iconColor && a.tileShape === b.tileShape && a.tileColor === b.tileColor &&
     savedGlow(a) === savedGlow(b) && !!a.grayscale === !!b.grayscale && customKey(a) === customKey(b);
 }
 
@@ -1173,9 +1229,16 @@ function sameDrawing(a, b) {
 function carriedIcon(id) {
   return gPackIcons[id] ? packIcon(id) : bundledIcon(id);
 }
-// An id the page no longer has draws as an empty tile.
+// An id the page no longer has draws as an empty tile. One of the button's own pictures draws once
+// its source is here, and as an empty tile if the driver no longer has it.
 function withIconBody(look) {
   var icon = look.icon;
+  if (icon && icon.stored && !icon.body) {
+    requestPicture(icon.id);
+    var src = gSources[icon.id];
+    look.icon = Object.assign({}, icon, src && src.body ? { body: src.body } : { body: '', missing: !!(src && src.gone) });
+    return look;
+  }
   if (!icon || !icon.carried || icon.body) return look;
   var own = carriedIcon(icon.id);
   look.icon = Object.assign({}, icon, own ? { body: own.body } : { body: '', missing: true });
@@ -1186,6 +1249,12 @@ function savedIcon(icon) {
   var out = Object.assign({}, icon), own = carriedIcon(icon.id);
   delete out.label;
   delete out.missing;
+  if (isPicture(icon)) {
+    delete out.body;
+    delete out.carried;
+    out.stored = true;
+    return out;
+  }
   if (own && own.body === icon.body) { delete out.body; out.carried = true; }
   else delete out.carried;
   return out;
@@ -1200,6 +1269,7 @@ function onState(state) {
   var packs = gState.packs.join(',');
   // The driver leaves these out when it has none, so the last state's can't carry over.
   gState = Object.assign(gState, { shown: null, defaultLook: null, matched: null }, state || {});
+  if (!Array.isArray(gState.pictures)) gState.pictures = [];
   gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
   renderList();
@@ -1278,6 +1348,13 @@ function setProperty(el) {
 $('props').addEventListener('change', function(e) { if (e.target.dataset.prop) setProperty(e.target); });
 $('control-mode').addEventListener('change', function(e) { setProperty(e.target); });
 
+// How the list and the editor name a look's picture: an icon by its id, a picture of the button's own by its name.
+function iconName(icon) {
+  if (!icon) return '';
+  var rec = isPicture(icon) && pictureRecord(icon.id);
+  return rec ? rec.name : (isPicture(icon) ? 'Your picture' : icon.id);
+}
+
 function deleteWarning(name) {
   return 'Deletes ' + name + ', its picture, and its ' + name + ' Shown event with the programming on it.';
 }
@@ -1308,7 +1385,7 @@ async function renderList() {
       (byValue() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the values call for a different look.">Matched</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
-      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(l.icon ? l.icon.id : '') + ' · ' + esc(l.tileShape) + '</div>' + whenLines(l) + badgeLines(l) + '</div>' +
+      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(iconName(l.icon)) + ' · ' + esc(l.tileShape) + '</div>' + whenLines(l) + badgeLines(l) + '</div>' +
       '<div class="acts">' +
         '<button class="btn btn-secondary sm" type="button" data-act="show" data-id="' + id + '"' + (l.hasImage && id !== gState.shown ? '' : ' disabled') + '>Show</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
@@ -1458,13 +1535,14 @@ function packCellSrc(icon) {
 // ============================================================
 // The picker: one source list, one category list and one search box
 // ============================================================
-var SOURCE_ALL = 'all', SOURCE_BASIC = 'basic', SOURCE_ONLINE = 'online';
+var SOURCE_ALL = 'all', SOURCE_BASIC = 'basic', SOURCE_ONLINE = 'online', SOURCE_MINE = 'mine';
 function pickerSource() { return $('pk-src').value || SOURCE_ALL; }
 function renderSources() {
   $('pk-src').innerHTML = '<option value="' + SOURCE_ALL + '">All included</option>' +
     ICON_PACKS.map(function(p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('') +
     '<option value="' + SOURCE_BASIC + '">Basic icons</option>' +
-    '<option value="' + SOURCE_ONLINE + '">Free icon libraries</option>';
+    '<option value="' + SOURCE_ONLINE + '">Free icon libraries</option>' +
+    '<option value="' + SOURCE_MINE + '">My images</option>';
 }
 // The included pictures a source holds: a pack's own, the basic icons, or all of them.
 function sourceItems(src) {
@@ -1494,14 +1572,20 @@ function packCell(id, label) {
   return b;
 }
 function renderPicker() {
-  var src = pickerSource(), online = src === SOURCE_ONLINE, q = $('pk-q').value.trim();
-  $('pk-cat').hidden = online;
+  var src = pickerSource(), online = src === SOURCE_ONLINE, mine = src === SOURCE_MINE, q = $('pk-q').value.trim();
+  $('pk-cat').hidden = online || mine;
+  $('pk-q').hidden = mine;
   $('o-go').hidden = !online;
   $('fld-style').hidden = !online;
   $('fld-packs').hidden = !online;
-  $('pick-local').hidden = online;
+  $('pick-local').hidden = online || mine;
   $('pick-online').hidden = !online;
+  $('pick-mine').hidden = !mine;
+  $('fld-mine-how').hidden = !mine;
+  $('fld-mine-msg').hidden = !mine || !$('mi-msg').textContent;
+  ['upload', 'svg', 'web'].forEach(function(how) { $('fld-mine-' + how).hidden = !mine || gMineHow !== how; });
   $('pk-q').placeholder = online ? 'Search free icon libraries' : 'Search pictures';
+  if (mine) { renderMine(); return; }
   if (online) return;
   var cat = $('pk-cat').value, words = q.toLowerCase().split(/\s+/).filter(Boolean);
   var shown = sourceItems(src).filter(function(i) {
@@ -1726,6 +1810,424 @@ $('o-grid').addEventListener('click', function(e) {
     else fetchIcons(prefix, [name]).then(function(f) { if (f[name]) use(f[name]); }).catch(function(err) { setStatus('Could not fetch that icon: ' + err.message, true); });
   });
 });
+
+// ============================================================
+// My images: the button's own pictures, from a file, pasted SVG or a web address
+// ============================================================
+// The page keeps a picture's source once it has it: the driver sends each on request, and a new
+// one stays here until Save Look keeps it on the controller.
+var MINE_SIDE = 600, MINE_SVG_MAX = 64 * 1024, MINE_SVG_READ = 1024 * 1024, MINE_FILE_MAX = 20 * 1024 * 1024;
+var gSources = {}, gNewPictures = [], gNewSeq = 0, gMineHow = 'upload', gPieces = {}, gFetch = null;
+
+function isPicture(icon) { return !!icon && /^mine:/.test(String(icon.id)); }
+function pictureRecord(id) {
+  return (gState.pictures || []).concat(gNewPictures).find(function(p) { return p.id === id; }) || null;
+}
+// A one-color SVG draws in the look's icon color: its color became currentColor when it was added.
+function pictureOneColor(icon) { return isPicture(icon) && /currentColor/.test(String(icon.body || '')); }
+
+// What the drawing code draws: a raster in an SVG image element, an SVG as its own nested element.
+function pictureBody(kind, b64) {
+  if (kind === 'svg') return utf8FromBase64(b64).replace(/^[\s\S]*?(?=<svg[\s>])/i, '');
+  return '<image href="data:image/' + (kind === 'jpeg' ? 'jpeg' : 'png') + ';base64,' + b64 + '" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none"/>';
+}
+function utf8FromBase64(b64) {
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+function base64FromUtf8(text) {
+  var bytes = new TextEncoder().encode(text), bin = '';
+  for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function setSource(id, kind, b64) {
+  var rec = pictureRecord(id);
+  gSources[id] = { kind: kind, b64: b64, body: pictureBody(kind, b64), name: rec ? rec.name : '' };
+  sourcesChanged(id);
+}
+// The icon a look uses for a picture: kept ones go by id, a new one until Save Look keeps it.
+function pictureIcon(rec) {
+  var src = gSources[rec.id];
+  return { id: rec.id, stored: !/^mine:new-/.test(rec.id), width: rec.width, height: rec.height, license: '', licenseUrl: '',
+    label: nameFromFile(rec.name), body: src && src.body || '' };
+}
+function requestPicture(id) {
+  if (gSources[id] || /^mine:new-/.test(id)) return;
+  if (!gApiHost) { gSources[id] = { gone: true }; return; }
+  gSources[id] = { pending: true };
+  sendCommand('_GET_PICTURE', { id: id });
+  // Asked again on the next use if the answer was lost.
+  setTimeout(function() { if (gSources[id] && gSources[id].pending) delete gSources[id]; }, 30000);
+}
+// A message in pieces of base64 lines: the whole once its last piece is in.
+function joinPieces(key, params) {
+  var count = Number(params.count) || 1, index = Number(params.index) || 1;
+  var p = gPieces[key] && gPieces[key].count === count ? gPieces[key] : (gPieces[key] = { count: count, parts: [] });
+  p.parts[index - 1] = String(params.data || '').replace(/\s+/g, '');
+  for (var i = 0; i < count; i++) if (p.parts[i] == null) return null;
+  delete gPieces[key];
+  return p.parts.join('');
+}
+function onPicture(params) {
+  var id = String(params.id || '');
+  if (params.error) { gSources[id] = { gone: true }; sourcesChanged(id); return; }
+  var b64 = joinPieces('picture ' + id, params);
+  if (b64 != null) setSource(id, params.kind, b64);
+}
+var gSourcesTimer = null;
+function sourcesChanged(id) {
+  var l = gEditor.look;
+  if (l && l.icon && l.icon.id === id) {
+    var src = gSources[id];
+    l.icon = Object.assign({}, l.icon, src && src.body ? { body: src.body, missing: false } : { body: '', missing: !!(src && src.gone) });
+    gEditor.icon = l.icon;
+    measureBounds();
+    preview();
+  }
+  clearTimeout(gSourcesTimer);
+  gSourcesTimer = setTimeout(function() {
+    gState.looks.forEach(withIconBody);
+    renderList();
+    if (l && pickerSource() === SOURCE_MINE) renderMine();
+  }, 50);
+}
+
+// ---- Pasted and fetched SVG: cut to drawing, sized, and one color made the icon color ----
+var SVG_DROP = ['script', 'foreignObject', 'iframe', 'object', 'embed', 'audio', 'video', 'canvas', 'animate',
+  'animateMotion', 'animateTransform', 'set', 'discard', 'handler', 'listener'];
+var SAFE_IMAGE = /^\s*data:image\/(png|jpe?g|gif|webp);/i;
+// CSS that could reach outside the drawing however it's written: an escape can spell url( or
+// @import, and image-set or a url( left open loads what the rule below can't see.
+function cssUnsafe(v) {
+  v = String(v || '');
+  return /\\|@import|image-set\s*\(/i.test(v) || (v.match(/url\s*\(/gi) || []).length !== (v.match(/url\s*\([^)]*\)/gi) || []).length;
+}
+// A url() that isn't one of the drawing's own parts loads nothing.
+function safeCss(css) {
+  return String(css || '').replace(/url\s*\((?!\s*['"]?\s*#)[^)]*\)/gi, 'none');
+}
+// Every attribute: no event handlers, links only to the drawing's own parts or a picture in it, and
+// a url() in any of them, a fill, a filter or a style alike, only to the drawing's own parts.
+function cleanSvgAttrs(el) {
+  Array.prototype.slice.call(el.attributes).forEach(function(a) {
+    var name = a.localName.toLowerCase();
+    if (name.indexOf('on') === 0) { el.removeAttributeNode(a); return; }
+    if (name === 'href') { if (!(/^\s*#/.test(a.value) || SAFE_IMAGE.test(a.value))) el.removeAttributeNode(a); return; }
+    if (cssUnsafe(a.value)) { el.removeAttributeNode(a); return; }
+    if (/url\s*\(/i.test(a.value)) a.value = safeCss(a.value);
+  });
+}
+// The SVG's root, cut down to what draws: nothing that runs, embeds a page or loads from elsewhere.
+function cleanSvg(text) {
+  var doc = new DOMParser().parseFromString(String(text || '').trim(), 'image/svg+xml');
+  var root = doc.documentElement;
+  if (!root || root.localName !== 'svg' || root.namespaceURI !== SVG_NS || doc.getElementsByTagName('parsererror').length) return null;
+  (function walk(el) {
+    Array.prototype.slice.call(el.childNodes).forEach(function(c) {
+      if (c.nodeType === 1) {
+        if (c.namespaceURI !== SVG_NS || SVG_DROP.indexOf(c.localName) >= 0) { c.remove(); return; }
+        if (c.localName === 'style') {
+          if (cssUnsafe(c.textContent)) { c.remove(); return; }
+          c.textContent = safeCss(c.textContent);
+        }
+        cleanSvgAttrs(c);
+        walk(c);
+      } else if (c.nodeType !== 3 && c.nodeType !== 4) {
+        c.remove();
+      }
+    });
+  })(root);
+  cleanSvgAttrs(root);
+  return root;
+}
+function svgLength(v) {
+  var m = /^\s*([\d.]+)\s*(px)?\s*$/.exec(String(v || ''));
+  return m && Number(m[1]) > 0 ? Number(m[1]) : null;
+}
+// The paints an SVG uses, each once: a gradient or pattern counts as many.
+var PAINT_DECL = /(fill|stroke|stop-color|flood-color)\s*:\s*([^;}!]+)/gi;
+var PAINT_ATTRS = ['fill', 'stroke', 'stop-color', 'flood-color'];
+var SHAPES_FILLED = ['path', 'rect', 'circle', 'ellipse', 'polygon', 'polyline', 'text'];
+var gPaintCtx = null;
+function paintKey(v) {
+  v = String(v || '').trim().toLowerCase();
+  if (!v || v === 'none' || v === 'transparent' || v === 'inherit') return null;
+  if (v === 'currentcolor') return 'currentcolor';
+  if (/^url\(/.test(v)) return 'paint server';
+  gPaintCtx = gPaintCtx || document.createElement('canvas').getContext('2d');
+  gPaintCtx.fillStyle = '#010203';
+  gPaintCtx.fillStyle = v;
+  var out = String(gPaintCtx.fillStyle).toLowerCase();
+  return out === '#010203' && v !== '#010203' ? null : out;
+}
+function svgPaints(root) {
+  var paints = {}, styled = '';
+  var add = function(v) { var k = paintKey(v); if (k) paints[k] = true; };
+  var all = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+  all.forEach(function(el) {
+    PAINT_ATTRS.forEach(function(a) { if (el.hasAttribute(a)) add(el.getAttribute(a)); });
+    String(el.getAttribute('style') || '').replace(PAINT_DECL, function(m, prop, v) { add(v); return m; });
+    if (el.localName === 'style') { styled += el.textContent; el.textContent.replace(PAINT_DECL, function(m, prop, v) { add(v); return m; }); }
+  });
+  // A shape with no fill of its own or above it fills black, unless a stylesheet sets it.
+  var unfilled = !/fill\s*:/i.test(styled) && all.some(function(el) {
+    if (SHAPES_FILLED.indexOf(el.localName) < 0) return false;
+    for (var e = el; e && e.nodeType === 1; e = e.parentNode) {
+      if (e.localName === 'clipPath' || e.localName === 'mask') return false;
+      if (e.hasAttribute('fill') || /fill\s*:/i.test(e.getAttribute('style') || '')) return false;
+    }
+    return true;
+  });
+  if (unfilled) paints['#000000'] = true;
+  return { keys: Object.keys(paints), unfilled: unfilled };
+}
+// A one-color drawing takes the look's icon color: its color becomes currentColor. Any other keeps
+// its colors, and currentColor draws black as it would on its own.
+function setOneColor(root, paints) {
+  var one = paints.keys.length === 1 && paints.keys[0] !== 'paint server' ? paints.keys[0] : null;
+  var swap = function(v) { return one && paintKey(v) === one ? 'currentColor' : (!one && paintKey(v) === 'currentcolor' ? '#000000' : v); };
+  [root].concat(Array.prototype.slice.call(root.querySelectorAll('*'))).forEach(function(el) {
+    PAINT_ATTRS.forEach(function(a) { if (el.hasAttribute(a)) el.setAttribute(a, swap(el.getAttribute(a))); });
+    if (el.hasAttribute('style')) el.setAttribute('style', el.getAttribute('style').replace(PAINT_DECL, function(m, prop, v) { return prop + ':' + swap(v); }));
+    if (el.localName === 'style') el.textContent = el.textContent.replace(PAINT_DECL, function(m, prop, v) { return prop + ':' + swap(v); });
+  });
+  if (one && paints.unfilled && !root.hasAttribute('fill')) root.setAttribute('fill', 'currentColor');
+  return !!one;
+}
+// Pasted or fetched SVG as the button keeps it.
+function pictureFromSvg(text, name) {
+  if (new Blob([text]).size > MINE_SVG_READ) throw new Error('That SVG is larger than 1 MB.');
+  var root = cleanSvg(text);
+  if (!root) throw new Error('That isn’t SVG markup the page can read.');
+  var vb = String(root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  var w, h;
+  if (vb.length === 4 && vb.every(isFinite) && vb[2] > 0 && vb[3] > 0) { w = vb[2]; h = vb[3]; }
+  else {
+    w = svgLength(root.getAttribute('width'));
+    h = svgLength(root.getAttribute('height'));
+    if (!w || !h) throw new Error('The SVG has no size: it needs a viewBox, or a width and height.');
+    root.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  }
+  root.setAttribute('width', w);
+  root.setAttribute('height', h);
+  root.removeAttribute('x');
+  root.removeAttribute('y');
+  var oneColor = setOneColor(root, svgPaints(root));
+  var markup = new XMLSerializer().serializeToString(root);
+  if (new Blob([markup]).size > MINE_SVG_MAX) throw new Error('An SVG can be at most 64 KB.');
+  return { kind: 'svg', width: w, height: h, name: name, b64: base64FromUtf8(markup), oneColor: oneColor };
+}
+// A raster at most 600 px on its long side: JPEG when it's opaque, PNG when it has see-through parts.
+async function pictureFromRaster(blob, name) {
+  var url = URL.createObjectURL(blob), img;
+  try { img = await loadImage(url); }
+  catch (e) { throw new Error('The browser couldn’t open that file as a picture.'); }
+  finally { URL.revokeObjectURL(url); }
+  var w0 = img.width || img.naturalWidth, h0 = img.height || img.naturalHeight;
+  if (!w0 || !h0) throw new Error('The browser couldn’t open that file as a picture.');
+  var s = Math.min(1, MINE_SIDE / Math.max(w0, h0)), w = Math.max(1, Math.round(w0 * s)), h = Math.max(1, Math.round(h0 * s));
+  var c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  var ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  var d = ctx.getImageData(0, 0, w, h).data, opaque = true;
+  for (var i = 3; i < d.length; i += 4) if (d[i] < 255) { opaque = false; break; }
+  var data = c.toDataURL(opaque ? 'image/jpeg' : 'image/png', 0.9), b64 = data.slice(data.indexOf(',') + 1);
+  if (b64.length * 3 / 4 > gState.maxBytes) throw new Error('The picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB, even at ' + MINE_SIDE + ' px.');
+  return { kind: opaque ? 'jpeg' : 'png', width: w, height: h, name: name, b64: b64, oneColor: false };
+}
+async function pictureFromBlob(blob, name) {
+  var head = await blob.slice(0, 1024).text();
+  if (/^﻿?\s*</.test(head) && /<svg[\s>]/i.test(await blob.slice(0, 4096).text())) return pictureFromSvg(await blob.text(), name);
+  return pictureFromRaster(blob, name);
+}
+// A web address's name as the button keeps it: its last part, or its host, never its login, query or fragment.
+function nameFromUrl(url) {
+  try {
+    var u = new URL(url), last = u.pathname.split('/').filter(Boolean).pop() || '';
+    try { last = decodeURIComponent(last); } catch (e) {}
+    return last || u.hostname || 'Picture';
+  } catch (e) { return 'Picture'; }
+}
+// A look's name from a file's name or an address's last part.
+function nameFromFile(name) {
+  var base = String(name || '').split(/[\\/?#]/).filter(Boolean).pop() || '';
+  base = base.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[-_.]+/g, ' ').trim();
+  return base ? base.split(/\s+/).map(function(w) { return w[0].toUpperCase() + w.slice(1); }).join(' ') : 'My Picture';
+}
+
+// ---- Adding a picture, and the grid of the button's own ----
+// The row hides while it has nothing to say: an empty cell would shift the rows after it.
+function mineMessage(text, bad) {
+  $('mi-msg').textContent = text || '';
+  $('mi-msg').className = 'mi-msg' + (bad ? ' bad' : '');
+  $('fld-mine-msg').hidden = !text || pickerSource() !== SOURCE_MINE;
+}
+function addNewPicture(p) {
+  if (!gEditor.look) return;
+  var id = 'mine:new-' + (++gNewSeq);
+  var rec = { id: id, kind: p.kind, width: p.width, height: p.height, name: p.name };
+  gNewPictures.push(rec);
+  gSources[id] = { kind: p.kind, b64: p.b64, body: pictureBody(p.kind, p.b64), name: p.name };
+  pickIcon(pictureIcon(rec));
+  renderMine();
+  mineMessage(p.kind === 'svg' ? (p.oneColor ? 'One color, so Icon color applies.' : 'Its own colors stay.') : '');
+}
+async function addPictureFile(file) {
+  if (!file) return;
+  if (file.size > MINE_FILE_MAX) { mineMessage('That file is larger than 20 MB.', true); return; }
+  mineMessage('Reading the picture…');
+  var look = gEditor.look;
+  try {
+    var p = await pictureFromBlob(file, file.name);
+    if (gEditor.look === look) addNewPicture(p);
+  } catch (e) { mineMessage(e.message, true); }
+}
+function renderMine() {
+  ['upload', 'svg', 'web'].forEach(function(how) { $('fld-mine-' + how).hidden = gMineHow !== how; });
+  document.querySelectorAll('#mi-how button').forEach(function(b) { b.classList.toggle('on', b.dataset.how === gMineHow); });
+  var used = {};
+  gState.looks.forEach(function(l) { if (l.icon) used[l.icon.id] = true; });
+  if (gEditor.look && gEditor.look.icon) used[gEditor.look.icon.id] = true;
+  var list = (gState.pictures || []).filter(function(p) { return used[p.id]; }).concat(gNewPictures);
+  fillGrid($('mi-grid'), list.map(function(rec) {
+    requestPicture(rec.id);
+    var b = document.createElement('button'), src = gSources[rec.id];
+    b.type = 'button';
+    b.className = 'icon mi-cell' + (gEditor.icon && gEditor.icon.id === rec.id ? ' on' : '');
+    b.dataset.id = rec.id;
+    b.title = rec.name;
+    if (src && src.b64) {
+      var img = document.createElement('img');
+      img.alt = '';
+      img.src = rec.kind === 'svg' ? svgUrl(pictureIcon(rec), '#374151', 44) : 'data:image/' + rec.kind + ';base64,' + src.b64;
+      b.appendChild(img);
+    } else {
+      var t = document.createElement('span');
+      t.className = 'txt';
+      t.textContent = src && src.gone ? 'Gone' : '…';
+      b.appendChild(t);
+    }
+    if (rec.kind === 'svg') {
+      var tag = document.createElement('span');
+      tag.className = 'mi-tag';
+      tag.textContent = 'SVG';
+      b.appendChild(tag);
+    }
+    return b;
+  }), 'No pictures yet.');
+}
+$('mi-how').addEventListener('click', function(e) {
+  var b = e.target.closest('button[data-how]');
+  if (!b) return;
+  gMineHow = b.dataset.how;
+  mineMessage('');
+  renderMine();
+});
+$('mi-grid').addEventListener('click', function(e) {
+  var b = e.target.closest('button[data-id]');
+  var rec = b && pictureRecord(b.dataset.id);
+  if (!rec) return;
+  pickIcon(pictureIcon(rec));
+  mineMessage('');
+});
+$('mi-choose').addEventListener('click', function() { $('mi-file').click(); });
+$('mi-file').addEventListener('change', function() {
+  var file = this.files && this.files[0];
+  this.value = '';
+  addPictureFile(file);
+});
+['dragenter', 'dragover'].forEach(function(t) {
+  $('mi-drop').addEventListener(t, function(e) { e.preventDefault(); $('mi-drop').classList.add('over'); });
+});
+['dragleave', 'drop'].forEach(function(t) {
+  $('mi-drop').addEventListener(t, function() { $('mi-drop').classList.remove('over'); });
+});
+$('mi-drop').addEventListener('drop', function(e) {
+  e.preventDefault();
+  addPictureFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+});
+// A picture pasted anywhere but a text box, while My images is open, is added as a file would be.
+document.addEventListener('paste', function(e) {
+  if (!gEditor.look || pickerSource() !== SOURCE_MINE || /^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) return;
+  var item = Array.prototype.find.call((e.clipboardData && e.clipboardData.items) || [], function(i) { return i.kind === 'file' && /^image\//.test(i.type); });
+  if (!item) return;
+  e.preventDefault();
+  addPictureFile(item.getAsFile());
+});
+$('mi-use-svg').addEventListener('click', function() {
+  var text = $('mi-svg').value.trim();
+  if (!text) { mineMessage('Paste SVG markup first.', true); return; }
+  try { addNewPicture(pictureFromSvg(text, 'Pasted SVG')); }
+  catch (e) { mineMessage(e.message, true); }
+});
+// The controller fetches the address, so one on the home network works; the picture comes back in pieces.
+function fetchPicture() {
+  var url = $('mi-url').value.trim();
+  if (!/^https?:\/\/\S+$/i.test(url)) { mineMessage('Enter an http or https address.', true); return; }
+  if (!gApiHost) { mineMessage('Opened outside Composer, there is no controller to fetch the address.', true); return; }
+  // A letter first: an id of digits alone reaches the page as a number.
+  var request = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  gFetch = { request: request, url: url, look: gEditor.look };
+  mineMessage('Fetching…');
+  $('mi-fetch').disabled = true;
+  sendCommand('_FETCH_PICTURE', { request: request, url: url });
+  setTimeout(function() {
+    if (gFetch && gFetch.request === request) { gFetch = null; $('mi-fetch').disabled = false; mineMessage('The controller didn’t answer in time.', true); }
+  }, 45000);
+}
+async function onFetched(params) {
+  if (!gFetch || String(params.request) !== gFetch.request) return;
+  // An answer for an editor that closed, or moved to another look, is dropped.
+  if (!gEditor.look || gEditor.look !== gFetch.look) { delete gPieces['fetch ' + gFetch.request]; gFetch = null; $('mi-fetch').disabled = false; return; }
+  var url = gFetch.url, look = gFetch.look;
+  if (params.error) { gFetch = null; $('mi-fetch').disabled = false; mineMessage(params.error, true); return; }
+  var b64 = joinPieces('fetch ' + params.request, params);
+  if (b64 == null) return;
+  gFetch = null;
+  $('mi-fetch').disabled = false;
+  try {
+    var bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    var p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));
+    if (gEditor.look === look) addNewPicture(p);
+  } catch (e) { mineMessage(e.message, true); }
+}
+$('mi-fetch').addEventListener('click', fetchPicture);
+$('mi-url').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); fetchPicture(); } });
+
+// Save Look keeps a new picture on the controller first, so the look can name it by its id.
+// A kept picture the driver has since deleted is sent again from the page's copy, under a new id.
+async function keepPicture(icon) {
+  var src = gSources[icon.id];
+  var rec = pictureRecord(icon.id) || (src && { id: icon.id, kind: src.kind, width: icon.width, height: icon.height, name: src.name || icon.label || 'Picture' });
+  if (!rec || !src || !src.b64) { setStatus('This button no longer has that picture. Pick another.', true); return null; }
+  if (!gApiHost) {
+    var n = (gState.pictures || []).reduce(function(m, p) { return Math.max(m, Number(String(p.id).split(':p')[1]) || 0); }, 0) + 1;
+    var kept = Object.assign({}, rec, { id: 'mine:p' + n });
+    gState.pictures = (gState.pictures || []).concat([kept]);
+    gSources[kept.id] = src;
+    gNewPictures = gNewPictures.filter(function(p) { return p.id !== rec.id; });
+    return kept.id;
+  }
+  var size = gState.maxChunk || 12288, count = Math.ceil(src.b64.length / size);
+  var token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8), stored = null;
+  gUpload = { failed: null };
+  for (var i = 0; i < count; i++) {
+    setStatus('Sending your picture (' + (i + 1) + ' of ' + count + ')…');
+    if (i === count - 1) stored = waitFor('PICTURE_STORED', 20000);
+    var res = await sendCommand('_PUT_PICTURE', { upload: token, index: i + 1, count: count, data: src.b64.slice(i * size, (i + 1) * size),
+      width: rec.width, height: rec.height, name: rec.name });
+    if (gUpload.failed) { setStatus('Your picture was not kept: ' + gUpload.failed, true); return null; }
+    if (res === null) { setStatus('The controller did not take your picture.', true); return null; }
+  }
+  var done = await stored;
+  if (!done || done.error || !done.picture) { setStatus('Your picture was not kept' + (done && done.error ? ': ' + done.error : '.'), true); return null; }
+  gSources[done.picture] = src;
+  gNewPictures = gNewPictures.filter(function(p) { return p.id !== rec.id; });
+  return String(done.picture);
+}
 
 // ============================================================
 // The look editor
@@ -1969,7 +2471,7 @@ function preview() {
   // Only the rows the picked picture can use are shown.
   var tiled = l.tileShape && l.tileShape !== 'None';
   $('fld-shape').hidden = whole;
-  $('fld-icon-color').hidden = whole;
+  $('fld-icon-color').hidden = whole || (isPicture(l.icon) && !pictureOneColor(l.icon));
   $('fld-tile-color').hidden = whole || !tiled;
   $('fld-glow').hidden = !hasGlow(l.icon) || !!l.grayscale;
   var keys = customKeysFor(l.icon), badgeOn = !!String(badgeOf(l).text || '').trim();
@@ -1979,13 +2481,13 @@ function preview() {
   $('fld-c-glowcolor').hidden = keys.indexOf('glowColor') < 0 || !!l.grayscale;
   $('c-glow-note').hidden = !pictureKind(l.icon).glowFollows;
   ['fld-c-badge-size', 'fld-c-place', 'fld-c-textcolor', 'fld-c-bg'].forEach(function(id) { $(id).hidden = !badgeOn; });
-  $('c-reset').textContent = whole ? 'Reset to the pack\u2019s look' : 'Reset to the icon\u2019s look';
+  $('c-reset').textContent = whole ? 'Reset to the pack\u2019s look' : (isPicture(l.icon) ? 'Reset' : 'Reset to the icon\u2019s look');
   $('f-glow-v').textContent = $('f-glow').value + '%';
   $('f-icon-color-v').textContent = l.iconColor;
   $('f-tile-color-v').textContent = l.tileColor;
-  $('picked').innerHTML = gEditor.icon
-    ? 'Icon: <b>' + esc(gEditor.icon.id) + '</b> <span class="lic">(' + esc(gEditor.icon.license || 'license unknown') + ')</span>'
-    : 'No icon picked.';
+  $('picked').innerHTML = !gEditor.icon ? 'No icon picked.'
+    : isPicture(gEditor.icon) ? 'Your picture: <b>' + esc(iconName(gEditor.icon)) + '</b>'
+    : 'Icon: <b>' + esc(gEditor.icon.id) + '</b> <span class="lic">(' + esc(gEditor.icon.license || 'license unknown') + ')</span>';
   // Drawn as it will be saved: only what the picture can use, and nothing for its own look.
   var drawn = Object.assign({}, l, { custom: cleanCustom(l.icon, l.custom) });
   navTile($('edit-tile'), drawn, 300);
@@ -2016,6 +2518,10 @@ function openEditor(look, title) {
   gEditor.look.custom = gEditor.look.custom || {};
   gEditor.icon = gEditor.look.icon;
   gEditor.shapeBefore = null;
+  // A picture added and not saved goes with the editor; a look with one of the button's own opens on them.
+  gNewPictures = [];
+  mineMessage('');
+  if (isPicture(gEditor.look.icon)) $('pk-src').value = SOURCE_MINE;
   $('editor-title').textContent = title || (look ? 'Edit ' + look.name : 'New look');
   $('f-name').value = gEditor.look.name;
   $('f-icon-color').value = gEditor.look.iconColor.toLowerCase();
@@ -2055,7 +2561,8 @@ function checkLook(l) {
   var clash = gState.looks.find(function(o) { return o.id !== l.id && o.name.toLowerCase() === name.toLowerCase(); });
   if (clash) return 'Another look is already named ' + clash.name + '.';
   if (!l.icon) return 'Pick an icon.';
-  if (l.icon.missing) return 'This driver no longer has the icon ' + l.icon.id + '. Pick another.';
+  if (l.icon.missing) return isPicture(l.icon) ? 'This button no longer has that picture. Pick another.' : 'This driver no longer has the icon ' + l.icon.id + '. Pick another.';
+  if (isPicture(l.icon) && !l.icon.body) return 'Your picture is still loading. Try again in a moment.';
   var badge = String((l.custom && l.custom.badge && l.custom.badge.text) || '').trim();
   if (!isLiveText(badge) && Array.from(badge).length > BADGE_MAX) return 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.';
   return null;
@@ -2079,6 +2586,13 @@ async function saveLook() {
       var dataUrl = await lookDataUrl(Object.assign({}, drawn, { badgeNow: null }), 300);
       b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
       if (b64.length * 3 / 4 > gState.maxBytes) { setStatus('The picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB.', true); return; }
+    }
+    var keptHere = l.icon && l.icon.stored && (gState.pictures || []).some(function(p) { return p.id === l.icon.id; });
+    if (l.icon && isPicture(l.icon) && !keptHere) {
+      setStatus('Sending your picture…');
+      var keptId = await keepPicture(l.icon);
+      if (!keptId) return;
+      l.icon = Object.assign({}, l.icon, { id: keptId, stored: true });
     }
     var icon = l.icon && savedIcon(l.icon);
     var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
@@ -2604,7 +3118,7 @@ function pictureColors() {
   if (!l) return [];
   // Only what the picture shows: a pack picture has no icon or tile color, an empty badge no colors.
   var found = [], pack = l.icon && packOf(l.icon), b = (l.custom || {}).badge || {};
-  if (!pack) found.push(l.iconColor);
+  if (!pack && !(isPicture(l.icon) && !pictureOneColor(l.icon))) found.push(l.iconColor);
   if (!pack && l.tileShape && l.tileShape !== 'None') found.push(l.tileColor);
   if (l.icon) {
     var c = shownColors(l);
