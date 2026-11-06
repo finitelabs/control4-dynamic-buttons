@@ -195,14 +195,19 @@ T.eq("and nothing fires", H.fired, {})
 setLookControl("On Select")
 
 T.section("A look whose picture can't be served")
-H.unopenable["C4Z/www/buttons/" .. H.DEVICE_ID .. "/" .. lookId("Lime") .. ".png"] = true
+local function cantServe(name)
+  local file = lookId(name) .. ".png"
+  ShimFiles("C4Z/www/buttons/" .. H.DEVICE_ID)[file] = nil
+  H.unopenable["C4Z/www/buttons/" .. H.DEVICE_ID .. "/" .. file] = true
+end
+cantServe("Lime")
 H.mark()
 H.press()
 T.eq("a press passes over it to the next look", shown(), "Off")
 T.truthy("and the tab hears the whole state, since the look passed over may have changed", H.lastUi("STATE"))
 EC.Show_Look({ Look = "Blue (" .. blue .. ")" })
 for _, name in ipairs({ "Red", "Off" }) do
-  H.unopenable["C4Z/www/buttons/" .. H.DEVICE_ID .. "/" .. lookId(name) .. ".png"] = true
+  cantServe(name)
 end
 H.mark()
 EC.Previous_Look()

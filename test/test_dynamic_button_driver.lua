@@ -12,6 +12,7 @@ local T = require("testlib")
 local H = require("dynamic_button_harness")
 
 local ADDRESS = "controller://driver/dynamic_button/buttons/" .. H.DEVICE_ID .. "/"
+local OWN_ICON = "controller://driver/dynamic_button/icons/experience_300.png"
 
 --- @return function|nil test The Look Is conditional's test, as programming calls it.
 --- @return string|nil items Its list.
@@ -29,8 +30,8 @@ end
 
 T.section("A fresh button")
 H.start()
-T.eq("shows the driver's own icon", H.lastIcon().params, { icon = "", icon_description = "" })
-T.eq("sent with empty values allowed, as the empty icon needs", H.lastIcon().allowEmpty, true)
+T.eq("shows the driver's own icon", H.lastIcon().params, { icon = OWN_ICON, icon_description = "" })
+T.eq("sent with empty values allowed, as the empty description needs", H.lastIcon().allowEmpty, true)
 T.eq("as a notification, which is how the proxy takes it", H.lastIcon().message, "NOTIFY")
 T.eq("to the UI Button proxy", H.lastIcon().binding, 5001)
 T.eq("the Look variable is empty", Variables["Look"], "")
@@ -116,9 +117,9 @@ T.eq("the command lists the looks by name and id", GCPL.Show_Look("Look"), { "Ch
 T.eq("and nothing for another parameter", GCPL.Show_Look("Other"), {})
 H.mark()
 EC.Show_Look({ Look = "Low (3)" })
-T.eq("the proxy is told the new look, under version 2", H.lastIcon().params.icon, ADDRESS .. "3.png?v=2")
+T.eq("the proxy is told the new look, under its picture's version", H.lastIcon().params.icon, ADDRESS .. "3.png?v=4")
 T.eq("the new look is served", H.served()["3.png"], H.png("Low"))
-T.eq("and the old one no longer is", H.served()["1.png"], nil)
+T.eq("and the old one stays, for coming back to", H.served()["1.png"], H.png("Charged"))
 T.eq("Look Changed fires, then the look's own event", H.fired, { "Look Changed", "Low Shown" })
 T.eq("the Look variable follows", Variables["Look"], "Low")
 H.mark()
@@ -139,7 +140,7 @@ T.section("Renaming the shown look")
 H.mark()
 H.tab("_SAVE_LOOK", H.lookFields("Empty", { id = low }))
 T.eq("the proxy is told the new name, at the same address", H.lastIcon().params, {
-  icon = ADDRESS .. "3.png?v=2",
+  icon = ADDRESS .. "3.png?v=4",
   icon_description = "Empty",
 })
 T.eq("the Look variable follows", Variables["Look"], "Empty")
@@ -244,7 +245,7 @@ T.truthy("while NOT_EQUAL is true", test("", { VALUE = "Empty (3)", LOGIC = "NOT
 T.section("Deleting the last look")
 H.mark()
 H.tab("_DELETE_LOOK", { id = charged })
-T.eq("the driver's own icon shows", H.lastIcon().params, { icon = "", icon_description = "" })
+T.eq("the driver's own icon shows", H.lastIcon().params, { icon = OWN_ICON, icon_description = "" })
 T.eq("the Look variable is empty", Variables["Look"], "")
 T.eq("Look Changed fires", H.fired, { "Look Changed" })
 T.eq("nothing is served", next(H.served()), nil)
@@ -289,7 +290,7 @@ local second = H.addLook("Second")
 H.stored()["look-" .. second .. ".png"] = nil
 H.mark()
 H.tab("_DELETE_LOOK", { id = first })
-T.eq("the driver's own icon shows", H.lastIcon().params, { icon = "", icon_description = "" })
+T.eq("the driver's own icon shows", H.lastIcon().params, { icon = OWN_ICON, icon_description = "" })
 T.eq("the Look variable is empty", Variables["Look"], "")
 T.falsy("and the look left is marked as having no picture", H.state().looks[1].hasImage)
 H.tab("_DELETE_LOOK", { id = second })
@@ -391,7 +392,7 @@ T.eq("Yes deletes every look", #H.state().looks, 0)
 T.eq("and sends the tab the state once, for all the settings it resets", statePushes(), 1)
 T.eq("and their stored pictures", next(H.stored()), nil)
 T.eq("and served ones", next(H.served()), nil)
-T.eq("the driver's own icon shows", H.lastIcon().params, { icon = "", icon_description = "" })
+T.eq("the driver's own icon shows", H.lastIcon().params, { icon = OWN_ICON, icon_description = "" })
 T.eq("the Look variable is back, empty", Variables["Look"], "")
 T.eq("no Look Changed fires, as on a fresh install", #H.fired, 0)
 T.eq("Look Is is gone", select(2, lookIs()), nil)

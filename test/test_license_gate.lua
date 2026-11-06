@@ -3,6 +3,7 @@
 --- nothing changes its look; a license back shows the look again at once.
 
 local T = require("testlib")
+local OWN_ICON = "controller://driver/dynamic_button/icons/experience_300.png"
 local H = require("dynamic_button_harness")
 local cloud = require("dc_cloud")
 
@@ -43,7 +44,7 @@ local function tick(n)
   end
 end
 
---- @return string|nil icon The address the proxy was last told; "" is the driver's own icon.
+--- @return string|nil icon The address the proxy was last told.
 local function lastIcon()
   local sent = H.lastIcon()
   return sent and sent.params.icon
@@ -96,7 +97,7 @@ T.eq("29 reads of 0: running", gate:licensed(), true)
 T.eq("and still showing the look", lastIcon(), shown)
 tick()
 T.eq("the 30th read of 0 stops it", gate:licensed(), false)
-T.eq("the button shows the driver's own icon", lastIcon(), "")
+T.eq("the button shows the driver's own icon", lastIcon(), OWN_ICON)
 T.eq("Driver Status says why", Properties["Driver Status"], UNLICENSED)
 T.eq("the looks are kept", #H.state().looks, 2)
 
@@ -147,7 +148,7 @@ tick(29)
 T.eq("29 reads after the expiry: running", gate:licensed(), true)
 tick()
 T.eq("the 30th stops it", gate:licensed(), false)
-T.eq("the button shows the driver's own icon", lastIcon(), "")
+T.eq("the button shows the driver's own icon", lastIcon(), OWN_ICON)
 
 T.section("A Cloud driver update rides through")
 load(LICENSED)
@@ -174,7 +175,7 @@ for i = 1, 60 do
   stopAt = stopAt or (not gate:licensed() and i or nil)
 end
 T.eq("stopped 30 reads after the client's sixth unanswered ping", stopAt, 35)
-T.eq("the button shows the driver's own icon", lastIcon(), "")
+T.eq("the button shows the driver's own icon", lastIcon(), OWN_ICON)
 cloud.silent = false
 tick()
 T.eq("the first answer starts it", gate:licensed(), true)
@@ -185,7 +186,7 @@ load(LICENSED, 0)
 T.eq("the client is not loaded", package.loaded["cloud-client-byte"], nil)
 T.eq("Cloud Status", Properties["Cloud Status"], "No DriverCentral product")
 T.eq("stopped at once", gate:licensed(), false)
-T.eq("the button shows the driver's own icon", lastIcon(), "")
+T.eq("the button shows the driver's own icon", lastIcon(), OWN_ICON)
 T.eq("Driver Status", Properties["Driver Status"], UNLICENSED)
 
 if gate and gate._timer then

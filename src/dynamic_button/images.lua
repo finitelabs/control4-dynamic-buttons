@@ -1,8 +1,9 @@
 -- The looks' pictures: received from the Button tab in base64 chunks, kept in the button's own
 -- storage, and copied into the driver's web folder where Navigator loads the one shown.
 --
--- Navigator keeps a picture for each address until Navigators refresh, so every change is
--- served under a new `?v=` number, never by rewriting a file Navigator has already loaded.
+-- Navigator keeps a picture for each address until Navigators refresh, so a new picture is served
+-- under a new `?v=` number, and a look keeps its address until then: while a tile waits for a
+-- picture it doesn't have, it shows the proxy's own icon.
 
 local log = require("lib.logging")
 
@@ -258,6 +259,14 @@ end
 function Images.address(driverName, deviceId, lookId, version, key)
   local address = string.format("controller://driver/%s/buttons/%d/%d.png?v=%d", driverName, deviceId, lookId, version)
   return key and (address .. "-" .. key) or address
+end
+
+--- The address of the driver's own icon, for a button with no look. The proxy's own icon is
+--- transparent, since a tile shows it while it waits for a picture.
+--- @param driverName string The driver's file name without `.c4z`.
+--- @return string address
+function Images.ownIcon(driverName)
+  return string.format("controller://driver/%s/icons/experience_300.png", driverName)
 end
 
 return Images

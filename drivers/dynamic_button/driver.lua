@@ -95,8 +95,8 @@ end
 --- @param icon string
 --- @param description string The text list Navigators show in place of the picture.
 local function sendIcon(icon, description)
-  -- A notification: the proxy ignores ICON_CHANGED sent as a command. Empty values allowed: an
-  -- empty icon is the proxy's own icon.
+  -- A notification: the proxy ignores ICON_CHANGED sent as a command. Empty values allowed: a
+  -- button with no look has no description.
   SendToProxy(PROXY_BINDING, "ICON_CHANGED", { icon = icon, icon_description = description }, "NOTIFY", true)
 end
 
@@ -402,7 +402,7 @@ local function onLicense(licensed)
   if not licensed then
     log:warn("No active license: the button shows the driver's own icon until there is one")
     badges:watch(nil)
-    sendIcon("", "")
+    sendIcon(Images.ownIcon(driverName()), "")
     UpdateProperty("Driver Status", drivercentral.UNLICENSED_STATUS)
     pushState()
     return
@@ -410,7 +410,6 @@ local function onLicense(licensed)
   log:info("Licensed again: the button shows its look")
   local shown = button:shown()
   if shown then
-    -- A new address, since the app may still hold the driver's icon for the old one.
     local ok, err = button:show(shown.id, true)
     if not ok then
       log:warn("Could not show look %s: %s", shown.name, err)

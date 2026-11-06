@@ -39,15 +39,40 @@ function Button:shown()
   return self.looks:get(self.store:get(SHOWN_PERSIST_KEY))
 end
 
---- @return integer version The address version the shown look is served under.
-function Button:version()
-  return tonumber(self.store:get(VERSION_PERSIST_KEY)) or 0
+--- @private
+--- @return integer version A number no picture has been served under.
+function Button:_nextVersion()
+  local version = (tonumber(self.store:get(VERSION_PERSIST_KEY)) or 0) + 1
+  self.store:set(VERSION_PERSIST_KEY, version)
+  return version
+end
+
+--- Put a look's picture where Navigator loads it. A look without a live badge keeps its file from
+--- one showing to the next.
+--- @private
+--- @param look Look
+--- @param picture string
+--- @param key string|nil Names a live badge's text.
+--- @return boolean ok
+function Button:_serve(look, picture, key)
+  if not key and self.images:served(self.deviceId, look.id) then
+    return true
+  end
+  return self.images:serve(self.deviceId, look.id, picture)
+end
+
+--- @private
+--- @param look Look Its stored picture is gone.
+function Button:_lostPicture(look)
+  self.looks:setImage(look.id, nil)
+  self.images:unserve(self.deviceId, look.id)
 end
 
 --- @private
 --- @param look Look
 function Button:_tell(look)
-  self.sendIcon(Images.address(self.driverName, self.deviceId, look.id, self:version(), self._badgeKey), look.name)
+  local version = look.image and look.image.version or 0
+  self.sendIcon(Images.address(self.driverName, self.deviceId, look.id, version, self._badgeKey), look.name)
 end
 
 --- @private
@@ -55,16 +80,15 @@ function Button:_showDefault()
   self.store:set(SHOWN_PERSIST_KEY, nil)
   self._badgeKey = nil
   self.badges:watch(nil)
-  self.sendIcon("", "")
+  self.sendIcon(Images.ownIcon(self.driverName), "")
 end
 
---- Show a look, under a new address so Navigator loads its picture again. A look already shown
---- is left as it is, unless its picture changed.
+--- Show a look. A look already shown is left as it is, unless asked to show it again.
 --- @param id integer|string
---- @param changed? boolean The look's picture is new (optional).
+--- @param again? boolean Serve it and tell the proxy even if it's shown (optional).
 --- @return boolean ok
 --- @return string|nil err Why it was not shown.
-function Button:show(id, changed)
+function Button:show(id, again)
   local look = self.looks:get(id)
   if not look then
     return false, "no such look"
@@ -73,22 +97,18 @@ function Button:show(id, changed)
     return false, "the look's picture has not arrived"
   end
   local previous = tonumber(self.store:get(SHOWN_PERSIST_KEY))
-  if previous == look.id and not changed then
+  if previous == look.id and not again then
     return true
   end
   local png = self.images:load(look.id)
   if not png then
-    self.looks:setImage(look.id, nil)
+    self:_lostPicture(look)
     return false, "the look's picture is missing"
   end
   local picture, key = self.badges:picture(look, png)
-  if not self.images:serve(self.deviceId, look.id, picture) then
+  if not self:_serve(look, picture, key) then
     return false, "the look's picture could not be served"
   end
-  if previous and previous ~= look.id then
-    self.images:unserve(self.deviceId, previous)
-  end
-  self.store:set(VERSION_PERSIST_KEY, self:version() + 1)
   self.store:set(SHOWN_PERSIST_KEY, look.id)
   self._badgeKey = key
   self:_tell(look)
@@ -96,7 +116,7 @@ function Button:show(id, changed)
   return true
 end
 
---- Draw the shown look's live badge again and serve it, under the same version.
+--- Draw the shown look's live badge again and serve it.
 function Button:redrawBadge()
   local look = self:shown()
   local png = look and self.images:load(look.id)
@@ -171,7 +191,8 @@ function Button:imageArrived(id, png)
   if not self.images:save(look.id, png) then
     return false, false
   end
-  self.looks:setImage(look.id, #png)
+  self.looks:setImage(look.id, #png, self:_nextVersion())
+  self.images:unserve(self.deviceId, look.id)
   local shown = self:shown()
   if shown == nil or shown.id == look.id then
     local ok, err = self:show(look.id, true)
@@ -220,13 +241,8 @@ function Button:restore()
       break
     end
     log:warn("Look %s has no stored picture", look.name)
-    self.looks:setImage(look.id, nil)
+    self:_lostPicture(look)
     look = self:_fallback()
-  end
-  for _, other in ipairs(self.looks:list()) do
-    if not look or other.id ~= look.id then
-      self.images:unserve(self.deviceId, other.id)
-    end
   end
   if look and self.badges:holding(look) and self.images:served(self.deviceId, look.id) then
     -- The picture from before stays until the variable comes.
@@ -240,7 +256,7 @@ function Button:restore()
   if look then
     picture, key = self.badges:picture(look, png)
   end
-  if not look or not self.images:serve(self.deviceId, look.id, picture) then
+  if not look or not self:_serve(look, picture, key) then
     self:_showDefault()
     return
   end
