@@ -135,7 +135,7 @@
           <item>By Value</item>
         </items>
         <default>Manual</default>
-        <description>Next look on each press, only from programming, or each look's Show when.</description>
+        <description>Next look on each press, only from programming, or each look's &quot;Show when&quot;.</description>
       </property>
       <property>
         <name>Shown Look</name>

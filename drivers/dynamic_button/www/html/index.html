@@ -277,7 +277,7 @@
             <div class="help" id="when-help">
               <section>
                 <h4>True or false</h4>
-                <p>A Show when has to come out <code>true</code> or <code>false</code>, so it usually ends in a comparison. A variable that already holds true or false can stand alone.</p>
+                <p>A "Show when" has to come out <code>true</code> or <code>false</code>, so it usually ends in a comparison. A variable that already holds true or false can stand alone.</p>
               </section>
               <section>
                 <h4>Variables</h4>
@@ -330,7 +330,7 @@
           </div>
           <div class="frow" id="fld-default" hidden>
             <label for="f-default">Default look</label>
-            <div class="fctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> Show this look when no Show when is true</label></div>
+            <div class="fctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> Show this look when no "Show when" is true</label></div>
           </div>
         </div>
         <div class="lookform picker" id="pick-form">
@@ -1156,7 +1156,7 @@ function shownLook() {
 var CONTROL_NOTES = {
   'On Select': 'Each press shows the next look in the cycle.',
   'Manual': 'A press leaves the look as it is: programming changes it.',
-  'By Value': 'The first look whose Show when is true shows.'
+  'By Value': 'The first look whose "Show when" is true shows.'
 };
 function renderControl() {
   var mode = CONTROL_NOTES[gState.lookControl] ? gState.lookControl : 'Manual';
@@ -1242,7 +1242,7 @@ async function renderList() {
     var badges = (id === gState.shown ? ' <span class="pill online">Shown</span>' : '') +
       (!l.hasImage ? ' <span class="pill pending">No picture yet</span>' : (l.stale ? ' ' + STALE_PILL : '')) +
       (l.inCycle === false ? ' <span class="pill info" title="Presses, Next Look and Previous Look pass over this look.">Not in cycle</span>' : '') +
-      (byValue() && id === gState.defaultLook ? ' <span class="pill info" title="Shows when no Show when is true.">Default</span>' : '') +
+      (byValue() && id === gState.defaultLook ? ' <span class="pill info" title="Shows when no &quot;Show when&quot; is true.">Default</span>' : '') +
       (byValue() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the values call for a different look.">Matched</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
@@ -2179,7 +2179,7 @@ function friendlyRuntime(body) {
 // template and rendered give a device's name to a reason that only has its id.
 function friendlyError(raw, template, rendered) {
   var text = String(raw == null ? '' : raw), m;
-  if (/^result is not a boolean/.test(text)) return 'Show when has to come out true or false: add a comparison.';
+  if (/^result is not a boolean/.test(text)) return '"Show when" has to come out true or false: add a comparison.';
   m = /^variable ([\s\S]+) not found on device ([\s\S]+)$/.exec(text);
   if (m) {
     return (refLabel(m[2], template, rendered) || 'Device ' + m[2]) + ' has no variable ' + (/^\d+$/.test(m[1]) ? '' : 'named ') + m[1] + '.';
@@ -2196,7 +2196,7 @@ function friendlyError(raw, template, rendered) {
 function whenLines(l) {
   if (!byValue()) return '';
   var text = l.showWhen ? l.showWhenText || l.showWhen : '';
-  return '<div class="sub" title="' + esc(text) + '">' + (text ? 'Show when ' + esc(text) : 'No Show when') + '</div>' +
+  return '<div class="sub" title="' + esc(text) + '">' + (text ? 'Show when ' + esc(text) : 'No "Show when"') + '</div>' +
     (l.whenError ? '<div class="sub bad" title="' + esc(l.whenError) + '">' + esc(friendlyError(l.whenError, l.showWhen, l.showWhenText)) + '</div>' : '');
 }
 

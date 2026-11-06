@@ -342,11 +342,11 @@ function Looks:_check(fields, exceptId)
     return nil, customErr
   end
   if fields.showWhen ~= nil and type(fields.showWhen) ~= "string" then
-    return nil, "Show when is text"
+    return nil, '"Show when" is text'
   end
   local showWhen = fields.showWhen and fields.showWhen:match("^%s*(.-)%s*$") or ""
   if #showWhen > Looks.MAX_SHOW_WHEN then
-    return nil, string.format("Show when can be at most %d characters", Looks.MAX_SHOW_WHEN)
+    return nil, string.format('"Show when" can be at most %d characters', Looks.MAX_SHOW_WHEN)
   end
   return {
     name = name,

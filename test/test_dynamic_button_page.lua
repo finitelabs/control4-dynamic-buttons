@@ -126,7 +126,7 @@ for _, case in ipairs({
   {
     "PARAM{100,1001}",
     "result is not a boolean (got number)",
-    "Show when has to come out true or false: add a comparison.",
+    '"Show when" has to come out true or false: add a comparison.',
   },
   { "PARAM{100,NOPE} > 5", "variable NOPE not found on device 100", " has no variable " },
   { "PARAM{200,1} > 5", "device 200 not found", "There's no device " },
@@ -189,5 +189,10 @@ T.truthy(
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
+
+T.section("A sentence names the field in quotes")
+T.truthy("under Look Control", has([['The first look whose "Show when" is true shows.']]))
+T.truthy("beside Default look", has([[Show this look when no "Show when" is true]]))
+T.truthy("in the Default tag's tip", has("Shows when no &quot;Show when&quot; is true."))
 
 T.finish()
