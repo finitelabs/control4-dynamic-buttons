@@ -3094,8 +3094,6 @@ async function giveLook(link, item, names, given, replace) {
       var kept = every
         ? await linkCall(link, '_ADD_WEB_PICTURE', { request: 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), url: pic.url, every: every }, 'PICTURE_STORED', 60000)
         : await linkChunks(link, '_PUT_PICTURE', pic.b64, { width: pic.width, height: pic.height, name: pic.name }, 'PICTURE_STORED');
-      // Only the driver's mark of a fetch that brought nothing skips the look; a license, a full button or a
-      // refused picture stops this button with its own reason.
       if (kept.error || !kept.picture) return { error: kept.error || 'its picture wasn’t kept', unfetched: !!every && String(kept.unfetched) === 'true' };
       given[pic.key] = String(kept.picture);
     }
