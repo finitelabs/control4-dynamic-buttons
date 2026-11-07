@@ -29,6 +29,7 @@ local function setDevices()
       deviceName = "This Button",
       roomName = "Garage",
       variables = { ["1"] = { name = "Look", value = "", type = "STRING" } },
+      proxies = { [tostring(H.DEVICE_ID + 1)] = true },
     },
   }
   if meterHasVariable then
@@ -326,7 +327,17 @@ H.tab("_DELETE_LOOK", { id = freshId })
 T.eq("deleting a matched look shows the next match", shown(), "Mid")
 
 T.section("An expression with an error isn't true")
+H.ui = {}
 saveLook(high, "High", "PARAM{100,1001} >=")
+T.truthy(
+  "one that doesn't read as an expression isn't kept",
+  (H.lastUi("ERROR") or {}).message
+    == '"Show when": compile error: [string "return __p >="]:1: unexpected symbol near \'<eof>\''
+)
+for i = #logged, 1, -1 do
+  logged[i] = nil
+end
+saveLook(high, "High", "PARAM{100,1001} >= nil")
 T.truthy("the state reports it", stateLook(high).whenError)
 T.eq("the next true look shows", shown(), "Mid")
 setLevel("60")
@@ -418,6 +429,19 @@ for _, device in ipairs(devices) do
 end
 T.truthy("offers other devices", offered[BATTERY])
 T.falsy("but not this button, whose own variable sends it no change", offered[H.DEVICE_ID])
+local someVariable = { ["1"] = { name = "POWER", value = "1", type = "NUMBER" } }
+ShimSetDevices({
+  [301] = { deviceName = "TV", roomName = "den", variables = someVariable },
+  [302] = { deviceName = "Thermostat", roomName = "Den", variables = someVariable },
+  [303] = { deviceName = "amp", roomName = "Den", variables = someVariable },
+})
+H.tab("_GET_DEVICES")
+local sorted = {}
+for _, device in ipairs(JSON:decode(H.lastUi("DEVICES_DATA").devices)) do
+  table.insert(sorted, device.name)
+end
+T.eq("rooms and names sort whatever their case", sorted, { "amp", "Thermostat", "TV" })
+setDevices()
 state = string.rep("v", 500)
 setDevices()
 H.tab("_GET_DEVICE_VARIABLES", { deviceId = BATTERY })
@@ -456,6 +480,23 @@ H.tab("_EVAL_EXPRESSION", { id = "8", expression = "PARAM{100,NOPE} > 1" })
 preview = H.lastUi("EVAL_RESULT")
 T.eq("no result for a missing variable", preview.result, "")
 T.truthy("but the reason", preview.error:find("NOPE", 1, true))
+T.eq("which doesn't hold Save: the variable may come", preview.hold, nil)
+local OWN = "A look can't follow this button's own variables."
+H.tab("_EVAL_EXPRESSION", { id = "10", expression = "PARAM{" .. H.DEVICE_ID .. ",1} == 'x'" })
+preview = H.lastUi("EVAL_RESULT")
+T.eq("this button's own variable holds Save, in a plain sentence", { preview.error, preview.hold }, { OWN, "yes" })
+H.tab("_EVAL_EXPRESSION", { id = "11", expression = "PARAM{" .. (H.DEVICE_ID + 1) .. ",1} == 1" })
+T.eq("and its proxy's", H.lastUi("EVAL_RESULT").error, OWN)
+H.tab("_EVAL_EXPRESSION", { id = "b12", expression = "PARAM{" .. H.DEVICE_ID .. ",1}", mode = "string" })
+T.eq("a live badge's text too", { H.lastUi("EVAL_RESULT").error, H.lastUi("EVAL_RESULT").hold }, { OWN, "yes" })
+H.tab("_EVAL_EXPRESSION", { id = "13", expression = LEVEL .. " >=" })
+preview = H.lastUi("EVAL_RESULT")
+T.eq("one that doesn't read as an expression holds Save", preview.hold, "yes")
+T.truthy("as the engine words it", preview.error:find("^compile error: "))
+T.eq("still in names", preview.rendered, "[Garage > Battery > LEVEL] >=")
+H.ui = {}
+saveLook(high, "High", "PARAM{" .. H.DEVICE_ID .. ",1} == 'x'")
+T.eq("and a save of it is refused", (H.lastUi("ERROR") or {}).message, OWN)
 H.tab("_EVAL_EXPRESSION", { id = "9", expression = "true" .. string.rep(" ", MAX_SHOW_WHEN) .. "and false" })
 T.eq("it reads only what a look can keep", H.lastUi("EVAL_RESULT").result, "true")
 local showBefore = shown()
@@ -499,7 +540,7 @@ T.eq("the look waits again", shown(), "Low")
 settle()
 T.eq("when the wait runs out, a missing variable is just not true", shown(), "Mid")
 
-local broken = addLook("Broken", LEVEL .. " >=")
+local broken = addLook("Broken", LEVEL .. " >= nil")
 H.tab("_ORDER_LOOKS", { ids = { high, broken, low, mid } })
 setLevel("20")
 T.eq("before: Low", shown(), "Low")

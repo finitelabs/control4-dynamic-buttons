@@ -114,8 +114,10 @@ local LOOKS_PERSIST_KEY = "Looks"
 --- (optional). Without it, a look can't use one.
 --- @param refreshes? fun(id: string): boolean Whether that picture refreshes from a web address
 --- (optional). Without it, none does.
+--- @param ownIds? fun(): integer[] This button's own ids, its device's and its proxy's (optional).
+--- A look can't read their variables: Director doesn't tell a driver when its own change.
 --- @return Looks looks
-function Looks:new(store, hasPicture, refreshes)
+function Looks:new(store, hasPicture, refreshes, ownIds)
   local instance = setmetatable({}, self)
   instance._store = store
   instance._hasPicture = hasPicture or function()
@@ -123,6 +125,9 @@ function Looks:new(store, hasPicture, refreshes)
   end
   instance._refreshes = refreshes or function()
     return false
+  end
+  instance._ownIds = ownIds or function()
+    return {}
   end
   return instance
 end
@@ -215,6 +220,34 @@ end
 --- @return boolean live The badge's text holds a variable.
 function Looks.isLiveText(text)
   return text:find("PARAM%s*{[^,}]*,[^}]*}") ~= nil
+end
+
+--- Why a look can't read these variables, as the Button tab shows it.
+Looks.OWN_VARIABLES = "A look can't follow this button's own variables."
+
+--- @param text string A Show when or a badge's text.
+--- @param own integer[] Ids whose variables the text mustn't read.
+--- @return boolean reads Whether a variable in the text belongs to one of them.
+function Looks.readsOwn(text, own)
+  for device in text:gmatch("PARAM%s*{%s*([^,}]-)%s*,") do
+    local id = tonumber(device)
+    for _, ownId in ipairs(own) do
+      if id ~= nil and id == tonumber(ownId) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+--- Whether a Show when reads as an expression. Its variables stand in as names, so their values,
+--- which change, play no part.
+--- @param text string
+--- @return string|nil err The compiler's message, as the expressions engine words it.
+function Looks.compileError(text)
+  local source = text:gsub("PARAM%s*{%s*.-%s*,%s*.-%s*}", "__p")
+  local _, err = (loadstring or load)("return " .. source)
+  return err and ("compile error: " .. err) or nil
 end
 
 --- @param look Look
@@ -437,6 +470,17 @@ function Looks:_check(fields, exceptId)
   local showWhen = fields.showWhen and fields.showWhen:match("^%s*(.-)%s*$") or ""
   if #showWhen > Looks.MAX_SHOW_WHEN then
     return nil, string.format('"Show when" can be at most %d characters', Looks.MAX_SHOW_WHEN)
+  end
+  local own = self._ownIds()
+  local badgeText = custom and custom.badge and custom.badge.text or ""
+  if Looks.readsOwn(showWhen, own) or (Looks.isLiveText(badgeText) and Looks.readsOwn(badgeText, own)) then
+    return nil, Looks.OWN_VARIABLES
+  end
+  if showWhen ~= "" then
+    local compileErr = Looks.compileError(showWhen)
+    if compileErr then
+      return nil, '"Show when": ' .. compileErr
+    end
   end
   return {
     name = name,

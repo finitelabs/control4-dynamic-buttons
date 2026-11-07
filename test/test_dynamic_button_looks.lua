@@ -443,4 +443,41 @@ T.truthy(
   looks:update(a.id, withDrawn({ custom = { badge = sizedBadge(120) } })).image.stale
 )
 
+T.section("A look can't follow this button's own variables, and its Show when must read as one")
+local guarded = Looks:new(memoryStore(), nil, nil, function()
+  return { 4242, 4243 }
+end)
+local tried = 0
+--- @param extra table
+--- @return string|nil err Why the look wasn't added.
+local function guardWhy(extra)
+  tried = tried + 1
+  local _, err = guarded:add(H.lookFields("Guarded " .. tried, extra))
+  return err
+end
+local function liveBadge(text)
+  return { badge = { text = text, place = "Under", color = "#FFFFFF", background = "None" } }
+end
+T.eq("its device's variable is refused", guardWhy({ showWhen = 'PARAM{4242,1} == "On"' }), Looks.OWN_VARIABLES)
+T.eq("and its proxy's", guardWhy({ showWhen = "PARAM{ 4243 , LOOK } == 1" }), Looks.OWN_VARIABLES)
+T.eq("another device's is kept", guardWhy({ showWhen = "PARAM{100,1} > 3" }), nil)
+T.eq(
+  "a live badge on its own variable is refused",
+  guardWhy({ custom = liveBadge("PARAM{4242,1}") }),
+  Looks.OWN_VARIABLES
+)
+T.eq("one on another device's is kept", guardWhy({ custom = liveBadge("PARAM{100,1}%") }), nil)
+T.eq(
+  "a Show when that doesn't read as an expression is refused, as the engine words it",
+  guardWhy({ showWhen = "PARAM{100,1} >=" }),
+  '"Show when": compile error: [string "return __p >="]:1: unexpected symbol near \'<eof>\''
+)
+T.eq("a variable inside a string still reads", guardWhy({ showWhen = '"PARAM{100,1}" == "x"' }), nil)
+T.eq("a comparison of two variables reads", Looks.compileError("PARAM{100,1} >= PARAM{100,2} and true"), nil)
+T.eq(
+  "without the ids, any device's variable is kept",
+  select(2, looks:add(H.lookFields("Unguarded", { showWhen = "PARAM{4242,1} == 1" }))),
+  nil
+)
+
 T.finish()
