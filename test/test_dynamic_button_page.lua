@@ -187,6 +187,29 @@ T.truthy(
   has("Browse Variables") and not has("Insert Variable")
 )
 
+T.section("What the driver would refuse holds Save")
+T.truthy(
+  "a Show when that doesn't read, or reads this button's own variables, holds Save",
+  has("if (gEditor.whenHold) return '\"Show when\": ' + gEditor.whenHold;")
+    and has("gEditor.whenHold = p.hold ? friendlyError(p.error, $('f-when').value, p.rendered) : '';")
+)
+T.truthy(
+  "and so does a live badge on this button's own variables",
+  has("if (isLiveText(badge) && gEditor.badgeHold) return 'Badge: ' + gEditor.badgeHold;")
+)
+T.truthy(
+  "a refusal reads as the preview does",
+  has("return m ? '\"Show when\": ' + friendlyError(m[1], $('f-when').value) : msg;")
+)
+T.truthy(
+  "a look opens on a fresh preview, not the last look's",
+  has("gEditor.whenHold = '';\n  gEditor.badgeHold = '';\n  showPreviewHint();")
+)
+T.truthy(
+  "a badge too long to be one is marked as it's typed",
+  has("box.classList.toggle('input-error', !live && long);")
+)
+
 T.section("The editor's sections")
 T.truthy("the icon's changes have their own section", has("<summary>Icon</summary>"))
 T.truthy("and the badge has its own", has("<summary>Badge</summary>"))
