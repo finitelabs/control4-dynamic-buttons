@@ -937,7 +937,12 @@ function UIR._ADD_WEB_PICTURE(tParams)
       picture, refused = pictures:addWeb(body, address, params.every)
     end
     if not picture then
-      C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused })
+      -- Marked only when the fetch brought nothing, so a copy leaves out just this look; a refusal of
+      -- what was fetched stops it with its own reason.
+      C4:SendDataToUI(
+        "PICTURE_STORED",
+        { request = request, error = refused, unfetched = body == nil and "true" or nil }
+      )
       return
     end
     refresher:noteFetched(picture.id)

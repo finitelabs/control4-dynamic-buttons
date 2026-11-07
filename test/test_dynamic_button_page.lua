@@ -505,6 +505,11 @@ T.truthy(
   has("if (r.unfetched) { unfetched.push(taking[n].look.name); continue; }")
 )
 T.truthy("and the result names it", has("'. Left out, ' + (unfetched.length === 1 ? 'its web picture didn’t'"))
+T.truthy(
+  "only on the driver's mark of a fetch that brought nothing",
+  has("unfetched: !!every && String(kept.unfetched) === 'true'")
+)
+T.falsy("never on any refusal", has("unfetched: !!every && !link.failure()"))
 T.truthy("Export's note agrees with one picture or many", has("(webs === 1 ? ' that refreshes' : ' that refresh')"))
 T.truthy(
   "Copy is plainly labeled until there are looks and buttons to count",
