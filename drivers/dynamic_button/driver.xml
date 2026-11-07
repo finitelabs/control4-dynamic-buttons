@@ -20,7 +20,7 @@
     <event>
       <id>1</id>
       <name>Look Changed</name>
-      <description>When the look NAME shows changes</description>
+      <description>When NAME shows a different look</description>
     </event>
   </events>
   <config>
@@ -135,7 +135,7 @@
           <item>By Value</item>
         </items>
         <default>Manual</default>
-        <description>Next look on each press, only from programming, or each look's &quot;Show when&quot;.</description>
+        <description>What changes the look the button shows.</description>
       </property>
       <property>
         <name>Shown Look</name>

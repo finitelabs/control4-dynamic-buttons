@@ -9,8 +9,9 @@ ______________________________________________________________________
 > DISCLAIMER: This software is neither affiliated with nor endorsed by Control4.
 
 Add buttons to Navigator whose picture you design. Each **Dynamic Button** is
-one button in a room's Navigator menus. It shows one of its looks: an icon from
-a free icon pack, drawn in your colors on the tile shape you pick. Control4
+one button in a room's Navigator menus. It shows one of its looks: an included
+icon or icon pack picture, an icon from a free icon library, or a picture of
+your own, with an optional badge that can show a live value. Control4
 programming changes which look the button shows, and pressing the button runs
 the programming you attach to it.
 
@@ -19,11 +20,8 @@ the programming you attach to it.
 <div style="font-size: small">
 
 - [System Requirements](#system-requirements)
-
 - [Features](#features)
-
 - [Installer Setup](#installer-setup)
-
   - [Driver Installation](#driver-installation)
   - [Showing the Button in Navigator](#showing-the-button-in-navigator)
   - [The Button Tab](#the-button-tab)
@@ -46,11 +44,12 @@ the programming you attach to it.
       - [Button Settings](#button-settings)
     - [Driver Actions](#driver-actions)
   - [Programming Reference](#programming-reference)
-
+    - [Commands](#commands)
+    - [Variables](#variables)
+    - [Events](#events)
+    - [Conditionals](#conditionals)
 - [Icon Licenses](#icon-licenses)
-
 - [Support](#support)
-
 - [Changelog](#changelog)
 
 </div>
@@ -311,34 +310,40 @@ handlers, embedded pages and anything loaded from another address are taken out.
 An SVG in one color takes the look's `Icon color`, and any other keeps its own
 colors.
 
-`Web address` takes an http or https address, and `Fetch` adds the picture
-there. The controller fetches it, so an address on the home network works. It
-can be up to 2 MB. A web page, a camera's video stream or anything larger is
-refused as soon as the answer shows it.
-
-`Refresh` says what happens to it after that:
-
-- **Once, when saved** - the picture is kept as an uploaded file is, and the
-  look keeps it as it was when fetched.
-- **Every minute / Every 5 minutes / Every 15 minutes / Every hour** - the
-  controller fetches the address again this often while the look shows, and at
-  once when the look shows and its picture is older than that. The Control4 app
-  shows the picture as the site sends it, so it has to be a PNG or JPEG, and
-  `Tile shape`, the colors, the Icon section and the Badge section don't apply.
-  A fetch that brings the same picture changes nothing. A failed fetch keeps the
-  last picture, and the look's row and the editor show why it failed. Each new
-  picture is written to the controller's storage and loaded by every Navigator,
-  so less often is better.
-
-The editor shows how often a picture refreshes and when it last did, and its
-cell in `This button's pictures` is tagged with how often.
-
 Except on a picture that refreshes, `Tile shape`, `Tile color`, `Grayscale`,
 `Size`, `Position` and the badge work on your pictures as they do on an icon.
 `Icon color` shows only for an SVG in one color, and `Glow` never shows.
 `Save Look` sends a new picture to the controller before the look. Your pictures
 are kept with the button: one that no look uses is deleted 10 minutes after it
 was added, and all of them go when the button is deleted or reset.
+
+#### Web Address
+
+<img alt="Button tab - My Images, Web address" src="./images/ui-my-images-web.png" width="640"/>
+
+1. **Address** - an http or https address, and `Fetch` adds the picture there.
+   The controller fetches it, so an address on the home network works. It can be
+   up to 2 MB. A web page, a camera's video stream or anything larger is refused
+   as soon as the answer shows it.
+1. **Refresh** - what happens to the picture after that:
+   - **Once, when saved** - the picture is kept as an uploaded file is, and the
+     look keeps it as it was when fetched.
+   - **Every minute / Every 5 minutes / Every 15 minutes / Every hour** - the
+     controller fetches the address again this often while the look shows, and
+     at once when the look shows and its picture is older than that. The
+     Control4 app shows the picture as the site sends it, so it has to be a PNG
+     or JPEG, and `Tile shape`, the colors, the Icon section and the Badge
+     section don't apply. A fetch that brings the same picture changes nothing.
+     Each new picture is written to the controller's storage and loaded by every
+     Navigator, so less often is better.
+1. **Status** - how the fetched picture is kept, or why the fetch failed.
+1. **This button's pictures** - a picture that refreshes is tagged with how
+   often.
+1. **Your picture** - the picture's name and how often it refreshes, and once
+   saved, when it last did. A failed refresh keeps the last picture, and the
+   look's row and the editor show why it failed.
+1. **Preview** - the look as the Control4 app shows it. A picture that refreshes
+   shows as the site sends it.
 
 ### Copy To, Export and Import
 
@@ -360,30 +365,40 @@ A copy brings everything a look has: its picture, colors, tile shape, `Cycle`,
 `Show when` and badge. Your own pictures go with the looks and are kept by the
 other button as its own, and a picture that refreshes is fetched by the other
 button from the same address. A look whose name the other button already uses
-gets the next number. A button without an active license keeps its looks and
-gets none. A look whose own picture this button no longer has is left out and
-named.
+gets the next number. A look whose own picture this button no longer has is left
+out and named.
 
 `Export` saves the button's looks and your own pictures in one file named after
 the button, ending in `.dynamic-button.json`. The file holds the web address of
 each picture that refreshes, which can carry a login or token.
 
-`Import…` opens such a file and lists its looks, each with its `Show when`, a
-badge's text that holds a variable, and the web address of a picture that
-refreshes. A look the driver would refuse, or one that uses an icon this driver
-doesn't have, is left out and named before anything changes. A picture in the
-file goes through the same checks as an uploaded file or pasted SVG.
+#### Import
 
-Those three come with the looks only when
-`Bring Show when, live badge text and web addresses with these looks` is
-checked, and it starts unchecked: the controller runs a `Show when` and a
-badge's variable text, and fetches a web address. Without it, `Show when` is
-left empty, a badge that holds a variable is left off, and a look whose picture
-refreshes from a web address is left out and named. `Add to this button's looks`
-and `Replace this button's looks` work as they do in `Copy To`, and `Replace`
-asks for `Confirm Replace` the same way. `Show when` and badge text name devices
-by their id in the project the file came from, so check them after importing
-into another project.
+`Import…` opens such a file. A picture in it goes through the same checks as an
+uploaded file or pasted SVG.
+
+<img alt="Button tab - Import" src="./images/ui-import.png" width="640"/>
+
+1. **The file** - its name, how many looks it holds, and the button it was
+   exported from. `Choose another file` opens another.
+1. **Looks in the file** - the looks to import, all checked to start. Under each
+   are its `Show when`, a badge's text that holds a variable, and the web
+   address of a picture that refreshes.
+1. **Left out** - each look the driver would refuse, or that uses an icon this
+   driver doesn't have, named with the reason, before anything changes.
+1. **Bring Show when, live badge text and web addresses with these looks** -
+   starts unchecked, since the controller runs a `Show when` and a badge's
+   variable text, and fetches a web address. Unchecked, `Show when` is left
+   empty, a badge that holds a variable is left off, and a look whose picture
+   refreshes from a web address is left out and named.
+1. **Add to this button's looks / Replace this button's looks** - as in
+   `Copy To`. `Replace` starts selected here, and asks for `Confirm Replace` the
+   same way.
+1. **Import** - imports the checked looks into this button and shows how many
+   came and which were left out.
+
+`Show when` and badge text name devices by their id in the project the file came
+from, so check them after importing into another project.
 
 ## Cycling Through Looks
 
@@ -528,8 +543,8 @@ Button, regardless of the current version.
 
 #### Reset Driver
 
-> WARNING: Reset Driver deletes every look, its picture, and its `Shown` event
-> with the programming on it. They cannot be brought back.
+> ⚠️ Reset Driver deletes every look, its picture, and its `Shown` event with
+> the programming on it. They cannot be brought back.
 
 Returns the driver to a fresh install: it deletes every look with its picture
 and its `Shown` event, shows the driver's own icon, and returns the properties
@@ -670,7 +685,11 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added a Show Look command, a `Look` variable, a Look Changed event and a Look
   Is conditional
 - Added the Look Control property: `On Select` shows the next look on each press
-  of the button, and `Manual` leaves the look to programming
+  of the button, `Manual` leaves the look to programming, and `By Value` shows
+  the look that follows a value
+- Added `By Value` to Look Control: each look gets a Show when expression on
+  other devices' variables, the first look whose expression is true shows, and a
+  default look shows when none is
 - Added Next Look and Previous Look commands, and an In cycle setting for each
   look that presses and both commands pass over when it is off
 - Added an event for each look, named for the look, that fires when it becomes
@@ -704,6 +723,3 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   look's Update setting
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
-- Added DriverCentral licensing: without an active license the button shows the
-  driver's own icon after five minutes and its looks can't change, and a license
-  shows its look again at once
