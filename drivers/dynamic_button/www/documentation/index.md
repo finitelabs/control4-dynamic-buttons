@@ -573,11 +573,12 @@ compares as text.
 
 Displays the DriverCentral cloud license status.
 
-When the driver finds no active license within five minutes of starting, Driver
-Status reads `No active license` and the button shows the driver's own icon.
-Until a license is active, presses, programming, `By Value` and the Button tab
-can't change its look, and Shown Look keeps the name of the look it showed. The
-button shows that look again as soon as a license is active.
+When the driver has had no active license for five minutes, whether since it
+started or since a license or trial ended, Driver Status reads
+`No active license` and the button shows the driver's own icon. Until a license
+is active, presses, programming, `By Value` and the Button tab can't change its
+look, and Shown Look keeps the name of the look it showed. The button shows that
+look again as soon as a license is active.
 
 <!-- #endif -->
 
