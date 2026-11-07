@@ -475,6 +475,39 @@ end, function(err)
   rejected = err
 end)
 T.eq("a loop rejects it with why", rejected, "The address answered with status 302.")
+
+T.section("An error after a fetch is logged and reported, not lost in its Deferred")
+local logging, diagnostics = require("lib.logging"), require("lib.diagnostics")
+local wasError, wasCapture, wasSend, wasAddWeb =
+  logging.error, diagnostics.captureError, C4.SendDataToUI, Pictures.addWeb
+local errors, reports = {}, {}
+logging.error = function(_, fmt, ...)
+  table.insert(errors, string.format(fmt, ...))
+end
+diagnostics.captureError = function(_, message, _, source)
+  table.insert(reports, { message = message, source = source })
+end
+C4.SendDataToUI = function(self, command, params)
+  if command == "FETCHED" then
+    error("the tab's socket went away")
+  end
+  return wasSend(self, command, params)
+end
+fetch("http://camera.local/photo.jpg")
+C4.SendDataToUI = wasSend
+T.contains("sending a fetched picture: logged", errors[1] or "", "Sending a fetched picture to the Button tab failed")
+T.contains("with its error", errors[1] or "", "the tab's socket went away")
+T.eq("and reported", reports[1] and reports[1].source, "Sending a fetched picture to the Button tab")
+errors, reports = {}, {}
+Pictures.addWeb = function()
+  error("the storage is full")
+end
+H.tab("_ADD_WEB_PICTURE", { request = "w9", url = "http://camera.local/photo.jpg", every = 300 })
+Pictures.addWeb = wasAddWeb
+T.contains("keeping a refreshing picture: logged", errors[1] or "", "Keeping a picture that refreshes failed")
+T.contains("with its error", errors[1] or "", "the storage is full")
+T.eq("and reported", reports[1] and reports[1].source, "Keeping a picture that refreshes")
+logging.error, diagnostics.captureError = wasError, wasCapture
 H.tab("_GET_STATE")
 T.eq("nothing fetched is kept until the tab sends it", #H.state().pictures, 2)
 H.urlAnswer = nil

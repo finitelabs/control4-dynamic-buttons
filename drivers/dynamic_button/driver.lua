@@ -921,12 +921,14 @@ function UIR._FETCH_PICTURE(tParams)
   if not address then
     return uiRespond("FETCHED", { request = request, error = err })
   end
-  Pictures.fetch(address):next(function(body)
-    sendPieces("FETCHED", { request = request }, body)
-  end, function(refused)
-    log:warn("Fetching a picture failed: %s", refused)
-    C4:SendDataToUI("FETCHED", { request = request, error = refused })
-  end)
+  Pictures.fetch(address)
+    :next(function(body)
+      sendPieces("FETCHED", { request = request }, body)
+    end, function(refused)
+      log:warn("Fetching a picture failed: %s", refused)
+      C4:SendDataToUI("FETCHED", { request = request, error = refused })
+    end)
+    :next(nil, Pictures.reportError("Sending a fetched picture to the Button tab"))
 end
 
 --- A picture from a web address that refreshes, kept for a look to use: the controller fetches it
@@ -943,20 +945,22 @@ function UIR._ADD_WEB_PICTURE(tParams)
   if not address then
     return uiRespond("PICTURE_STORED", { request = request, error = err })
   end
-  Pictures.fetch(address):next(function(body)
-    local picture, refused = pictures:addWeb(body, address, params.every)
-    if not picture then
-      -- A refusal of what was fetched stops a copy with its own reason.
-      C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused })
-      return
-    end
-    refresher:noteFetched(picture.id)
-    log:info("Kept picture %s, which refreshes every %d seconds", picture.id, picture.every)
-    reply("PICTURE_STORED", { request = request, picture = picture.id })
-  end, function(refused)
-    -- Marked only when the fetch brought nothing, so a copy leaves out just this look.
-    C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused, unfetched = "true" })
-  end)
+  Pictures.fetch(address)
+    :next(function(body)
+      local picture, refused = pictures:addWeb(body, address, params.every)
+      if not picture then
+        -- A refusal of what was fetched stops a copy with its own reason.
+        C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused })
+        return
+      end
+      refresher:noteFetched(picture.id)
+      log:info("Kept picture %s, which refreshes every %d seconds", picture.id, picture.every)
+      reply("PICTURE_STORED", { request = request, picture = picture.id })
+    end, function(refused)
+      -- Marked only when the fetch brought nothing, so a copy leaves out just this look.
+      C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused, unfetched = "true" })
+    end)
+    :next(nil, Pictures.reportError("Keeping a picture that refreshes"))
 end
 
 --- @param tParams table

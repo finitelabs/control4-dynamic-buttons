@@ -402,6 +402,20 @@ function Pictures.fetch(address, hops)
   return d
 end
 
+--- A handler that ends a fetch's chain. An error raised after the fetch rejects the Deferred its
+--- handler's `:next` returned; this logs it, and reports it in the DriverCentral build, rather than
+--- losing it there.
+--- @param source string What ran, for the log and Cloud Monitoring: never an address.
+--- @return fun(err: any) report
+function Pictures.reportError(source)
+  return function(err)
+    log:error("%s failed: %s", source, tostring(err))
+    --#ifdef DRIVERCENTRAL
+    diagnostics:captureError(tostring(err), nil, source)
+    --#endif
+  end
+end
+
 --- @private
 --- @return { nextId: integer, list: Picture[] } data
 function Pictures:_load()

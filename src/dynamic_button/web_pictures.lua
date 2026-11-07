@@ -39,11 +39,13 @@ function WebPictures:new(opts)
   instance._now = opts.now or os.time
   instance._fetch = opts.fetch
     or function(address, done)
-      Pictures.fetch(address):next(function(body)
-        done(body)
-      end, function(err)
-        done(nil, err)
-      end)
+      Pictures.fetch(address)
+        :next(function(body)
+          done(body)
+        end, function(err)
+          done(nil, err)
+        end)
+        :next(nil, Pictures.reportError("Refreshing a web picture"))
     end
   instance._setTimer = opts.setTimer or function(name, ms, fn)
     SetTimer(name, ms, fn)
@@ -208,7 +210,6 @@ function WebPictures:_fetched(id, address, body, err)
       log:warn("Picture %s didn't refresh: %s", id, err)
     end
     self._failed[id] = err
-    -- Armed before the hooks run, so an error in one can't end the refreshing.
     self:_schedule()
     self:_call("telling the Button tab", self._changed)
     return
@@ -218,6 +219,7 @@ function WebPictures:_fetched(id, address, body, err)
   if recovered then
     log:info("Picture %s refreshes again", id)
   end
+  -- Armed before storing the new bytes, so an error there can't end the refreshing.
   self:_schedule()
   -- The same length first, so most new pictures are told apart without reading the stored one.
   if not (#body == picture.bytes and body == self._pictures:load(id)) then

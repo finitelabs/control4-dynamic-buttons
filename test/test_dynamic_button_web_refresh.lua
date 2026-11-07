@@ -386,6 +386,46 @@ do
   T.eq("a failure whose hook fails: the next is armed too", s.timer() and s.timer().ms, 300 * 1000)
 end
 
+T.section("An error while refreshing, past the fetch, is logged and reported")
+do
+  local logging, diagnostics = require("lib.logging"), require("lib.diagnostics")
+  local wasError, wasCapture = logging.error, diagnostics.captureError
+  local errors, reports = {}, {}
+  logging.error = function(_, fmt, ...)
+    table.insert(errors, string.format(fmt, ...))
+  end
+  diagnostics.captureError = function(_, message, _, source)
+    table.insert(reports, { message = message, source = source })
+  end
+  local s = setup()
+  local _, picture = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  -- The refresher's own fetch, through Pictures.fetch, rather than the setup's stand-in.
+  local refresher = WebPictures:new({
+    pictures = s.pictures,
+    looks = s.looks,
+    arrived = function() end,
+    changed = function() end,
+    allowed = function()
+      return true
+    end,
+    setTimer = function() end,
+    cancelTimer = function() end,
+  })
+  s.pictures.replace = function()
+    error("the storage is full")
+  end
+  local wasAnswer = H.urlAnswer
+  H.urlAnswer = function()
+    return { headers = { ["Content-Type"] = "image/jpeg" }, body = jpeg(640, 400, "b") }
+  end
+  refresher:refreshPicture(picture.id)
+  H.urlAnswer = wasAnswer
+  logging.error, diagnostics.captureError = wasError, wasCapture
+  T.contains("logged", errors[#errors] or "", "Refreshing a web picture failed")
+  T.contains("with its error", errors[#errors] or "", "the storage is full")
+  T.eq("and reported", reports[1] and reports[1].source, "Refreshing a web picture")
+end
+
 T.section("A look sharing a picture is handed the newer bytes")
 do
   local s = setup()
