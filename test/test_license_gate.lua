@@ -1,6 +1,11 @@
 --- The DriverCentral build's license gate, driven by the real vendored cloud client against a fake Cloud driver: a
 --- licensed install and a trial run; without a license the button shows the driver's own icon after five minutes and
 --- nothing changes its look; a license back shows the look again at once.
+---
+--- Run from the driver root:
+---   make test
+--- or:
+---   ./test/run_test.sh test_license_gate.lua
 
 local T = require("testlib")
 local OWN_ICON = "controller://driver/dynamic_button/icons/experience_300.png"

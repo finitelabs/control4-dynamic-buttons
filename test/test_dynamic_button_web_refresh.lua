@@ -343,6 +343,89 @@ do
   T.eq("its answer is served", s.arrived[1].data, jpeg(640, 400, "new"))
 end
 
+T.section("A new address while the old one is fetched is fetched too, shown or not")
+do
+  local s = setup()
+  local _, picture = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  local logo = assert(s.looks:add(H.lookFields("Logo")))
+  s.refresher:watch(logo)
+  T.truthy("a fetch of the old address starts", s.refresher:refreshPicture(picture.id))
+  T.truthy("asking again for that address starts nothing more", s.refresher:refreshPicture(picture.id))
+  T.eq("one fetch under way", #s.fetches, 1)
+  s.pictures:setAddress(picture.id, "http://camera.local/other.jpg")
+  s.refresher:forget(picture.id)
+  T.truthy("Set Web Address's fetch of the new one starts", s.refresher:refreshPicture(picture.id))
+  T.eq("beside the old one", #s.fetches, 2)
+  T.eq("for the new address", s.fetches[2].address, "http://camera.local/other.jpg")
+  s.answer(jpeg(640, 400, "old"))
+  T.eq("the old answer changes nothing", s.pictures:load(picture.id), jpeg(640, 400, "a"))
+  s.answer(jpeg(640, 400, "new"))
+  T.eq("the new address's bytes are kept", s.pictures:load(picture.id), jpeg(640, 400, "new"))
+  T.eq("and nothing is left under way", #s.fetches, 0)
+end
+
+T.section("A hook that fails leaves the next refresh armed")
+do
+  local s = setup()
+  local driveway = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  s.refresher._arrived = function()
+    error("serving failed")
+  end
+  s.refresher._changed = function()
+    error("telling the tab failed")
+  end
+  s.refresher:watch(driveway)
+  s.clock = s.clock + 300
+  s.timer().fn()
+  s.answer(jpeg(640, 400, "b"))
+  T.eq("new bytes whose hooks fail: the next refresh is armed", s.timer() and s.timer().ms, 300 * 1000)
+  T.eq("and the bytes are kept", s.pictures:load(driveway.icon.id), jpeg(640, 400, "b"))
+  s.clock = s.clock + 300
+  s.timer().fn()
+  s.answer(nil, "The controller couldn't reach that address.")
+  T.eq("a failure whose hook fails: the next is armed too", s.timer() and s.timer().ms, 300 * 1000)
+end
+
+T.section("An error while refreshing, past the fetch, is logged and reported")
+do
+  local logging, diagnostics = require("lib.logging"), require("lib.diagnostics")
+  local wasError, wasCapture = logging.error, diagnostics.captureError
+  local errors, reports = {}, {}
+  logging.error = function(_, fmt, ...)
+    table.insert(errors, string.format(fmt, ...))
+  end
+  diagnostics.captureError = function(_, message, _, source)
+    table.insert(reports, { message = message, source = source })
+  end
+  local s = setup()
+  local _, picture = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  -- The refresher's own fetch, through Pictures.fetch, rather than the setup's stand-in.
+  local refresher = WebPictures:new({
+    pictures = s.pictures,
+    looks = s.looks,
+    arrived = function() end,
+    changed = function() end,
+    allowed = function()
+      return true
+    end,
+    setTimer = function() end,
+    cancelTimer = function() end,
+  })
+  s.pictures.replace = function()
+    error("the storage is full")
+  end
+  local wasAnswer = H.urlAnswer
+  H.urlAnswer = function()
+    return { headers = { ["Content-Type"] = "image/jpeg" }, body = jpeg(640, 400, "b") }
+  end
+  refresher:refreshPicture(picture.id)
+  H.urlAnswer = wasAnswer
+  logging.error, diagnostics.captureError = wasError, wasCapture
+  T.contains("logged", errors[#errors] or "", "Refreshing a web picture failed")
+  T.contains("with its error", errors[#errors] or "", "the storage is full")
+  T.eq("and reported", reports[1] and reports[1].source, "Refreshing a web picture")
+end
+
 T.section("A look sharing a picture is handed the newer bytes")
 do
   local s = setup()

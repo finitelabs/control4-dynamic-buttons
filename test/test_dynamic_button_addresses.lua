@@ -1,6 +1,11 @@
 --- How a look's picture reaches Navigator. A tile shows the proxy's own icon while it waits for a
 --- picture it doesn't have, so a look keeps its address and its file until its picture changes, and
 --- the proxy's own icon is transparent rather than the driver's icon.
+---
+--- Run from the driver root:
+---   make test
+--- or:
+---   ./test/run_test.sh test_dynamic_button_addresses.lua
 
 local T = require("testlib")
 local H = require("dynamic_button_harness")

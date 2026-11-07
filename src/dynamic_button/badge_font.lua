@@ -122,6 +122,7 @@ local function addLine(totals, width, height, x0, y0, x1, y1)
   end
 end
 
+--- The characters of a text the badge face can draw.
 --- @param text string UTF-8.
 --- @return integer[] codes The character codes the face has.
 --- @return string kept The text with only those characters.
@@ -148,6 +149,7 @@ function BadgeFont.characters(text)
   return codes, table.concat(kept)
 end
 
+--- How far one character moves the pen at a size.
 --- @param code integer A character code.
 --- @param fontSize number In pixels.
 --- @return number|nil advance How far the character moves the pen, or nil if the face hasn't it.
@@ -190,10 +192,10 @@ function BadgeFont.glyph(code, fontSize, pen, base)
   end
   for _, points in ipairs(glyph.contours) do
     local count = #points / 3
-    local function X(i)
+    local function xAt(i)
       return points[(i - 1) % count * 3 + 1] * scale + fraction - originX
     end
-    local function Y(i)
+    local function yAt(i)
       return -points[(i - 1) % count * 3 + 2] * scale - originY
     end
     local function on(i)
@@ -202,29 +204,29 @@ function BadgeFont.glyph(code, fontSize, pen, base)
     -- A contour starts on an on-curve point, or the midpoint of two off-curve ones.
     local first, startX, startY = 1, nil, nil
     if on(1) then
-      startX, startY = X(1), Y(1)
+      startX, startY = xAt(1), yAt(1)
     elseif on(count) then
-      first, startX, startY = count, X(count), Y(count)
+      first, startX, startY = count, xAt(count), yAt(count)
     else
-      first, startX, startY = count, (X(count) + X(1)) / 2, (Y(count) + Y(1)) / 2
+      first, startX, startY = count, (xAt(count) + xAt(1)) / 2, (yAt(count) + yAt(1)) / 2
     end
     local cx, cy = startX, startY
     local i, stop = first + 1, first + count
     while i <= stop do
       if on(i) then
-        local nx, ny = X(i), Y(i)
+        local nx, ny = xAt(i), yAt(i)
         addLine(totals, width, height, cx, cy, nx, ny)
         cx, cy = nx, ny
         i = i + 1
       else
-        local qx, qy = X(i), Y(i)
+        local qx, qy = xAt(i), yAt(i)
         local nx, ny
         if i == stop then
           nx, ny = startX, startY
         elseif on(i + 1) then
-          nx, ny = X(i + 1), Y(i + 1)
+          nx, ny = xAt(i + 1), yAt(i + 1)
         else
-          nx, ny = (qx + X(i + 1)) / 2, (qy + Y(i + 1)) / 2
+          nx, ny = (qx + xAt(i + 1)) / 2, (qy + yAt(i + 1)) / 2
         end
         local ddx, ddy = cx - 2 * qx + nx, cy - 2 * qy + ny
         local steps = max(1, ceil(sqrt(sqrt(ddx * ddx + ddy * ddy) * 2.5)))

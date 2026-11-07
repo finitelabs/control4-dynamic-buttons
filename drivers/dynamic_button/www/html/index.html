@@ -773,7 +773,7 @@ function handleDriverData(cmd, params) {
     if (cmd === 'PICTURE') onPicture(params);
     if (cmd === 'FETCHED') onFetched(params);
     if (cmd === 'BUTTONS') onButtons(params);
-    if (cmd === 'EVAL_RESULT') onEvalResult(params);
+    if (cmd === 'EVAL_RESULT') onEvalResult(JSON.parse(params.data || '{}'));
     if (cmd === 'DEVICES_DATA') onDevices(JSON.parse(params.devices || '[]'));
     if (cmd === 'DEVICE_VARIABLES_DATA') onDeviceVariables(params.deviceId, JSON.parse(params.variables || '[]'));
     if (gWaiters[cmd]) gWaiters[cmd](params);
@@ -3676,8 +3676,7 @@ function onEvalResult(p) {
     error.textContent = friendlyError(p.error, $('f-when').value, p.rendered);
     error.title = p.error;
   } else {
-    // The socket turns the text "true" into a boolean.
-    var isTrue = String(p.result) === 'true';
+    var isTrue = p.result === 'true';
     result.textContent = isTrue ? 'True' : 'False';
     result.className = 'pres ' + (isTrue ? 'true' : 'false');
   }

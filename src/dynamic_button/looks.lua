@@ -38,7 +38,7 @@ local Expressions = require("lib.expressions")
 --- @field color string The text's color, `#RRGGBB`.
 --- @field background string The badge's color, `#RRGGBB`, or `None`.
 --- @field size? integer The badge's size, `Looks.MIN_BADGE_SIZE` to `Looks.MAX_BADGE_SIZE` percent.
---- @field every? integer For a live badge, the least seconds between pictures, one of `Looks.BADGE_EVERY`.
+--- @field every? integer For a live badge, the least seconds between pictures, one of `Looks.BADGE_EVERY_SECONDS`.
 
 --- @class LookCustom A missing field keeps the picture's own.
 --- @field color? string The picture's color, `#RRGGBB`.
@@ -55,6 +55,7 @@ local Expressions = require("lib.expressions")
 --- @field _store table The persist store the looks are kept in.
 --- @field _hasPicture fun(id: string): boolean Whether the button keeps a picture of its own by that id.
 --- @field _refreshes fun(id: string): boolean Whether that picture refreshes from a web address.
+--- @field _ownIds fun(): integer[] This button's own ids, whose variables a look can't read.
 local Looks = {}
 Looks.__index = Looks
 
@@ -89,8 +90,8 @@ Looks.MAX_BADGE = 5
 Looks.MAX_LIVE_BADGE = 200
 
 --- How often a live badge may draw a new picture, in seconds.
-Looks.BADGE_EVERY = { 30, 60, 300, 900, 3600 }
-Looks.DEFAULT_BADGE_EVERY = 60
+Looks.BADGE_EVERY_SECONDS = { 30, 60, 300, 900, 3600 }
+Looks.DEFAULT_BADGE_EVERY_SECONDS = 60
 
 --- The smallest and largest badge, in percent.
 Looks.MIN_BADGE_SIZE = 50
@@ -110,6 +111,7 @@ Looks.MAX_SHOW_WHEN = 2000
 
 local LOOKS_PERSIST_KEY = "Looks"
 
+--- Creates a new instance of the Looks class.
 --- @param store table A persist-like store with get(key, default) and set(key, value).
 --- @param hasPicture? fun(id: string): boolean Whether the button keeps a picture of its own by that id
 --- (optional). Without it, a look can't use one.
@@ -156,6 +158,7 @@ function Looks:list()
   return self:_load().list
 end
 
+--- The look with this id.
 --- @param id integer|string|nil
 --- @return Look|nil look
 function Looks:get(id)
@@ -211,12 +214,14 @@ local function wholeBetween(value, low, high)
   return type(value) == "number" and value == math.floor(value) and value >= low and value <= high
 end
 
+--- How many characters a text has.
 --- @param text string
 --- @return integer count Characters, as the tab counts them: UTF-8 continuation bytes don't count.
 function Looks.characters(text)
   return #text:gsub("[\128-\191]", "")
 end
 
+--- Whether a badge's text reads a variable.
 --- @param text string
 --- @return boolean live The badge's text holds a variable.
 function Looks.isLiveText(text)
@@ -226,6 +231,7 @@ end
 --- Why a look can't read these variables, as the Button tab shows it.
 Looks.OWN_VARIABLES = "A look can't follow this button's own variables."
 
+--- Whether a text reads one of the given devices' variables.
 --- @param text string A Show when or a badge's text.
 --- @param own integer[] Ids whose variables the text mustn't read.
 --- @param mode string The text's mode, "condition" or "string": a variable in a comment isn't read.
@@ -259,6 +265,7 @@ function Looks.compileError(text)
   return err and ("compile error: " .. err) or nil
 end
 
+--- A look's badge, when it reads a variable.
 --- @param look Look
 --- @return LookBadge|nil badge The look's badge, if its text holds a variable.
 function Looks.liveBadge(look)
@@ -269,10 +276,11 @@ function Looks.liveBadge(look)
   return nil
 end
 
+--- How often a live badge may draw a new picture.
 --- @param badge LookBadge
 --- @return integer seconds The least time between a live badge's pictures.
 function Looks.badgeEvery(badge)
-  return badge.every or Looks.DEFAULT_BADGE_EVERY
+  return badge.every or Looks.DEFAULT_BADGE_EVERY_SECONDS
 end
 
 --- @param raw any
@@ -313,9 +321,9 @@ local function checkBadge(raw)
   end
   local every
   if live then
-    every = tonumber(raw.every) or Looks.DEFAULT_BADGE_EVERY
+    every = tonumber(raw.every) or Looks.DEFAULT_BADGE_EVERY_SECONDS
     local known = false
-    for _, seconds in ipairs(Looks.BADGE_EVERY) do
+    for _, seconds in ipairs(Looks.BADGE_EVERY_SECONDS) do
       known = known or seconds == every
     end
     if not known then
@@ -328,7 +336,7 @@ local function checkBadge(raw)
     color = color,
     background = background,
     size = raw.size ~= 100 and raw.size or nil,
-    every = every ~= Looks.DEFAULT_BADGE_EVERY and every or nil,
+    every = every ~= Looks.DEFAULT_BADGE_EVERY_SECONDS and every or nil,
   }
 end
 
@@ -538,12 +546,14 @@ function Looks.customKey(look)
   return table.concat(parts, "\n")
 end
 
+--- How much of its picture's glow a look draws.
 --- @param look Look
 --- @return integer glow How much of its picture's glow the look draws, 0 to 200.
 function Looks.glow(look)
   return tonumber(look.glow) or Looks.FULL_GLOW
 end
 
+--- Whether a look is drawn in grays.
 --- @param look Look
 --- @return boolean grayscale Whether the look is drawn in grays.
 function Looks.grayscale(look)
@@ -552,7 +562,7 @@ end
 
 --- Whether stepping through the cycle can land on a look.
 --- @param look Look
---- @return boolean
+--- @return boolean inCycle
 function Looks.inCycle(look)
   return look.inCycle ~= false
 end
@@ -606,9 +616,10 @@ function Looks:update(id, fields)
 end
 
 --- Whether two versions of a look draw different pictures.
+--- @private
 --- @param a Look
 --- @param b Look
---- @return boolean
+--- @return boolean differs
 function Looks._drawnDiffers(a, b)
   -- A carried icon's or a stored picture's id names its markup, so the ids alone tell when either is one.
   local byId = a.icon.carried or b.icon.carried or a.icon.stored or b.icon.stored
@@ -644,6 +655,7 @@ function Looks:setImage(id, bytes, version, source)
   return nil
 end
 
+--- Delete a look.
 --- @param id integer
 --- @return Look|nil removed The removed look, or nil if there was none.
 function Looks:delete(id)
@@ -688,6 +700,7 @@ function Looks:reorder(ids)
   return true
 end
 
+--- The default look's id.
 --- @return integer|nil id The look By Value shows when no Show when is true.
 function Looks:defaultId()
   return tonumber(self:_load().defaultId)

@@ -1,6 +1,11 @@
 --- Look Control and the cycle under the C4 shim: presses in each mode, Next Look and Previous Look,
 --- looks left out of the cycle or without a picture, and each look's own Shown event through adds,
 --- renames, deletes, a Director restart, a driver update and Reset Driver.
+---
+--- Run from the driver root:
+---   make test
+--- or:
+---   ./test/run_test.sh test_dynamic_button_cycle.lua
 
 local T = require("testlib")
 local H = require("dynamic_button_harness")

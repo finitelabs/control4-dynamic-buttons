@@ -36,6 +36,7 @@ local WWW_ROOT = "www/buttons"
 --- The stored pictures' folder in the button's own storage.
 local SOURCE_DIR = "looks"
 
+--- Creates a new instance of the Images class.
 --- @param now? fun(): number The clock, in seconds (optional). Defaults to os.time.
 --- @return Images images
 function Images:new(now)
@@ -129,6 +130,7 @@ function Images:cancel(lookId)
   self._uploads[tonumber(lookId) or -1] = nil
 end
 
+--- Write a file, replacing any there.
 --- @param alias string A documented path alias.
 --- @param subdir string The sub-folder of the alias.
 --- @param name string
@@ -153,6 +155,7 @@ function Images.writeFile(alias, subdir, name, data)
   return true
 end
 
+--- Read a whole file.
 --- @param alias string A documented path alias.
 --- @param subdir string The sub-folder of the alias.
 --- @param name string
@@ -172,6 +175,7 @@ function Images.readFile(alias, subdir, name)
   return data
 end
 
+--- Delete a file, if it's there.
 --- @param alias string A documented path alias.
 --- @param subdir string The sub-folder of the alias.
 --- @param name string
@@ -204,24 +208,28 @@ function Images:save(lookId, png)
   return Images.writeFile("SANDBOX", SOURCE_DIR, sourceName(lookId), png)
 end
 
+--- A look's stored picture.
 --- @param lookId integer
 --- @return string|nil png The look's stored picture.
 function Images:load(lookId)
   return Images.readFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
 end
 
+--- Delete a look's stored picture and its badge cache.
 --- @param lookId integer
 function Images:remove(lookId)
   Images.deleteFile("SANDBOX", SOURCE_DIR, sourceName(lookId))
   Images.deleteFile("SANDBOX", SOURCE_DIR, cacheName(lookId))
 end
 
+--- Keep what a live badge's redraw starts from.
 --- @param lookId integer
 --- @param data string What a live badge's redraw starts from.
 function Images:saveCache(lookId, data)
   Images.writeFile("SANDBOX", SOURCE_DIR, cacheName(lookId), data)
 end
 
+--- What a live badge's redraw starts from, if kept.
 --- @param lookId integer
 --- @return string|nil data
 function Images:loadCache(lookId)
@@ -245,6 +253,7 @@ function Images:serve(deviceId, lookId, png)
   return Images.writeFile("C4Z", servedDir(deviceId), string.format("%d.png", lookId), png)
 end
 
+--- Whether a look's picture is served from before.
 --- @param deviceId integer
 --- @param lookId integer
 --- @return boolean served A picture for the look is in place from before.

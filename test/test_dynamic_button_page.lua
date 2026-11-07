@@ -178,10 +178,9 @@ T.section("Which look is shown")
 T.truthy("the page takes the small message", has("if (cmd === 'SHOWN') onShown(params);"))
 
 T.section("The preview's result")
-T.truthy("it reads the socket's boolean as well as text", has("String(p.result) === 'true'"))
 T.truthy("and a rendered expression the socket turned falsy", has("String(p.rendered == null ? '' : p.rendered)"))
 T.truthy("the box measures again when its width changes", has("}).observe($('f-when'));"))
-T.falsy("nothing compares the result to text alone", has("p.result === 'true'"))
+T.falsy("nothing reads it as the socket's boolean any more", has("String(p.result) === 'true'"))
 T.truthy(
   "the button that opens the list isn't named like a row's Insert",
   has("Browse Variables") and not has("Insert Variable")
@@ -218,10 +217,13 @@ T.truthy(
   "a badge's box holds what the driver takes",
   has(string.format('id="c-badge" rows="1" maxlength="%d"', Looks.MAX_LIVE_BADGE))
 )
-for _, seconds in ipairs(Looks.BADGE_EVERY) do
+for _, seconds in ipairs(Looks.BADGE_EVERY_SECONDS) do
   T.truthy("the Update list offers " .. seconds .. " seconds", has(string.format('<option value="%d">', seconds)))
 end
-T.truthy("and it starts where the driver does", has(string.format("var BADGE_EVERY = %d;", Looks.DEFAULT_BADGE_EVERY)))
+T.truthy(
+  "and it starts where the driver does",
+  has(string.format("var BADGE_EVERY = %d;", Looks.DEFAULT_BADGE_EVERY_SECONDS))
+)
 T.truthy("Show when's count reads its own box, whichever box the list last served", has("usedTokens('f-when')"))
 T.truthy("the list marks what its own box reads", has("used = usedTokens(gVarBox)"))
 T.truthy(
@@ -568,7 +570,7 @@ T.truthy(
     and has("utf8Bytes(l.showWhen.trim()) > " .. Looks2.MAX_SHOW_WHEN)
 )
 local everyChoices = page:match("BADGE_EVERY_CHOICES = %[([%d, ]+)%]")
-T.eq("the badge's update choices are the driver's", everyChoices, table.concat(Looks2.BADGE_EVERY, ", "))
+T.eq("the badge's update choices are the driver's", everyChoices, table.concat(Looks2.BADGE_EVERY_SECONDS, ", "))
 
 T.section("Replace asks twice, Export warns of addresses, and a copy shuts the card")
 T.truthy(
@@ -601,6 +603,13 @@ T.truthy(
 T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
+
+T.section("The preview's answer")
+T.truthy(
+  "arrives as one JSON string, so a badge reading 007 isn't turned into 7",
+  has("if (cmd === 'EVAL_RESULT') onEvalResult(JSON.parse(params.data || '{}'));")
+)
+T.truthy("and its result is compared as the text it is", has("var isTrue = p.result === 'true';"))
 
 T.section("A sentence names the field in quotes")
 T.truthy("under Look Control", has([['The first look whose "Show when" is true shows.']]))

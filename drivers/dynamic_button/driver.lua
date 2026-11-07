@@ -83,8 +83,7 @@ local pictures = Pictures:new({
 local function ownIds()
   local own = tointeger(C4:GetDeviceID())
   local ids = { own }
-  local device = (C4:GetDevices({ DeviceIds = tostring(own) }) or {})[own]
-  for proxyId in pairs(type(device) == "table" and device.proxies or {}) do
+  for proxyId in pairs(Select(C4:GetDevices({ DeviceIds = tostring(own) }), own, "proxies") or {}) do
     table.insert(ids, tointeger(proxyId))
   end
   return ids
@@ -115,7 +114,7 @@ end
 
 --- The Look Is conditional's list as last registered.
 --- @type string|nil
-local gLookIsItems = nil
+local lookIsItems = nil
 
 -- Chunks are large and carry nothing a log needs.
 UIR.suppressDebug["_PUT_IMAGE"] = true
@@ -210,10 +209,10 @@ end
 --- @param saved boolean|nil Re-register the conditional saved with the project, as every load must.
 local function registerLookIs(items, saved)
   -- A button with no looks gets no conditional, until it has some.
-  if not saved and (items == gLookIsItems or items == "") then
+  if not saved and (items == lookIsItems or items == "") then
     return
   end
-  gLookIsItems = items
+  lookIsItems = items
   conditionals:upsertConditional(PROGRAMMING, "look_is", {
     type = "LIST",
     condition_statement = "Look Is",
@@ -224,16 +223,16 @@ end
 
 --- The driver.xml properties the Button tab shows, read once.
 --- @type table[]|nil
-local gTabProperties = nil
+local tabPropertiesCache = nil
 
 --- @return table[] properties Each property the Button tab shows, in driver.xml order: its name,
 --- the label above it as its group, whether it is read-only, and a list's choices. Passwords stay in
 --- Composer.
 local function tabProperties()
-  if gTabProperties then
-    return gTabProperties
+  if tabPropertiesCache then
+    return tabPropertiesCache
   end
-  gTabProperties = {}
+  tabPropertiesCache = {}
   local group = ""
   for xml in XMLgCapture(C4:GetDriverConfigInfo("config") or "", "property") do
     local kind = XMLCapture(xml, "type")
@@ -248,10 +247,10 @@ local function tabProperties()
           table.insert(property.choices, item)
         end
       end
-      table.insert(gTabProperties, property)
+      table.insert(tabPropertiesCache, property)
     end
   end
-  return gTabProperties
+  return tabPropertiesCache
 end
 
 --- @return table state What the Button tab shows.
@@ -351,11 +350,11 @@ local function pushShown()
 end
 
 --- While true, property changes leave the state push to the command that made them.
-local gTabHeld = false
+local tabHeld = false
 
 --- Show a property change in the Button tab, once the button is up.
 local function syncTab()
-  if button and not gTabHeld then
+  if button and not tabHeld then
     pushState()
   end
 end
@@ -363,9 +362,9 @@ end
 --- Run `fn` with property changes' state pushes held, so the caller pushes the state once after.
 --- @param fn function
 local function holdingTab(fn)
-  gTabHeld = true
+  tabHeld = true
   local ok, err = pcall(fn)
-  gTabHeld = false
+  tabHeld = false
   if not ok then
     error(err, 0)
   end
@@ -508,7 +507,10 @@ function OnDriverLateInit()
   end
 
   for p, _ in pairs(Properties) do
-    OnPropertyChanged(p)
+    local status, err = pcall(OnPropertyChanged, p)
+    if not status and err then
+      log:error("Error in OnPropertyChanged for property '%s': %s", p, err or "unknown error")
+    end
   end
 
   --#ifndef DRIVERCENTRAL
@@ -789,7 +791,7 @@ function UIR._SET_DRIVER(tParams)
       return pushState()
     end
   end
-  return pushError("The tab cannot set " .. tostring(name) .. ".")
+  return pushError("the tab cannot set " .. tostring(name))
 end
 
 --- Create a look, or change one when an id is given. Its picture follows in _PUT_IMAGE.
@@ -919,14 +921,14 @@ function UIR._FETCH_PICTURE(tParams)
   if not address then
     return uiRespond("FETCHED", { request = request, error = err })
   end
-  Pictures.fetch(address, function(body, refused)
-    if not body then
+  Pictures.fetch(address)
+    :next(function(body)
+      sendPieces("FETCHED", { request = request }, body)
+    end, function(refused)
       log:warn("Fetching a picture failed: %s", refused)
       C4:SendDataToUI("FETCHED", { request = request, error = refused })
-      return
-    end
-    sendPieces("FETCHED", { request = request }, body)
-  end)
+    end)
+    :next(nil, Pictures.reportError("Sending a fetched picture to the Button tab"))
 end
 
 --- A picture from a web address that refreshes, kept for a look to use: the controller fetches it
@@ -943,24 +945,22 @@ function UIR._ADD_WEB_PICTURE(tParams)
   if not address then
     return uiRespond("PICTURE_STORED", { request = request, error = err })
   end
-  Pictures.fetch(address, function(body, refused)
-    local picture
-    if body then
-      picture, refused = pictures:addWeb(body, address, params.every)
-    end
-    if not picture then
-      -- Marked only when the fetch brought nothing, so a copy leaves out just this look; a refusal of
-      -- what was fetched stops it with its own reason.
-      C4:SendDataToUI(
-        "PICTURE_STORED",
-        { request = request, error = refused, unfetched = body == nil and "true" or nil }
-      )
-      return
-    end
-    refresher:noteFetched(picture.id)
-    log:info("Kept picture %s, which refreshes every %d seconds", picture.id, picture.every)
-    reply("PICTURE_STORED", { request = request, picture = picture.id })
-  end)
+  Pictures.fetch(address)
+    :next(function(body)
+      local picture, refused = pictures:addWeb(body, address, params.every)
+      if not picture then
+        -- A refusal of what was fetched stops a copy with its own reason.
+        C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused })
+        return
+      end
+      refresher:noteFetched(picture.id)
+      log:info("Kept picture %s, which refreshes every %d seconds", picture.id, picture.every)
+      reply("PICTURE_STORED", { request = request, picture = picture.id })
+    end, function(refused)
+      -- Marked only when the fetch brought nothing, so a copy leaves out just this look.
+      C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused, unfetched = "true" })
+    end)
+    :next(nil, Pictures.reportError("Keeping a picture that refreshes"))
 end
 
 --- @param tParams table
@@ -1098,14 +1098,17 @@ function UIR._EVAL_EXPRESSION(tParams)
   end
   local evaluation = hold and { rendered = Expressions.render(expression, mode) }
     or Expressions.evaluate(mode, expression)
+  -- One JSON string: the socket turns a text that reads as a number or a boolean into one.
   return uiRespond("EVAL_RESULT", {
-    id = tostring(params.id or ""),
-    fitted = mode == "string" and evaluation.result and LiveBadges.fit(evaluation.result) or nil,
-    rendered = evaluation.rendered or "",
-    substituted = cutText(evaluation.substituted or "", Looks.MAX_SHOW_WHEN),
-    result = evaluation.result ~= nil and tostring(evaluation.result) or "",
-    error = hold or evaluation.error or "",
-    hold = hold and "yes" or nil,
+    data = JSON:encode({
+      id = tostring(params.id or ""),
+      fitted = mode == "string" and evaluation.result and LiveBadges.fit(evaluation.result) or nil,
+      rendered = evaluation.rendered or "",
+      substituted = cutText(evaluation.substituted or "", Looks.MAX_SHOW_WHEN),
+      result = evaluation.result ~= nil and tostring(evaluation.result) or "",
+      error = hold or evaluation.error or "",
+      hold = hold and "yes" or nil,
+    }),
   })
 end
 
@@ -1311,7 +1314,7 @@ function EC.Reset_Driver(params)
   values:reset()
   conditionals:reset()
   events:reset()
-  gLookIsItems = nil
+  lookIsItems = nil
   -- As a fresh install: the variable comes back empty, and no Look Changed fires.
   announceShown(nil)
   holdingTab(function()
@@ -1352,10 +1355,8 @@ followAllowed = function()
   return drivercentral:licensed()
 end
 
--- _GET_STATE and _SET_DRIVER stay open while stopped: they only do what Composer's own Properties tab can.
--- _GET_PICTURE does too: it only shows the tab a picture the button already keeps. So does _GET_BUTTONS, which only
--- names this driver's items: a copy changes another button through that button's own commands, which its own
--- license decides.
+-- Open while stopped: _GET_STATE/_SET_DRIVER do only what Composer's Properties tab can, _GET_PICTURE shows a kept
+-- picture, _GET_BUTTONS names this driver's items; a copy acts through the other button's own gated commands.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
 EC.Next_Look = whileLicensed(EC.Next_Look)

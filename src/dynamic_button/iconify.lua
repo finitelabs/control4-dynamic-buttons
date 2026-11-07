@@ -1,6 +1,8 @@
 -- The icon packs the Button tab may search, and the Iconify addresses the driver fetches when the
 -- tab can't reach Iconify itself. Only these packs: each needs no credit on every icon.
 
+require("drivers-common-public.global.url")
+
 local Iconify = {}
 
 --- Iconify's public API: no account or key.
@@ -38,18 +40,11 @@ for _, prefix in ipairs(Iconify.PACKS) do
   allowed[prefix] = true
 end
 
+--- Whether the tab may search a pack.
 --- @param prefix string
---- @return boolean
+--- @return boolean offered Whether the pack is one the tab may search.
 function Iconify.allowed(prefix)
   return allowed[prefix] == true
-end
-
---- @param s string
---- @return string encoded
-local function encode(s)
-  return (s:gsub("[^%w%-_%.~]", function(c)
-    return string.format("%%%02X", string.byte(c))
-  end))
 end
 
 --- The packs a search names, all of them when it names none.
@@ -90,7 +85,7 @@ function Iconify.url(kind, value, prefixes)
     return string.format(
       "%s/search?query=%s&prefixes=%s&limit=%d",
       Iconify.API,
-      encode(query),
+      URLEncode(query, true),
       searched,
       Iconify.SEARCH_LIMIT
     )

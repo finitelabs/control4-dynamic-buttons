@@ -1,5 +1,10 @@
 --- The Button tab's Properties card under the C4 shim: the properties it is sent, a change made from
 --- the tab, the changes it is turned away from, and a change made in Composer reaching the tab.
+---
+--- Run from the driver root:
+---   make test
+--- or:
+---   ./test/run_test.sh test_dynamic_button_properties.lua
 
 local T = require("testlib")
 local H = require("dynamic_button_harness")

@@ -1,6 +1,7 @@
 -- A look's stored PNG, prepared so a badge can be redrawn without compressing the whole picture
 -- again: the rows above and below the badge stay compressed, and only the badge's rows are redone.
 
+-- LuaJIT's own bit, not bitn: bitn's masked calls make this CRC about 7 times slower with JIT off.
 local bit = require("bit")
 local LibDeflate = require("LibDeflate")
 
@@ -44,6 +45,7 @@ for n = 0, 255 do
   CRC[n] = c
 end
 
+--- The CRC-32 a PNG chunk carries.
 --- @param data string
 --- @return integer crc The data's CRC-32, 0 to 2^32 - 1.
 function Png.crc32(data)
@@ -239,6 +241,7 @@ local function adlerJoin(a1, b1, a2, b2, length2)
   return (a1 + a2 - 1) % 65521, (b1 + b2 + (length2 % 65521) * (a1 - 1)) % 65521
 end
 
+--- A PNG's width and height, from its header.
 --- @param png string
 --- @return integer|nil width
 --- @return integer|nil height
@@ -309,6 +312,7 @@ function Png.setup(png, y0, y1)
   return result
 end
 
+--- A cache as a string to keep in a file.
 --- @param cache PngCache
 --- @return string data To keep in a file.
 function Png.pack(cache)
@@ -329,6 +333,7 @@ function Png.pack(cache)
   return concat(numbers, " ") .. "\n" .. cache.head .. cache.tail .. cache.mid
 end
 
+--- A cache from what `Png.pack` made.
 --- @param data string What `Png.pack` returned.
 --- @return PngCache|nil cache Nil if the data isn't that.
 function Png.unpack(data)
@@ -360,6 +365,7 @@ function Png.unpack(data)
   }
 end
 
+--- The badge rows of a cache, to draw on.
 --- @param cache PngCache
 --- @return integer[][] rows The badge's rows as bytes, to draw on.
 function Png.rows(cache)
