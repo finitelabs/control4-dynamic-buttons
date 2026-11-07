@@ -230,6 +230,24 @@
   .mi-tag { position: absolute; right: 3px; bottom: 2px; font-size: 9px; color: var(--text-muted); background: var(--surface); border-radius: 3px; padding: 0 3px; }
   .status { font-size: 12px; color: var(--text-muted); margin-top: 8px; min-height: 18px; }
   .status.bad { color: var(--danger); }
+  .cp-panel { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
+  .cp-head { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+  .cp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; }
+  .cp-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 3px 0; cursor: pointer; min-width: 0; }
+  .cp-item img, .cp-item .noimg { width: 28px; height: 28px; border-radius: 6px; background: var(--tile); flex: none; }
+  .cp-item .room { color: var(--text-muted); }
+  .cp-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cp-file { font-size: 12.5px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .cp-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .cp-row .note { margin: 0; }
+  .cp-result { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .cp-result:empty { display: none; }
+  .cp-result .bad { color: var(--danger); }
+  .cp-entry { min-width: 0; }
+  .cp-code { display: flex; gap: 6px; align-items: baseline; margin: 0 0 4px 52px; font-size: 11px; color: var(--text-muted); min-width: 0; }
+  .cp-code > span { white-space: nowrap; }
+  .cp-code code { font-family: var(--mono); font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+  .cp-trust { margin-top: 8px; }
   #lic-card summary { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; cursor: pointer; }
   #lic-card[open] summary { margin-bottom: 10px; }
   .lic-list { margin-top: 4px; padding-left: 18px; color: var(--text-muted); font-size: 11px; }
@@ -265,7 +283,42 @@
       <h3>Looks <span class="count" id="look-count"></span></h3>
       <div class="looks" id="look-list"></div>
       <div class="note" id="delete-note" hidden></div>
-      <div class="actions"><button class="btn btn-primary" id="add-look" type="button">Add Look</button></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="add-look" type="button">Add Look</button>
+        <button class="btn btn-secondary" id="copy-to" type="button" disabled>Copy To&hellip;</button>
+        <button class="btn btn-secondary" id="export-looks" type="button" disabled>Export</button>
+        <button class="btn btn-secondary" id="import-looks" type="button">Import&hellip;</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+      <div class="cp-result" id="looks-note" role="status" hidden></div>
+      <div class="cp-panel" id="copy-panel" hidden>
+        <div class="cp-head">Copy these looks</div>
+        <div class="cp-list" id="cp-looks"></div>
+        <div class="cp-head">To these Dynamic Buttons</div>
+        <div class="cp-list" id="cp-buttons"></div>
+        <div class="cp-row">
+          <div class="seg" id="cp-mode"><button type="button" data-mode="add" class="on">Add to their looks</button><button type="button" data-mode="replace">Replace their looks</button></div>
+          <span class="note" id="cp-note"></span>
+        </div>
+        <div class="note" id="cp-confirm" hidden></div>
+        <div class="cp-row"><button class="btn btn-primary" id="cp-go" type="button">Copy</button><button class="btn btn-secondary" id="cp-cancel" type="button">Cancel</button></div>
+        <div class="cp-result" id="cp-result" role="status"></div>
+      </div>
+      <div class="cp-panel" id="import-panel" hidden>
+        <div class="cp-head">Import looks</div>
+        <div class="cp-file"><span id="im-file"></span><button type="button" class="linkbtn" id="im-choose">Choose another file</button></div>
+        <div class="cp-head">Looks in the file</div>
+        <div class="cp-list" id="im-looks"></div>
+        <div class="note cp-result" id="im-skipped" hidden></div>
+        <label class="check cp-trust"><input type="checkbox" id="im-trust"> Bring Show when, live badge text and web addresses with these looks</label>
+        <div class="cp-row">
+          <div class="seg" id="im-mode"><button type="button" data-mode="add">Add to this button&rsquo;s looks</button><button type="button" data-mode="replace" class="on">Replace this button&rsquo;s looks</button></div>
+        </div>
+        <div class="note">Show when and badge text name devices by their id in the project the file came from. Check them after importing into another project.</div>
+        <div class="note" id="im-confirm" hidden></div>
+        <div class="cp-row"><button class="btn btn-primary" id="im-go" type="button">Import</button><button class="btn btn-secondary" id="im-cancel" type="button">Cancel</button></div>
+        <div class="cp-result" id="im-result" role="status"></div>
+      </div>
     </div>
   </div>
 
@@ -618,8 +671,9 @@ function api(method, path, body) {
 // A command's REST reply says only that the controller took it: the driver answers over the socket.
 // The controller's broker takes time that grows with the square of the longest unbroken run of
 // characters in a command. A newline ends a run, and the driver takes the newlines out again.
-function sendCommand(cmd, params) {
-  return api('POST', '/api/v1/items/' + gDriverId + '/commands', {
+function sendCommand(cmd, params) { return sendCommandTo(gDriverId, cmd, params); }
+function sendCommandTo(id, cmd, params) {
+  return api('POST', '/api/v1/items/' + id + '/commands', {
     command: cmd,
     tParams: { DATA: btoa(unescape(encodeURIComponent(JSON.stringify(params || {})))).replace(/.{76}/g, '$&\n') },
     async: false
@@ -662,6 +716,14 @@ async function initSocket() {
 }
 
 function handleSocketEvent(evt) {
+  eachDeviceCommand(evt, function(cmd, params) {
+    gLive = true;
+    setConn(true);
+    handleDriverData(cmd, params);
+  });
+}
+// Each command a datatoui event carries, with its parameters by name.
+function eachDeviceCommand(evt, fn) {
   (Array.isArray(evt) ? evt : [evt]).forEach(function(item) {
     var dc = item && item.data ? item.data.devicecommand : null;
     if (!dc || dc.command === 'LUA_OUTPUT') return;
@@ -671,9 +733,7 @@ function handleSocketEvent(evt) {
         if (p && p.name) params[p.name] = (p.value && p.value.static !== undefined) ? p.value.static : (p.value || '');
       });
     }
-    gLive = true;
-    setConn(true);
-    handleDriverData(dc.command, params);
+    fn(dc.command, params);
   });
 }
 
@@ -712,6 +772,7 @@ function handleDriverData(cmd, params) {
     if (cmd === 'ICONIFY') onIconify(params);
     if (cmd === 'PICTURE') onPicture(params);
     if (cmd === 'FETCHED') onFetched(params);
+    if (cmd === 'BUTTONS') onButtons(params);
     if (cmd === 'EVAL_RESULT') onEvalResult(params);
     if (cmd === 'DEVICES_DATA') onDevices(JSON.parse(params.devices || '[]'));
     if (cmd === 'DEVICE_VARIABLES_DATA') onDeviceVariables(params.deviceId, JSON.parse(params.variables || '[]'));
@@ -1304,6 +1365,7 @@ function onState(state) {
   });
   gState.looks.forEach(withIconBody);
   if (gState.packs.join(',') !== packs) { renderPacks(); renderLicenses(); }
+  if (gApiHost && !gButtonsAsked) { gButtonsAsked = true; sendCommand('_GET_BUTTONS'); }
   renderList();
 }
 
@@ -1397,6 +1459,7 @@ async function renderList() {
   var list = gState.looks;
   $('look-count').textContent = list.length + ' of ' + gState.max;
   $('add-look').disabled = list.length >= gState.max;
+  renderLookActions();
   var shown = shownLook();
   $('shown-pill').innerHTML = shown ? '<span class="pill online">' + esc(shown.name) + '</span>' + (shown.stale ? ' ' + STALE_PILL : '') : '<span class="pill info">Driver icon</span>';
   navTile($('shown-tile'), shown);
@@ -1427,6 +1490,7 @@ async function renderList() {
         '<button class="btn danger sm" type="button" data-act="delete" data-id="' + id + '" title="' + esc(deleteWarning(l.name)) + '">Delete</button>' +
       '</div></div>';
   }).join('');
+  if (gApplying) Array.prototype.forEach.call(el.querySelectorAll('button'), function(b) { b.disabled = true; });
   list.forEach(function(l) {
     lookDataUrl(l, 88).then(function(url) {
       var img = el.querySelector('img[data-thumb="' + Number(l.id) + '"]');
@@ -2585,9 +2649,10 @@ function preview() {
 }
 
 // A name no other look has: the next number after the look's own, "Fan" to "Fan 2", "Fan 2" to "Fan 3".
-function copyName(name) {
+function copyName(name, names) {
+  names = names || gState.looks.map(function(o) { return o.name; });
   var m = /^(.*?)(?: (\d+))?$/.exec(name), n = m[2] ? Number(m[2]) + 1 : 2, out;
-  var taken = function(x) { return gState.looks.some(function(o) { return o.name.toLowerCase() === x.toLowerCase(); }); };
+  var taken = function(x) { return names.some(function(o) { return String(o).toLowerCase() === x.toLowerCase(); }); };
   do {
     var suffix = ' ' + n++;
     out = Array.from(m[1]).slice(0, 40 - suffix.length).join('') + suffix;
@@ -2778,6 +2843,594 @@ function demoSave(fields) {
   gState.looks.forEach(withIconBody);
   renderList();
 }
+
+// ============================================================
+// Copy To, Export and Import: looks given to a button through its own save commands
+// ============================================================
+var LOOKS_FORMAT = 'finitelabs.dynamic-buttons.looks', LOOKS_VERSION = 1, LOOKS_FILE_MAX = 20 * 1024 * 1024;
+// The project's other Dynamic Buttons and this one, from the driver; null until it answers.
+var gButtons = null, gSelf = null, gButtonsAsked = false, gApplying = false, gImport = null;
+
+function onButtons(params) {
+  try { gButtons = JSON.parse(params.buttons || '[]'); } catch (e) { gButtons = []; }
+  if (!Array.isArray(gButtons)) gButtons = [];
+  try { gSelf = JSON.parse(params.self || 'null'); } catch (e) { gSelf = null; }
+  renderLookActions();
+  if (!$('copy-panel').hidden && !gApplying) renderCopyPanel(true);
+}
+function renderLookActions() {
+  var n = gState.looks.length, others = Array.isArray(gButtons) ? gButtons.length : 0;
+  $('copy-to').disabled = gApplying || !n || !others;
+  $('copy-to').title = !others ? 'This project has no other Dynamic Button.' : !n ? 'This button has no looks yet.' : '';
+  $('export-looks').disabled = gApplying || !n;
+  $('import-looks').disabled = gApplying;
+  if (gApplying) $('add-look').disabled = true;
+}
+function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+function looksNote(text, bad) {
+  $('looks-note').innerHTML = text ? '<span' + (bad ? ' class="bad"' : '') + '>' + esc(text) + '</span>' : '';
+  $('looks-note').hidden = !text;
+}
+function openPanel(which) {
+  $('copy-panel').hidden = which !== 'copy';
+  $('import-panel').hidden = which !== 'import';
+  unconfirm($('cp-go'));
+  unconfirm($('im-go'));
+  if (which) { closeEditor(); looksNote(''); }
+}
+// While looks are given, nothing else on the card can change them, from the mouse or the keyboard.
+function setApplying(on) {
+  gApplying = on;
+  if (!on) gUpload = null;
+  $('cp-cancel').disabled = on;
+  $('im-cancel').disabled = on;
+  if (on) Array.prototype.forEach.call($('look-list').querySelectorAll('button'), function(b) { b.disabled = true; });
+  else renderList();
+  renderLookActions();
+  syncCopyGo();
+  syncImportGo();
+}
+// The ids a list's checked boxes carry, by their data key.
+function checkedIn(listId, key) {
+  return Array.prototype.map.call($(listId).querySelectorAll('input[type="checkbox"]:checked'), function(c) { return Number(c.dataset[key]); });
+}
+function modeOf(segId) { var on = $(segId).querySelector('button.on'); return on ? on.dataset.mode : 'add'; }
+function setMode(segId, mode) {
+  Array.prototype.forEach.call($(segId).querySelectorAll('button'), function(x) { x.classList.toggle('on', x.dataset.mode === mode); });
+}
+['cp-mode', 'im-mode'].forEach(function(id) {
+  $(id).addEventListener('click', function(e) {
+    var b = e.target.closest('button[data-mode]');
+    if (!b || gApplying) return;
+    Array.prototype.forEach.call($(id).querySelectorAll('button'), function(x) { x.classList.toggle('on', x === b); });
+    unconfirm($(id === 'cp-mode' ? 'cp-go' : 'im-go'));
+  });
+});
+function thumbInto(img, look, size) {
+  lookDataUrl(Object.assign({}, look, { custom: cleanCustom(look.icon, look.custom), badgeNow: null }), size)
+    .then(function(url) { if (img) img.src = url; }).catch(function() {});
+}
+// Replace asks twice, as Delete does: the first press says what goes.
+function confirmed(btn, noteId, text) {
+  if (btn.dataset.confirm) { unconfirm(btn); return true; }
+  btn.dataset.confirm = '1';
+  btn.dataset.label = btn.textContent;
+  btn.textContent = 'Confirm Replace';
+  $(noteId).textContent = text;
+  $(noteId).hidden = false;
+  btn.confirmTimer = setTimeout(function() { unconfirm(btn); }, 4000);
+  return false;
+}
+function unconfirm(btn) {
+  if (!btn.dataset.confirm) return;
+  clearTimeout(btn.confirmTimer);
+  delete btn.dataset.confirm;
+  btn.textContent = btn.dataset.label;
+  $(btn.id === 'cp-go' ? 'cp-confirm' : 'im-confirm').hidden = true;
+}
+
+// ---- The line to a button ----
+// This button answers on the page's own subscription. Another gets one of its own on the same socket.
+// Director has no documented way to end a datatoui subscription, so each button's is kept for the
+// socket's life and used again by the next copy.
+var gLinks = {};
+function deviceLink(id) {
+  if (String(id) === String(gDriverId)) {
+    return {
+      id: id, own: true, open: function() { return Promise.resolve(true); },
+      send: sendCommand, waitFor: waitFor, state: function() { return gState; },
+      failure: function() { return gUpload && gUpload.failed; }, clear: function() { gUpload = { failed: null }; }
+    };
+  }
+  if (gLinks[id]) return gLinks[id];
+  var waiters = {}, ev = null, engineId = null, state = null, failed = null;
+  var handle = function(cmd, params) {
+    if (params.state) { try { state = JSON.parse(params.state); } catch (e) {} }
+    if (cmd === 'ERROR') {
+      failed = params.message || 'refused';
+      Object.keys(waiters).forEach(function(k) { waiters[k]({ error: failed }); });
+      return;
+    }
+    if (waiters[cmd]) waiters[cmd](params);
+  };
+  var onEvent = function(evt) { eachDeviceCommand(evt, handle); };
+  return (gLinks[id] = {
+    id: id,
+    open: async function() {
+      var engine = gSocket && gSocket.io && gSocket.io.engine;
+      if (!engine) return false;
+      if (ev && engineId === engine.id) return true;
+      if (ev && gSocket.off) gSocket.off(ev, onEvent);
+      ev = null;
+      var sub = await api('GET', '/api/v1/items/' + id + '/datatoui?SubscriptionClient=' + engine.id + '&coerce=false');
+      if (!sub || !sub.subscriptionId) return false;
+      ev = String(sub.subscriptionId);
+      engineId = engine.id;
+      gSocket.on(ev, onEvent);
+      gSocket.emit('startSubscription', ev);
+      return true;
+    },
+    send: function(cmd, params) { return sendCommandTo(id, cmd, params); },
+    waitFor: function(cmd, ms) {
+      return new Promise(function(resolve) {
+        var t = setTimeout(function() { delete waiters[cmd]; resolve(null); }, ms);
+        waiters[cmd] = function(p) { clearTimeout(t); delete waiters[cmd]; resolve(p); };
+      });
+    },
+    state: function() { return state; },
+    failure: function() { return failed; },
+    clear: function() { failed = null; }
+  });
+}
+async function linkCall(link, cmd, params, expect, ms) {
+  link.clear();
+  var answer = link.waitFor(expect, ms);
+  if ((await link.send(cmd, params)) === null) return { error: 'the controller didn’t take the command' };
+  return (await answer) || { error: 'it didn’t answer in time' };
+}
+// Base64 in chunks, one taken before the next, the answer awaited from the last.
+async function linkChunks(link, cmd, b64, fields, expect) {
+  var st = link.state() || {}, size = st.maxChunk || gState.maxChunk || 12288, count = Math.max(1, Math.ceil(b64.length / size));
+  var token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8), answer = null;
+  link.clear();
+  for (var i = 0; i < count; i++) {
+    if (i === count - 1) answer = link.waitFor(expect, 20000);
+    var res = await link.send(cmd, Object.assign({}, fields, { upload: token, index: i + 1, count: count, data: b64.slice(i * size, (i + 1) * size) }));
+    if (link.failure()) return { error: link.failure() };
+    if (res === null) return { error: 'the controller didn’t take it' };
+  }
+  return (await answer) || { error: 'it didn’t answer in time' };
+}
+
+// ---- Looks as a copy carries them ----
+// Each item: the look's fields with the markup it's drawn from, its own picture if it has one (the bytes,
+// or a refreshing picture's address), and whether it's the default.
+function lookFields(l) {
+  return { id: l.id, name: l.name, icon: l.icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor,
+    inCycle: l.inCycle !== false, glow: savedGlow(l), grayscale: !!l.grayscale, showWhen: l.showWhen || '', custom: l.custom || {} };
+}
+async function sourcesReady(ids) {
+  ids.forEach(requestPicture);
+  for (var i = 0; i < 150 && !ids.every(function(id) { var s = gSources[id]; return s && (s.b64 || s.gone); }); i++) {
+    await new Promise(function(r) { setTimeout(r, 200); });
+  }
+}
+// The looks with what each needs. One whose own picture the button no longer has is left out by name.
+async function itemsFromButton(ids) {
+  var looks = gState.looks.filter(function(l) { return ids.indexOf(Number(l.id)) >= 0; });
+  await sourcesReady(looks.filter(function(l) { return isPicture(l.icon) && !pictureEvery(l.icon); }).map(function(l) { return l.icon.id; }));
+  var items = [], missing = [];
+  looks.forEach(function(l) {
+    var look = withIconBody(JSON.parse(JSON.stringify(l))), picture = null;
+    if (isPicture(l.icon)) {
+      var rec = pictureRecord(l.icon.id), src = gSources[l.icon.id] || {};
+      if (!rec || (!rec.every && !src.b64)) { missing.push(l.name); return; }
+      picture = rec.every ? { key: l.icon.id, every: Number(rec.every), url: rec.url }
+        : { key: l.icon.id, kind: src.kind, b64: src.b64, width: l.icon.width, height: l.icon.height, name: rec.name || 'Picture' };
+    }
+    items.push({ look: lookFields(look), picture: picture, isDefault: gState.defaultLook === l.id });
+  });
+  return { items: items, missing: missing };
+}
+function missingLine(missing) {
+  return missing.length ? { text: 'Left out, their own picture is gone: ' + missing.join(', ') + '.', bad: true } : null;
+}
+function freeName(name, names) {
+  var taken = names.some(function(o) { return String(o).toLowerCase() === String(name).toLowerCase(); });
+  return taken ? copyName(name, names) : name;
+}
+
+// ---- Giving looks to a button: Copy To's targets, and this button for Import ----
+// Add puts them after the button's looks, as many as fit; Replace deletes its looks first and brings
+// the default along. A picture of the button's own goes over once for all the looks that use it.
+async function applyLooks(link, name, items, replace, say) {
+  var state;
+  if (link.own) state = (await freshState()) ? gState : null;
+  else {
+    var asked = await linkCall(link, '_GET_STATE', {}, 'STATE', 10000);
+    if (asked.error) return { copied: 0, leftOut: 0, error: asked.error };
+    state = link.state();
+  }
+  if (!state) return { copied: 0, leftOut: 0, error: 'it didn’t answer in time' };
+  var max = state.max || 8, existing = (state.looks || []).slice();
+  if (replace) {
+    say('Clearing the looks on ' + name + '…');
+    // The shown look goes last: deleting it shows another, whose Shown programming would run.
+    var order = existing.filter(function(l) { return l.id !== state.shown; }).concat(existing.filter(function(l) { return l.id === state.shown; }));
+    for (var d = 0; d < order.length; d++) {
+      var gone = await linkCall(link, '_DELETE_LOOK', { id: order[d].id }, 'STATE', 10000);
+      if (gone.error) return { copied: 0, leftOut: 0, max: max, error: gone.error };
+    }
+    existing = [];
+  }
+  var taking = items.slice(0, Math.max(0, max - existing.length)), leftOut = items.length - taking.length;
+  var names = existing.map(function(l) { return l.name; }), given = {}, copied = 0, unfetched = [];
+  for (var n = 0; n < taking.length; n++) {
+    say((link.own ? 'Importing ' : 'Copying ') + (n + 1) + ' of ' + taking.length + ' looks' + (link.own ? '' : ' to ' + name) + '…');
+    var r = await giveLook(link, taking[n], names, given, replace);
+    // A refreshing picture the button couldn't fetch costs only its own look.
+    if (r.unfetched) { unfetched.push(taking[n].look.name); continue; }
+    if (r.error) return { copied: copied, leftOut: leftOut, max: max, unfetched: unfetched, error: taking[n].look.name + ': ' + r.error };
+    copied++;
+  }
+  return { copied: copied, leftOut: leftOut, max: max, unfetched: unfetched };
+}
+async function giveLook(link, item, names, given, replace) {
+  var look = JSON.parse(JSON.stringify(item.look)), pic = item.picture;
+  look.name = freeName(look.name, names);
+  names.push(look.name);
+  // Drawn under the id it came with: the button's ids name other pictures here. A picture that
+  // refreshes is served as its site sends it, so nothing is drawn for it.
+  var every = pic && pic.every;
+  if (every) Object.assign(look, { tileShape: 'None', glow: 100, grayscale: false, custom: {} });
+  var custom = every ? null : cleanCustom(look.icon, look.custom), b64 = null;
+  if (!every) {
+    var dataUrl = await lookDataUrl(Object.assign({}, look, { custom: custom, badgeNow: null }), 300);
+    b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+    if (b64.length * 3 / 4 > gState.maxBytes) return { error: 'its picture is larger than ' + Math.round(gState.maxBytes / 1024) + ' KB' };
+  }
+  if (pic) {
+    if (!given[pic.key]) {
+      var kept = every
+        ? await linkCall(link, '_ADD_WEB_PICTURE', { request: 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), url: pic.url, every: every }, 'PICTURE_STORED', 60000)
+        : await linkChunks(link, '_PUT_PICTURE', pic.b64, { width: pic.width, height: pic.height, name: pic.name }, 'PICTURE_STORED');
+      if (kept.error || !kept.picture) return { error: kept.error || 'its picture wasn’t kept', unfetched: !!every && String(kept.unfetched) === 'true' };
+      given[pic.key] = String(kept.picture);
+    }
+    var rec = ((link.state() || {}).pictures || []).find(function(p) { return p.id === given[pic.key]; });
+    look.icon = Object.assign({}, look.icon, { id: given[pic.key], stored: true }, rec ? { width: rec.width, height: rec.height } : {});
+  }
+  var fields = { id: null, name: look.name, icon: savedIcon(look.icon), iconColor: look.iconColor, tileShape: look.tileShape, tileColor: look.tileColor,
+    inCycle: look.inCycle !== false, glow: look.glow, grayscale: !!look.grayscale, showWhen: look.showWhen || '', isDefault: !!(replace && item.isDefault) };
+  if (custom) fields.custom = custom;
+  var saved = await linkCall(link, '_SAVE_LOOK', fields, 'SAVED', 10000);
+  if (saved.error || !saved.look) return { error: saved.error || 'it wasn’t saved' };
+  if (b64) {
+    var stored = await linkChunks(link, '_PUT_IMAGE', b64, { look: Number(saved.look) }, 'IMAGE_STORED');
+    if (stored.error) return { error: stored.error };
+  }
+  return {};
+}
+// One line per button: what it got, what didn't fit, and what stopped it.
+function resultLine(label, r, verb) {
+  var why = String(r.error || '').replace(/\.$/, '');
+  var text = label + ': ' + (r.copied ? plural(r.copied, 'look') + ' ' + verb : 'nothing ' + verb);
+  if (r.leftOut) text += ', ' + r.leftOut + ' left out: a button keeps up to ' + (r.max || gState.max) + ' looks';
+  if (why) text += r.copied ? ', then ' + why : ': ' + why;
+  var unfetched = r.unfetched || [];
+  if (unfetched.length) text += '. Left out, ' + (unfetched.length === 1 ? 'its web picture didn’t' : 'their web pictures didn’t') + ' fetch: ' + unfetched.join(', ');
+  return { text: text + '.', bad: !!why || !!unfetched.length };
+}
+function lineHtml(line) { return line ? '<div' + (line.bad ? ' class="bad"' : '') + '>' + esc(line.text) + '</div>' : ''; }
+
+// ---- Copy To ----
+function renderCopyPanel(keepTicks) {
+  var looksTicked = keepTicks ? checkedIn('cp-looks', 'look') : gState.looks.map(function(l) { return Number(l.id); });
+  var buttonsTicked = keepTicks ? checkedIn('cp-buttons', 'button') : [];
+  $('cp-looks').innerHTML = gState.looks.map(function(l) {
+    var id = Number(l.id);
+    return '<label class="cp-item"><input type="checkbox" data-look="' + id + '"' + (looksTicked.indexOf(id) >= 0 ? ' checked' : '') +
+      '><img alt="" data-cp-thumb="' + id + '"><span>' + esc(l.name) + '</span></label>';
+  }).join('');
+  gState.looks.forEach(function(l) { thumbInto($('cp-looks').querySelector('img[data-cp-thumb="' + Number(l.id) + '"]'), l, 56); });
+  $('cp-buttons').innerHTML = (gButtons || []).map(function(b) {
+    var id = Number(b.id);
+    return '<label class="cp-item"><input type="checkbox" data-button="' + id + '"' + (buttonsTicked.indexOf(id) >= 0 ? ' checked' : '') +
+      '><span><span class="room">' + esc(b.roomName || 'No room') + ' &middot; </span>' + esc(b.name) + '</span></label>';
+  }).join('') || '<div class="note">This project has no other Dynamic Button.</div>';
+  if (!keepTicks) setMode('cp-mode', 'add');
+  $('cp-note').textContent = 'A button keeps up to ' + gState.max + ' looks. Pictures of your own go with the looks.';
+  syncCopyGo();
+}
+// A change to what's ticked ends a Replace waiting for its second press: its note named the first choice.
+function syncCopyGo() {
+  unconfirm($('cp-go'));
+  var looks = checkedIn('cp-looks', 'look').length, buttons = checkedIn('cp-buttons', 'button').length;
+  $('cp-go').disabled = gApplying || !looks || !buttons;
+  if (!$('cp-go').dataset.confirm) $('cp-go').textContent = looks && buttons ? 'Copy ' + plural(looks, 'Look') + ' to ' + plural(buttons, 'Button') : 'Copy';
+}
+async function copyToButton(target, items, replace, say) {
+  var link = deviceLink(target.id);
+  if (!(await link.open())) return { text: target.name + ': the controller didn’t connect the page to it.', bad: true };
+  try { return resultLine(target.name, await applyLooks(link, target.name, items, replace, say), 'copied'); }
+  catch (e) { return { text: target.name + ': ' + e.message, bad: true }; }
+}
+async function runCopy() {
+  var lookIds = checkedIn('cp-looks', 'look'), picked = checkedIn('cp-buttons', 'button');
+  var targets = (gButtons || []).filter(function(b) { return picked.indexOf(Number(b.id)) >= 0; });
+  if (!lookIds.length || !targets.length || gApplying) return;
+  var replace = modeOf('cp-mode') === 'replace';
+  if (replace && !confirmed($('cp-go'), 'cp-confirm', 'Replaces the looks on ' + targets.map(function(t) { return t.name; }).join(', ') +
+    ': their current looks, their pictures and the programming on their Shown events go.')) return;
+  var out = $('cp-result'), lines = [];
+  var say = function(text) { out.innerHTML = lines.map(lineHtml).join('') + (text ? '<div>' + esc(text) + '</div>' : ''); };
+  setApplying(true);
+  try {
+    say('Getting the looks ready…');
+    var ready = await itemsFromButton(lookIds);
+    if (ready.missing.length) lines.push(missingLine(ready.missing));
+    if (ready.items.length) {
+      for (var i = 0; i < targets.length; i++) lines.push(await copyToButton(targets[i], ready.items, replace, say));
+    }
+  } catch (e) {
+    lines.push({ text: e.message, bad: true });
+  } finally {
+    setApplying(false);
+    say('');
+  }
+}
+$('copy-to').addEventListener('click', function() {
+  if (!$('copy-panel').hidden) { openPanel(null); return; }
+  openPanel('copy');
+  $('cp-result').textContent = '';
+  renderCopyPanel(false);
+  if (gApiHost) sendCommand('_GET_BUTTONS');
+});
+$('cp-looks').addEventListener('change', syncCopyGo);
+$('cp-buttons').addEventListener('change', syncCopyGo);
+$('cp-go').addEventListener('click', runCopy);
+$('cp-cancel').addEventListener('click', function() { openPanel(null); });
+
+// ---- Export: one file of the looks and the button's own pictures ----
+function looksFile(items) {
+  var pictures = {}, keys = {}, n = 0, def = null;
+  var looks = items.map(function(it, i) {
+    var look = JSON.parse(JSON.stringify(it.look)), icon = look.icon;
+    look.id = 'l' + (i + 1);
+    if (it.isDefault) def = look.id;
+    if (it.picture) {
+      var key = keys[it.picture.key] || (keys[it.picture.key] = 'p' + (++n));
+      pictures[key] = it.picture.every ? { kind: 'web', url: it.picture.url, every: it.picture.every }
+        : { kind: it.picture.kind, width: it.picture.width, height: it.picture.height, name: it.picture.name, data: it.picture.b64 };
+      look.icon = { picture: key, width: icon.width, height: icon.height };
+    } else {
+      look.icon = savedIcon(icon);
+    }
+    return look;
+  });
+  return { format: LOOKS_FORMAT, version: LOOKS_VERSION, exportedFrom: (gSelf && gSelf.name) || '', exportedAt: new Date().toISOString(),
+    defaultLook: def, looks: looks, pictures: pictures };
+}
+async function exportLooks() {
+  looksNote('Getting the looks ready…');
+  try {
+    var ready = await itemsFromButton(gState.looks.map(function(l) { return Number(l.id); }));
+    if (!ready.items.length) { looksNote(missingLine(ready.missing).text, true); return; }
+    var file = looksFile(ready.items);
+    var base = String((gSelf && gSelf.name) || 'Dynamic Button').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Dynamic Button';
+    var blob = new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = base + '.dynamic-button.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 60000);
+    // An address can carry a login or a token, and the file carries the address.
+    var webs = Object.keys(file.pictures).filter(function(k) { return file.pictures[k].kind === 'web'; }).length;
+    var note = 'Exported ' + plural(ready.items.length, 'look') + ' as ' + a.download + '.';
+    if (webs) note += ' It holds the web address of ' + plural(webs, 'picture') + (webs === 1 ? ' that refreshes' : ' that refresh') + ', which can carry a login or token.';
+    if (ready.missing.length) note += ' ' + missingLine(ready.missing).text;
+    looksNote(note, !!ready.missing.length);
+  } catch (e) {
+    looksNote(e.message, true);
+  }
+}
+$('export-looks').addEventListener('click', function() { openPanel(null); exportLooks(); });
+
+// ---- Import: a file another button exported. It's untrusted: every picture goes through the same checks
+// as one added by hand, every look through the driver's own rules before anything is deleted, and Show
+// when, live badge text and web addresses come only when asked for. ----
+var NOT_LOOKS = 'That file isn’t looks exported from a Dynamic Button.';
+async function importPicture(p) {
+  if (!p || typeof p !== 'object') throw new Error(NOT_LOOKS);
+  if (p.kind === 'web') {
+    var url = String(p.url || ''), every = Number(p.every);
+    if (!/^https?:\/\/\S+$/i.test(url) || !REFRESH_TAGS[every]) throw new Error('A refreshing picture in the file has no usable address.');
+    return { every: every, url: url };
+  }
+  var b64 = String(p.data || '').replace(/\s+/g, ''), name = String(p.name || 'Picture').slice(0, 300);
+  if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64)) throw new Error('A picture in the file is damaged.');
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  try {
+    return p.kind === 'svg' ? pictureFromSvg(new TextDecoder().decode(bytes), name) : await pictureFromRaster(new Blob([bytes]), name);
+  } catch (e) {
+    throw new Error('A picture in the file can’t be used: ' + e.message.charAt(0).toLowerCase() + e.message.slice(1));
+  }
+}
+// An id this page carries draws from the page's own markup, whatever the file sends with it.
+function importIcon(icon, pictures, key) {
+  if (!icon || typeof icon !== 'object') return null;
+  if (icon.picture != null) {
+    var p = pictures[key];
+    if (!p) return null;
+    return p.every ? { id: 'mine:import-' + key, width: 1, height: 1, license: '', licenseUrl: '', body: '' }
+      : { id: 'mine:import-' + key, width: p.width, height: p.height, license: '', licenseUrl: '', body: pictureBody(p.kind, p.b64) };
+  }
+  var id = String(icon.id || '');
+  if (!/^[\w-]+:[\w-]+$/.test(id) || /^mine:/.test(id)) return null;
+  var own = carriedIcon(id);
+  if (own) return Object.assign({}, own, { carried: true });
+  if (icon.carried) return null;
+  var body = typeof icon.body === 'string' && icon.body.length <= 16384 ? cleanBody(icon.body) : '';
+  if (!body) return null;
+  return { id: id, body: body, width: Number(icon.width) || 24, height: Number(icon.height) || 24, license: String(icon.license || '').slice(0, 100),
+    licenseUrl: /^https:\/\/\S+$/.test(String(icon.licenseUrl || '')) ? String(icon.licenseUrl) : '' };
+}
+// The driver's own rules for a look (Looks:_check), so a look it would refuse is left out before Replace
+// deletes anything. Its name against the button's other looks is the copy's to settle.
+var BADGE_EVERY_CHOICES = [30, 60, 300, 900, 3600];
+function isHexColor(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
+function wholeIn(v, low, high) { return typeof v === 'number' && Math.floor(v) === v && v >= low && v <= high; }
+function utf8Bytes(s) { return new TextEncoder().encode(s).length; }
+function lookProblem(l, refreshes) {
+  var name = String(l.name == null ? '' : l.name).trim();
+  if (!name) return 'it has no name';
+  if (Array.from(name).length > 40) return 'its name is longer than 40 characters';
+  if (name.indexOf(',') >= 0) return 'its name has a comma';
+  if (!isHexColor(l.iconColor) || !isHexColor(l.tileColor)) return 'a color isn’t #RRGGBB';
+  if (l.showWhen != null && typeof l.showWhen !== 'string') return 'its Show when isn’t text';
+  if (typeof l.showWhen === 'string' && utf8Bytes(l.showWhen.trim()) > 2000) return 'its Show when is longer than 2000 characters';
+  if (refreshes) return null;
+  if (SHAPES.indexOf(l.tileShape) < 0) return 'its tile shape isn’t one the driver knows';
+  if (l.glow != null && !wholeIn(l.glow, 0, 200)) return 'its glow isn’t a whole percent from 0 to 200';
+  if (l.grayscale != null && typeof l.grayscale !== 'boolean') return 'its grayscale isn’t on or off';
+  var c = l.custom;
+  if (c == null) return null;
+  if (typeof c !== 'object' || Array.isArray(c)) return 'its customization can’t be read';
+  if (['color', 'body', 'tile', 'symbol', 'glowColor'].some(function(k) { return c[k] != null && !isHexColor(c[k]); })) return 'a color isn’t #RRGGBB';
+  if (c.size != null && !wholeIn(c.size, 50, 100)) return 'its size isn’t a whole percent from 50 to 100';
+  if (['x', 'y'].some(function(k) { return c[k] != null && !wholeIn(c[k], -10, 10); })) return 'its position isn’t a whole percent from -10 to 10';
+  var b = c.badge;
+  if (b == null) return null;
+  if (typeof b !== 'object' || Array.isArray(b)) return 'its badge can’t be read';
+  var text = String(b.text == null ? '' : b.text).trim(), live = isLiveText(text);
+  if (!text || (live ? utf8Bytes(text) > 200 : Array.from(text).length > BADGE_MAX)) return 'its badge text is empty or too long';
+  if (/[\u0000-\u001f\u007f]/.test(text)) return 'its badge text has control characters';
+  if (BADGE_PLACES.indexOf(b.place) < 0) return 'its badge place isn’t one the driver knows';
+  if (!isHexColor(b.color) || !(b.background === 'None' || isHexColor(b.background))) return 'its badge colors aren’t #RRGGBB';
+  if (b.size != null && !wholeIn(b.size, 50, 150)) return 'its badge size isn’t a whole percent from 50 to 150';
+  var every = typeof b.every === 'number' || (typeof b.every === 'string' && b.every.trim() !== '' && !isNaN(Number(b.every))) ? Number(b.every) : BADGE_EVERY;
+  if (live && BADGE_EVERY_CHOICES.indexOf(every) < 0) return 'its badge’s update choice isn’t one the driver knows';
+  return null;
+}
+// What runs or reaches out from a look: its Show when, a live badge's text and a refreshing picture's address.
+function liveBadgeText(look) {
+  var b = look.custom && look.custom.badge;
+  return b && isLiveText(String(b.text || '')) ? String(b.text) : '';
+}
+function withoutReach(it) {
+  var look = JSON.parse(JSON.stringify(it.look));
+  look.showWhen = '';
+  if (liveBadgeText(look)) delete look.custom.badge;
+  return Object.assign({}, it, { look: look });
+}
+async function readLooksFile(file) {
+  if (file.size > LOOKS_FILE_MAX) throw new Error('That file is larger than 20 MB.');
+  var data;
+  try { data = JSON.parse(await file.text()); } catch (e) { throw new Error(NOT_LOOKS); }
+  if (!data || typeof data !== 'object' || data.format !== LOOKS_FORMAT) throw new Error(NOT_LOOKS);
+  if (data.version !== LOOKS_VERSION) {
+    throw new Error(Number(data.version) > LOOKS_VERSION ? 'That file comes from a newer Dynamic Buttons driver. Update this one first.' : NOT_LOOKS);
+  }
+  var raw = Array.isArray(data.looks) ? data.looks.slice(0, 64) : [];
+  var source = data.pictures && typeof data.pictures === 'object' && !Array.isArray(data.pictures) ? data.pictures : {};
+  // Keyed by the file's own names, so nothing it names can reach an object's built-in fields.
+  var own = Object.prototype.hasOwnProperty, pictures = Object.create(null), items = [], skipped = [];
+  for (var i = 0; i < raw.length; i++) {
+    var l = raw[i];
+    var label = l && typeof l === 'object' && typeof l.name === 'string' && l.name.trim() ? l.name.trim().slice(0, 40) : 'Look ' + (i + 1);
+    if (!l || typeof l !== 'object') { skipped.push(label + ': it can’t be read'); continue; }
+    var key = l.icon && l.icon.picture != null ? String(l.icon.picture) : null;
+    if (key && !own.call(pictures, key)) {
+      if (!own.call(source, key)) { skipped.push(label + ': its picture isn’t in the file'); continue; }
+      pictures[key] = await importPicture(source[key]);
+    }
+    var icon = importIcon(l.icon, pictures, key);
+    if (!icon) { skipped.push(label + ': its icon isn’t one this driver has'); continue; }
+    var refreshes = !!(key && pictures[key].every);
+    var problem = lookProblem(l, refreshes);
+    if (problem) { skipped.push(label + ': ' + problem); continue; }
+    var look = { name: String(l.name).trim(), icon: icon, iconColor: l.iconColor.toUpperCase(), tileShape: refreshes ? 'None' : l.tileShape,
+      tileColor: l.tileColor.toUpperCase(), inCycle: l.inCycle !== false, glow: l.glow == null ? 100 : l.glow, grayscale: l.grayscale === true,
+      showWhen: typeof l.showWhen === 'string' ? l.showWhen.trim() : '', custom: l.custom ? JSON.parse(JSON.stringify(l.custom)) : {} };
+    var picture = key ? Object.assign({ key: 'file:' + key }, pictures[key]) : null;
+    items.push({ look: look, picture: picture, isDefault: data.defaultLook != null && String(l.id) === String(data.defaultLook) });
+  }
+  if (!items.length) throw new Error(raw.length ? 'None of the looks in that file can be used here.' : 'That file has no looks.');
+  return { items: items, from: String(data.exportedFrom || '').slice(0, 100), skipped: skipped };
+}
+function renderImportPanel() {
+  var im = gImport;
+  $('im-file').innerHTML = '<b>' + esc(im.fileName) + '</b> &middot; ' + esc(plural(im.items.length, 'look')) + (im.from ? ', exported from ' + esc(im.from) : '');
+  $('im-skipped').innerHTML = im.skipped.length ? 'Left out: ' + im.skipped.map(esc).join('; ') + '.' : '';
+  $('im-skipped').hidden = !im.skipped.length;
+  $('im-looks').innerHTML = im.items.map(function(it, i) {
+    var reach = [];
+    if (it.look.showWhen) reach.push(['Show when', it.look.showWhen]);
+    if (liveBadgeText(it.look)) reach.push(['Badge', liveBadgeText(it.look)]);
+    if (it.picture && it.picture.every) reach.push(['Web address', it.picture.url]);
+    return '<div class="cp-entry"><label class="cp-item"><input type="checkbox" data-item="' + i + '" checked>' +
+      (it.picture && it.picture.every ? '<div class="noimg" title="Fetched by the controller once imported"></div>' : '<img alt="" data-im-thumb="' + i + '">') +
+      '<span>' + esc(it.look.name) + '</span></label>' +
+      reach.map(function(r) { return '<div class="cp-code"><span>' + r[0] + '</span><code>' + esc(r[1]) + '</code></div>'; }).join('') + '</div>';
+  }).join('');
+  im.items.forEach(function(it, i) { if (!(it.picture && it.picture.every)) thumbInto($('im-looks').querySelector('img[data-im-thumb="' + i + '"]'), it.look, 56); });
+  $('im-trust').checked = false;
+  setMode('im-mode', 'replace');
+  $('im-result').textContent = '';
+  syncImportGo();
+}
+function syncImportGo() {
+  unconfirm($('im-go'));
+  var n = gImport ? checkedIn('im-looks', 'item').length : 0;
+  $('im-go').disabled = gApplying || !n;
+  if (!$('im-go').dataset.confirm) $('im-go').textContent = 'Import ' + plural(n, 'Look');
+}
+async function runImport() {
+  if (!gImport || gApplying) return;
+  var picks = checkedIn('im-looks', 'item'), chosen = gImport.items.filter(function(it, i) { return picks.indexOf(i) >= 0; });
+  if (!chosen.length) return;
+  var out = $('im-result');
+  if (!gApiHost) { out.textContent = 'Opened outside Composer, there is no controller to import into.'; return; }
+  var replace = modeOf('im-mode') === 'replace', trusted = $('im-trust').checked, cut = [];
+  var items = trusted ? chosen : chosen.filter(function(it) {
+    if (it.picture && it.picture.every) { cut.push(it.look.name); return false; }
+    return true;
+  }).map(withoutReach);
+  if (!items.length) { out.innerHTML = lineHtml({ text: 'Left out without their web addresses: ' + cut.join(', ') + '.', bad: true }); return; }
+  if (replace && !confirmed($('im-go'), 'im-confirm', 'Replaces this button’s looks: its current looks, their pictures and the programming on their Shown events go.')) return;
+  setApplying(true);
+  var line;
+  try {
+    line = resultLine('This button', await applyLooks(deviceLink(gDriverId), 'this button', items, replace, function(t) { out.textContent = t; }), 'imported');
+  } catch (e) {
+    line = { text: e.message, bad: true };
+  } finally {
+    setApplying(false);
+  }
+  out.innerHTML = lineHtml(line) + (cut.length ? lineHtml({ text: 'Left out without their web addresses: ' + cut.join(', ') + '.', bad: true }) : '');
+}
+function chooseImportFile() { $('import-file').value = ''; $('import-file').click(); }
+$('import-looks').addEventListener('click', chooseImportFile);
+$('im-choose').addEventListener('click', chooseImportFile);
+$('import-file').addEventListener('change', async function() {
+  var file = this.files && this.files[0];
+  if (!file) return;
+  looksNote('Reading ' + file.name + '…');
+  try {
+    gImport = Object.assign(await readLooksFile(file), { fileName: file.name });
+    openPanel('import');
+    renderImportPanel();
+  } catch (e) {
+    looksNote(e.message, true);
+  }
+});
+$('im-looks').addEventListener('change', syncImportGo);
+$('im-trust').addEventListener('change', syncImportGo);
+$('im-go').addEventListener('click', runImport);
+$('im-cancel').addEventListener('click', function() { openPanel(null); gImport = null; });
 
 // ============================================================
 // Show when: what By Value reads for each look
