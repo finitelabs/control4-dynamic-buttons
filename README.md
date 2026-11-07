@@ -548,10 +548,11 @@ Button, regardless of the current version.
 
 Returns the driver to a fresh install: it deletes every look with its picture
 and its `Shown` event, shows the driver's own icon, and returns the properties
-to their defaults, with Look Control back to `Manual`. The button keeps its
-place in Navigator and the programming on its other events and commands.
-Programming that names a deleted look does nothing, even after a new look takes
-the same name: choose the new look in that programming.
+to their defaults, with Look Control back to `Manual`. The update settings stay
+as they are, since every Dynamic Button shares them. The button keeps its place
+in Navigator and the programming on its other events and commands. Programming
+that names a deleted look does nothing, even after a new look takes the same
+name: choose the new look in that programming.
 
 **Parameters:**
 
