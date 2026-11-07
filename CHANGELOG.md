@@ -31,7 +31,11 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added a Show Look command, a `Look` variable, a Look Changed event and a Look
   Is conditional
 - Added the Look Control property: `On Select` shows the next look on each press
-  of the button, and `Manual` leaves the look to programming
+  of the button, `Manual` leaves the look to programming, and `By Value` shows
+  the look that follows a value
+- Added `By Value` to Look Control: each look gets a Show when expression on
+  other devices' variables, the first look whose expression is true shows, and a
+  default look shows when none is
 - Added Next Look and Previous Look commands, and an In cycle setting for each
   look that presses and both commands pass over when it is off
 - Added an event for each look, named for the look, that fires when it becomes
@@ -65,6 +69,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   look's Update setting
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
+  <!-- #ifdef DRIVERCENTRAL -->
 - Added DriverCentral licensing: without an active license the button shows the
   driver's own icon after five minutes and its looks can't change, and a license
   shows its look again at once
+  <!-- #endif -->
