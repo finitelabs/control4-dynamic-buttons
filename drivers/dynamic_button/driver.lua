@@ -1290,11 +1290,7 @@ end
 local RESET_PROPERTY_VALUES = {
   ["Log Level"] = "3 - Info",
   ["Log Mode"] = "Off",
-  ["Automatic Updates"] = "On",
   ["Look Control"] = "Manual",
-  --#ifndef DRIVERCENTRAL
-  ["Update Channel"] = "Production",
-  --#endif
   --#ifdef DRIVERCENTRAL
   ["Cloud Monitoring"] = "Enabled",
   --#endif

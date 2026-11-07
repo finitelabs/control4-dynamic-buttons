@@ -383,6 +383,8 @@ H.tab(
 )
 local versionBefore = lastVersion()
 Properties["Log Level"] = "5 - Trace"
+Properties["Automatic Updates"] = "Off"
+Properties["Update Channel"] = "Prerelease"
 H.mark()
 EC.Reset_Driver({ ["Are You Sure?"] = "No" })
 H.tab("_GET_STATE")
@@ -398,6 +400,8 @@ T.eq("the Look variable is back, empty", Variables["Look"], "")
 T.eq("no Look Changed fires, as on a fresh install", #H.fired, 0)
 T.eq("Look Is is gone", select(2, lookIs()), nil)
 T.eq("settings return to their defaults", Properties["Log Level"], "3 - Info")
+T.eq("but Automatic Updates, shared with every item, stays as it was", Properties["Automatic Updates"], "Off")
+T.eq("and so does Update Channel", Properties["Update Channel"], "Prerelease")
 T.eq("a new look never takes an old look's number", H.addLook("Again"), lastId + 1)
 H.tab("_GET_STATE")
 T.eq("and none keeps an old look's customization", H.state().looks[1].custom, nil)
