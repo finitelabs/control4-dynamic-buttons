@@ -461,6 +461,20 @@ T.eq("a redirect handed back is followed", H.fetched[#H.fetched], "http://camera
 T.eq("to the picture", (pieces("FETCHED")), photo)
 T.eq("a redirect loop stops", fetch("http://camera.local/loop").error, "The address answered with status 302.")
 T.eq("after 5 more tries", #H.transfers, 6)
+local resolved, rejected
+Pictures.fetch("http://camera.local/handed-back"):next(function(body)
+  resolved = body
+end, function(err)
+  rejected = err
+end)
+T.eq("as a Deferred, a redirect handed back resolves the first fetch with the picture", resolved, photo)
+T.eq("and rejects nothing", rejected, nil)
+Pictures.fetch("http://camera.local/loop"):next(function(body)
+  resolved = body
+end, function(err)
+  rejected = err
+end)
+T.eq("a loop rejects it with why", rejected, "The address answered with status 302.")
 H.tab("_GET_STATE")
 T.eq("nothing fetched is kept until the tab sends it", #H.state().pictures, 2)
 H.urlAnswer = nil

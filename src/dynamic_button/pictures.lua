@@ -2,8 +2,12 @@
 -- tab, kept in the button's storage so a look can be drawn from one again. A look names its picture
 -- by id; a picture no look names is deleted.
 
+local deferred = require("deferred")
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
+--#ifdef DRIVERCENTRAL
+local diagnostics = require("lib.diagnostics")
+--#endif
 
 --- @class Picture
 --- @field id string `mine:p<n>`, unique for the life of the button.
@@ -13,7 +17,7 @@ local Images = require("dynamic_button.images")
 --- @field bytes integer
 --- @field name string Its file name, or a web address's last part.
 --- @field added number When it was added, in seconds.
---- @field every? integer For a picture that refreshes: how often, in seconds, one of `Pictures.EVERY`.
+--- @field every? integer For a picture that refreshes: how often, in seconds, one of `Pictures.EVERY_SECONDS`.
 --- @field source? string For a picture that refreshes: names its bytes, a new one each time they change.
 --- @field fetchedAt? number For a picture that refreshes: when its bytes last changed, in seconds.
 
@@ -40,7 +44,7 @@ Pictures.MAX_FETCH = 2 * 1024 * 1024
 Pictures.MAX_ADDRESS = 2048
 
 --- How often a picture from a web address can refresh, in seconds.
-Pictures.EVERY = { 60, 300, 900, 3600 }
+Pictures.EVERY_SECONDS = { 60, 300, 900, 3600 }
 
 --- A picture no look names is kept this long after it was added, in seconds: the look saving it
 --- comes after it.
@@ -49,12 +53,13 @@ Pictures.GRACE_SECONDS = 600
 --- The longest name kept, in characters.
 local MAX_NAME = 300
 local DIR = "pictures"
-local PERSIST_KEY = "Pictures"
+local PICTURES_PERSIST_KEY = "Pictures"
 --- Refreshing pictures' web addresses, by id: encrypted, so storage's trace never shows one, since an
 --- address can carry a login or a token.
-local ADDRESSES_KEY = "PictureAddresses"
+local ADDRESSES_PERSIST_KEY = "PictureAddresses"
 local EXTENSIONS = { png = "png", jpeg = "jpg", svg = "svg" }
 
+--- Creates a new instance of the Pictures class.
 --- @param opts { store: table, used: fun(): table<string, boolean>, now?: fun(): number }
 --- @return Pictures pictures
 function Pictures:new(opts)
@@ -141,6 +146,10 @@ end
 --- How long each fetch may take, in seconds: a redirect handed back starts a new one.
 Pictures.FETCH_SECONDS = 20
 
+--- How long a fetch waits for the site to accept the connection, in seconds: half the whole fetch, so
+--- an address on no reachable host fails while the tab still waits for an answer.
+Pictures.CONNECT_SECONDS = 10
+
 --- The most redirects followed when the controller hands one back unfollowed.
 local MAX_HOPS = 5
 
@@ -210,11 +219,12 @@ function Pictures.dimensions(data)
   return nil, nil
 end
 
+--- A refresh interval the button takes.
 --- @param value any
---- @return integer|nil every One of `Pictures.EVERY`, or nil.
+--- @return integer|nil every One of `Pictures.EVERY_SECONDS`, or nil.
 function Pictures.checkEvery(value)
   local n = tonumber(value)
-  for _, every in ipairs(Pictures.EVERY) do
+  for _, every in ipairs(Pictures.EVERY_SECONDS) do
     if n == every then
       return every
     end
@@ -311,75 +321,91 @@ end
 
 --- Fetch a picture for the Button tab. What can't be a picture is refused as soon as the answer
 --- shows it: a status, a length over `MAX_FETCH` or a page or stream by its headers, and a body that
---- grows past `MAX_FETCH` while it arrives, so nothing large is held on the controller.
+--- grows past `MAX_FETCH` while it arrives, so nothing large is held on the controller. A raw
+--- `C4:url()`, not `lib.http`: only it can stop a transfer by its headers or mid-body.
 --- @param address string
---- @param done fun(body: string|nil, err: string|nil)
 --- @param hops? integer Redirects followed so far (optional).
-function Pictures.fetch(address, done, hops)
+--- @return Deferred fetched Resolves with the picture's bytes, or rejects with why it was refused.
+function Pictures.fetch(address, hops)
   hops = hops or 0
+  local d = deferred.new()
   local parts, bytes, refused = {}, 0, nil
-  C4:url()
-    :SetOptions({ fail_on_error = false, timeout = Pictures.FETCH_SECONDS, connect_timeout = 10 })
-    :OnHeaders(function(_, response)
-      parts, bytes = {}, 0
-      if passing(response.code) then
-        return false
-      end
-      local code = tonumber(response.code) or 0
-      local length = tonumber(header(response.headers, "Content-Length"))
-      local kind = (header(response.headers, "Content-Type") or ""):lower()
-      if code >= 400 then
-        refused = Pictures.fetchError({ code = code })
-      elseif length and length > Pictures.MAX_FETCH then
-        refused = TOO_LARGE
-      elseif kind:match("^%s*multipart/") or kind:match("^%s*text/html") then
-        refused = NOT_A_PICTURE
-      end
-      return refused ~= nil
-    end)
-    :OnBodyChunk(function(_, response, chunk)
-      if passing(response.code) then
-        return false
-      end
-      bytes = bytes + #chunk
-      if bytes > Pictures.MAX_FETCH then
-        refused, parts = TOO_LARGE, {}
-        return true
-      end
-      table.insert(parts, chunk)
+  local function onHeaders(_, response)
+    parts, bytes = {}, 0
+    if passing(response.code) then
       return false
-    end)
-    :OnDone(function(_, responses, errCode)
-      if refused then
-        return done(nil, refused)
+    end
+    local code = tonumber(response.code) or 0
+    local length = tonumber(header(response.headers, "Content-Length"))
+    local kind = (header(response.headers, "Content-Type") or ""):lower()
+    if code >= 400 then
+      refused = Pictures.fetchError({ code = code })
+    elseif length and length > Pictures.MAX_FETCH then
+      refused = TOO_LARGE
+    elseif kind:match("^%s*multipart/") or kind:match("^%s*text/html") then
+      refused = NOT_A_PICTURE
+    end
+    return refused ~= nil
+  end
+  local function onBodyChunk(_, response, chunk)
+    if passing(response.code) then
+      return false
+    end
+    bytes = bytes + #chunk
+    if bytes > Pictures.MAX_FETCH then
+      refused, parts = TOO_LARGE, {}
+      return true
+    end
+    table.insert(parts, chunk)
+    return false
+  end
+  local function onDone(_, responses, errCode)
+    if refused then
+      return d:reject(refused)
+    end
+    if tonumber(errCode) ~= 0 then
+      -- Only the code: curl's message can carry the address's host.
+      log:debug("A picture's fetch ended with error %s", tostring(errCode))
+      return d:reject(tonumber(errCode) == 28 and "The address took too long to answer." or Pictures.fetchError(nil))
+    end
+    local final = type(responses) == "table" and responses[#responses] or nil
+    if final and passing(final.code) then
+      local nextAddress = hops < MAX_HOPS and Pictures.resolve(address, header(final.headers, "Location"))
+      if not (nextAddress and Pictures.checkAddress(nextAddress)) then
+        return d:reject(Pictures.fetchError({ code = final.code }))
       end
-      if tonumber(errCode) ~= 0 then
-        -- Only the code: curl's message can carry the address's host.
-        log:debug("A picture's fetch ended with error %s", tostring(errCode))
-        return done(nil, tonumber(errCode) == 28 and "The address took too long to answer." or Pictures.fetchError(nil))
-      end
-      local final = type(responses) == "table" and responses[#responses] or nil
-      if final and passing(final.code) then
-        local nextAddress = hops < MAX_HOPS and Pictures.resolve(address, header(final.headers, "Location"))
-        if not (nextAddress and Pictures.checkAddress(nextAddress)) then
-          return done(nil, Pictures.fetchError({ code = final.code }))
-        end
-        return Pictures.fetch(nextAddress, done, hops + 1)
-      end
-      local body = table.concat(parts)
-      local bad = Pictures.checkFetched(body)
-      if bad then
-        return done(nil, bad)
-      end
-      done(body)
-    end)
+      return Pictures.fetch(nextAddress, hops + 1):next(function(body)
+        d:resolve(body)
+      end, function(reason)
+        d:reject(reason)
+      end)
+    end
+    local body = table.concat(parts)
+    local bad = Pictures.checkFetched(body)
+    if bad then
+      return d:reject(bad)
+    end
+    d:resolve(body)
+  end
+  --#ifdef DRIVERCENTRAL
+  -- No dispatcher runs these, so Cloud Monitoring sees their errors only through a wrap.
+  onHeaders = diagnostics:wrap(onHeaders, "Pictures.fetch")
+  onBodyChunk = diagnostics:wrap(onBodyChunk, "Pictures.fetch")
+  onDone = diagnostics:wrap(onDone, "Pictures.fetch")
+  --#endif
+  C4:url()
+    :SetOptions({ fail_on_error = false, timeout = Pictures.FETCH_SECONDS, connect_timeout = Pictures.CONNECT_SECONDS })
+    :OnHeaders(onHeaders)
+    :OnBodyChunk(onBodyChunk)
+    :OnDone(onDone)
     :Get(address, { ["User-Agent"] = "Control4" })
+  return d
 end
 
 --- @private
 --- @return { nextId: integer, list: Picture[] } data
 function Pictures:_load()
-  local data = self._store:get(PERSIST_KEY)
+  local data = self._store:get(PICTURES_PERSIST_KEY)
   if type(data) ~= "table" or type(data.list) ~= "table" then
     data = { nextId = 1, list = {} }
   end
@@ -390,7 +416,7 @@ end
 --- @private
 --- @param data { nextId: integer, list: Picture[] }
 function Pictures:_save(data)
-  self._store:set(PERSIST_KEY, data)
+  self._store:set(PICTURES_PERSIST_KEY, data)
 end
 
 --- @param picture Picture
@@ -405,6 +431,7 @@ function Pictures:list()
   return self:_load().list
 end
 
+--- The picture with this id.
 --- @param id any
 --- @return Picture|nil picture
 function Pictures:get(id)
@@ -456,7 +483,7 @@ end
 --- JPEG, at most `MAX_FETCH` bytes.
 --- @param data string
 --- @param url any
---- @param every any One of `Pictures.EVERY`.
+--- @param every any One of `Pictures.EVERY_SECONDS`.
 --- @return Picture|nil picture
 --- @return string|nil err Why it was refused, as the Button tab shows it.
 function Pictures:addWeb(data, url, every)
@@ -548,19 +575,21 @@ end
 --- @private
 --- @param change fun(addresses: table<string, string>)
 function Pictures:_setAddresses(change)
-  local addresses = self._store:get(ADDRESSES_KEY, nil, true)
+  local addresses = self._store:get(ADDRESSES_PERSIST_KEY, nil, true)
   addresses = type(addresses) == "table" and addresses or {}
   change(addresses)
-  self._store:set(ADDRESSES_KEY, addresses, true)
+  self._store:set(ADDRESSES_PERSIST_KEY, addresses, true)
 end
 
+--- A refreshing picture's web address.
 --- @param id any
 --- @return string|nil address The web address a refreshing picture comes from. Never log it.
 function Pictures:address(id)
-  local addresses = self._store:get(ADDRESSES_KEY, nil, true)
+  local addresses = self._store:get(ADDRESSES_PERSIST_KEY, nil, true)
   return type(addresses) == "table" and addresses[tostring(id or "")] or nil
 end
 
+--- Whether a picture refreshes from a web address.
 --- @param id any
 --- @return boolean refreshes Whether the button keeps a picture by that id that refreshes.
 function Pictures:refreshes(id)
@@ -628,6 +657,7 @@ function Pictures:setAddress(id, address)
   end)
 end
 
+--- A picture's bytes.
 --- @param id any
 --- @return string|nil data The picture's bytes.
 function Pictures:load(id)
@@ -657,7 +687,7 @@ end
 --- @private
 --- @param list Picture[] The pictures whose addresses stay.
 function Pictures:_keepAddresses(list)
-  if self._store:get(ADDRESSES_KEY, nil, true) == nil then
+  if self._store:get(ADDRESSES_PERSIST_KEY, nil, true) == nil then
     return
   end
   self:_setAddresses(function(addresses)

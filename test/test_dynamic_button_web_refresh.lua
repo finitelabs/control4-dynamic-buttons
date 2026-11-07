@@ -343,6 +343,49 @@ do
   T.eq("its answer is served", s.arrived[1].data, jpeg(640, 400, "new"))
 end
 
+T.section("A new address while the old one is fetched is fetched too, shown or not")
+do
+  local s = setup()
+  local _, picture = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  local logo = assert(s.looks:add(H.lookFields("Logo")))
+  s.refresher:watch(logo)
+  T.truthy("a fetch of the old address starts", s.refresher:refreshPicture(picture.id))
+  T.truthy("asking again for that address starts nothing more", s.refresher:refreshPicture(picture.id))
+  T.eq("one fetch under way", #s.fetches, 1)
+  s.pictures:setAddress(picture.id, "http://camera.local/other.jpg")
+  s.refresher:forget(picture.id)
+  T.truthy("Set Web Address's fetch of the new one starts", s.refresher:refreshPicture(picture.id))
+  T.eq("beside the old one", #s.fetches, 2)
+  T.eq("for the new address", s.fetches[2].address, "http://camera.local/other.jpg")
+  s.answer(jpeg(640, 400, "old"))
+  T.eq("the old answer changes nothing", s.pictures:load(picture.id), jpeg(640, 400, "a"))
+  s.answer(jpeg(640, 400, "new"))
+  T.eq("the new address's bytes are kept", s.pictures:load(picture.id), jpeg(640, 400, "new"))
+  T.eq("and nothing is left under way", #s.fetches, 0)
+end
+
+T.section("A hook that fails leaves the next refresh armed")
+do
+  local s = setup()
+  local driveway = s.webLook("Driveway", ADDRESS, jpeg(640, 400, "a"))
+  s.refresher._arrived = function()
+    error("serving failed")
+  end
+  s.refresher._changed = function()
+    error("telling the tab failed")
+  end
+  s.refresher:watch(driveway)
+  s.clock = s.clock + 300
+  s.timer().fn()
+  s.answer(jpeg(640, 400, "b"))
+  T.eq("new bytes whose hooks fail: the next refresh is armed", s.timer() and s.timer().ms, 300 * 1000)
+  T.eq("and the bytes are kept", s.pictures:load(driveway.icon.id), jpeg(640, 400, "b"))
+  s.clock = s.clock + 300
+  s.timer().fn()
+  s.answer(nil, "The controller couldn't reach that address.")
+  T.eq("a failure whose hook fails: the next is armed too", s.timer() and s.timer().ms, 300 * 1000)
+end
+
 T.section("A look sharing a picture is handed the newer bytes")
 do
   local s = setup()

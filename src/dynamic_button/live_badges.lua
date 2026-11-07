@@ -32,7 +32,7 @@ local BOOT_TIMER = "LiveBadgeBootWait"
 
 --- The longest a change waits while the project starts, in seconds: a variable's first value may
 --- be its driver's default, with the real one moments later.
-local BOOT_EVERY = 30
+local BOOT_EVERY_SECONDS = 30
 
 --- @param text string
 --- @param count integer
@@ -90,6 +90,7 @@ local function addressKey(text)
   return string.format("%08x", Png.crc32(text or ""))
 end
 
+--- Creates a new instance of the LiveBadges class.
 --- @param opts { looks: Looks, images: Images, engine: Expressions, redraw: fun(), changed: fun(), allowed: fun(): boolean, now?: fun(): number }
 --- @return LiveBadges badges
 function LiveBadges:new(opts)
@@ -105,6 +106,7 @@ function LiveBadges:new(opts)
   return instance
 end
 
+--- The shown look's live badge text, for the expressions engine to watch.
 --- @return table<string, table> expressions What to watch, as the engine reads them.
 function LiveBadges:expressions()
   local look = self._watched and self._looks:get(self._watched)
@@ -236,7 +238,7 @@ function LiveBadges:check()
   end
   local now, every = self._now(), Looks.badgeEvery(badge)
   if self._booting then
-    every = math.min(every, BOOT_EVERY)
+    every = math.min(every, BOOT_EVERY_SECONDS)
   end
   -- A clock set back would otherwise stretch the wait by as much.
   if self._drawnAt and now < self._drawnAt then
@@ -244,7 +246,7 @@ function LiveBadges:check()
   end
   local wait = self._drawnAt and every - (now - self._drawnAt) or 0
   if wait > 0 then
-    SetTimer(DRAW_TIMER, wait * 1000, function()
+    SetTimer(DRAW_TIMER, wait * ONE_SECOND, function()
       self:check()
     end)
     return

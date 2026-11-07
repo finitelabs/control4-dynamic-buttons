@@ -1,6 +1,11 @@
 --- Look Control's By Value under the C4 shim: each look's Show when over another device's variables,
 --- the order rule, the default look, a hold from programming, a Director restart with a variable not
 --- there yet, a device leaving the project, and what the Button tab is told.
+---
+--- Run from the driver root:
+---   make test
+--- or:
+---   ./test/run_test.sh test_dynamic_button_follow.lua
 
 local T = require("testlib")
 local H = require("dynamic_button_harness")
@@ -69,6 +74,13 @@ local function setLookControl(mode)
 end
 
 --- @return string name The shown look, as the Look variable names it.
+--- The preview's last answer, sent as one JSON string so the socket can't turn text into a number.
+--- @return table|nil result
+local function evalResult()
+  local pushed = H.lastUi("EVAL_RESULT")
+  return pushed and JSON:decode(pushed.data) or nil
+end
+
 local function shown()
   return Variables["Look"]
 end
@@ -465,7 +477,8 @@ setDevices()
 
 T.section("The preview")
 H.tab("_EVAL_EXPRESSION", { id = "7", expression = LEVEL .. " >= 80" })
-local preview = H.lastUi("EVAL_RESULT")
+T.eq("is one JSON string", type(H.lastUi("EVAL_RESULT").data), "string")
+local preview = evalResult()
 T.eq("answers its request", preview.id, "7")
 T.eq("with the result", preview.result, "true")
 T.eq("in names", preview.rendered, "[Garage > Battery > LEVEL] >= 80")
@@ -473,26 +486,29 @@ T.eq("and with current values", preview.substituted, level .. " >= 80")
 state = string.rep("v", MAX_SHOW_WHEN + 1)
 setDevices()
 H.tab("_EVAL_EXPRESSION", { id = "7", expression = STATE .. ' == "x"' })
-T.eq("a long value is cut", #H.lastUi("EVAL_RESULT").substituted, MAX_SHOW_WHEN)
+T.eq("a long value is cut", #evalResult().substituted, MAX_SHOW_WHEN)
+setState("007")
+H.tab("_EVAL_EXPRESSION", { id = "b20", expression = STATE, mode = "string" })
+T.eq("a badge's text that reads as a number stays text", evalResult().fitted, "007")
 state = "Idle"
 setDevices()
 H.tab("_EVAL_EXPRESSION", { id = "8", expression = "PARAM{100,NOPE} > 1" })
-preview = H.lastUi("EVAL_RESULT")
+preview = evalResult()
 T.eq("no result for a missing variable", preview.result, "")
 T.truthy("but the reason", preview.error:find("NOPE", 1, true))
 T.eq("which doesn't hold Save: the variable may come", preview.hold, nil)
 local OWN = "A look can't follow this button's own variables."
 H.tab("_EVAL_EXPRESSION", { id = "10", expression = "PARAM{" .. H.DEVICE_ID .. ",1} == 'x'" })
-preview = H.lastUi("EVAL_RESULT")
+preview = evalResult()
 T.eq("this button's own variable holds Save, in a plain sentence", { preview.error, preview.hold }, { OWN, "yes" })
 H.tab("_EVAL_EXPRESSION", { id = "14", expression = LEVEL .. " > 3 -- was PARAM{" .. H.DEVICE_ID .. ",1} == 'x'" })
-T.eq("but not one in a comment, which isn't read", H.lastUi("EVAL_RESULT").hold, nil)
+T.eq("but not one in a comment, which isn't read", evalResult().hold, nil)
 H.tab("_EVAL_EXPRESSION", { id = "11", expression = "PARAM{" .. (H.DEVICE_ID + 1) .. ",1} == 1" })
-T.eq("and its proxy's", H.lastUi("EVAL_RESULT").error, OWN)
+T.eq("and its proxy's", evalResult().error, OWN)
 H.tab("_EVAL_EXPRESSION", { id = "b12", expression = "PARAM{" .. H.DEVICE_ID .. ",1}", mode = "string" })
-T.eq("a live badge's text too", { H.lastUi("EVAL_RESULT").error, H.lastUi("EVAL_RESULT").hold }, { OWN, "yes" })
+T.eq("a live badge's text too", { evalResult().error, evalResult().hold }, { OWN, "yes" })
 H.tab("_EVAL_EXPRESSION", { id = "13", expression = LEVEL .. " >=" })
-preview = H.lastUi("EVAL_RESULT")
+preview = evalResult()
 T.eq("one that doesn't read as an expression holds Save", preview.hold, "yes")
 T.truthy("as the engine words it", preview.error:find("^compile error: "))
 T.eq("still in names", preview.rendered, "[Garage > Battery > LEVEL] >=")
@@ -500,7 +516,7 @@ H.ui = {}
 saveLook(high, "High", "PARAM{" .. H.DEVICE_ID .. ",1} == 'x'")
 T.eq("and a save of it is refused", (H.lastUi("ERROR") or {}).message, OWN)
 H.tab("_EVAL_EXPRESSION", { id = "9", expression = "true" .. string.rep(" ", MAX_SHOW_WHEN) .. "and false" })
-T.eq("it reads only what a look can keep", H.lastUi("EVAL_RESULT").result, "true")
+T.eq("it reads only what a look can keep", evalResult().result, "true")
 local showBefore = shown()
 H.tab("_EVAL_EXPRESSION", { id = "9", expression = "true" })
 T.eq("and it changes nothing", shown(), showBefore)
@@ -610,7 +626,7 @@ T.eq("the browser is refused", H.lastUi("DEVICES_DATA"), nil)
 H.tab("_GET_DEVICE_VARIABLES", { deviceId = BATTERY })
 T.eq("so are a device's variables", H.lastUi("DEVICE_VARIABLES_DATA"), nil)
 H.tab("_EVAL_EXPRESSION", { id = "1", expression = "true" })
-T.eq("and the preview", H.lastUi("EVAL_RESULT"), nil)
+T.eq("and the preview", evalResult(), nil)
 gate:_set(true)
 T.eq("a license back shows what the values call for", shown(), "High")
 

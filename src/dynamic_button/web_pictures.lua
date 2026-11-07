@@ -15,10 +15,10 @@ local Pictures = require("dynamic_button.pictures")
 --- @field _setTimer fun(name: string, ms: number, fn: function)
 --- @field _cancelTimer fun(name: string)
 --- @field _watched integer|nil The shown look, while its picture refreshes.
---- @field _fetching table<string, boolean> Pictures with a fetch under way.
+--- @field _fetching table<string, string> The address each picture has a fetch under way for.
 --- @field _tried table<string, number> When each picture's last fetch ended, in seconds.
 --- @field _good table<string, number> When each picture's last fetch succeeded, in seconds.
---- @field _failed table<string, { error: string, at: number }> Each picture's last failure, until one succeeds.
+--- @field _failed table<string, string> Each picture's last failure, until one succeeds.
 local WebPictures = {}
 WebPictures.__index = WebPictures
 
@@ -26,6 +26,7 @@ local TIMER = "WebPictureRefresh"
 
 local MISSING_ADDRESS = "The controller lost this picture's web address. Fetch it again in the Button tab."
 
+--- Creates a new instance of the WebPictures class.
 --- @param opts { pictures: Pictures, looks: Looks, arrived: fun(lookId: integer, data: string, source: string), changed: fun(), allowed: fun(): boolean, now?: fun(): number, fetch?: fun(address: string, done: function), setTimer?: fun(name: string, ms: number, fn: function), cancelTimer?: fun(name: string) }
 --- @return WebPictures refresher
 function WebPictures:new(opts)
@@ -36,7 +37,14 @@ function WebPictures:new(opts)
   instance._changed = opts.changed
   instance._allowed = opts.allowed
   instance._now = opts.now or os.time
-  instance._fetch = opts.fetch or Pictures.fetch
+  instance._fetch = opts.fetch
+    or function(address, done)
+      Pictures.fetch(address):next(function(body)
+        done(body)
+      end, function(err)
+        done(nil, err)
+      end)
+    end
   instance._setTimer = opts.setTimer or function(name, ms, fn)
     SetTimer(name, ms, fn)
   end
@@ -101,7 +109,7 @@ function WebPictures:_schedule()
     self:refreshPicture(picture.id)
     return
   end
-  self._setTimer(TIMER, wait * 1000, function()
+  self._setTimer(TIMER, wait * ONE_SECOND, function()
     self:refreshPicture(picture.id)
   end)
 end
@@ -129,21 +137,24 @@ function WebPictures:refreshPicture(id)
   if not (picture and picture.every) then
     return false, "that picture doesn't refresh from a web address"
   end
-  if self._fetching[id] then
-    return true
-  end
   local address = self._pictures:address(id)
   if not address then
     if not self._failed[id] then
       log:warn("Picture %s has no web address to refresh from", id)
     end
-    self._failed[id] = { error = MISSING_ADDRESS, at = self._now() }
-    self._changed()
+    self._failed[id] = MISSING_ADDRESS
+    self:_call("telling the Button tab", self._changed)
     return false, "that picture has no web address"
   end
-  self._fetching[id] = true
+  -- A fetch of another address, under way when the address changed, doesn't answer for this one.
+  if self._fetching[id] == address then
+    return true
+  end
+  self._fetching[id] = address
   self._fetch(address, function(body, err)
-    self._fetching[id] = nil
+    if self._fetching[id] == address then
+      self._fetching[id] = nil
+    end
     self:_fetched(id, address, body, err)
   end)
   return true
@@ -160,6 +171,18 @@ end
 function WebPictures:noteFetched(id)
   local now = self._now()
   self._tried[id], self._good[id], self._failed[id] = now, now, nil
+end
+
+--- Run a hook the driver gave, so an error in it is logged rather than lost with the refresh loop.
+--- @private
+--- @param what string What the hook does, for the log.
+--- @param fn function
+--- @param ... any The hook's arguments.
+function WebPictures:_call(what, fn, ...)
+  local ok, err = pcall(fn, ...)
+  if not ok then
+    log:error("Web picture: %s failed: %s", what, tostring(err))
+  end
 end
 
 --- @private
@@ -184,9 +207,10 @@ function WebPictures:_fetched(id, address, body, err)
     if not self._failed[id] then
       log:warn("Picture %s didn't refresh: %s", id, err)
     end
-    self._failed[id] = { error = err, at = now }
-    self._changed()
+    self._failed[id] = err
+    -- Armed before the hooks run, so an error in one can't end the refreshing.
     self:_schedule()
+    self:_call("telling the Button tab", self._changed)
     return
   end
   local recovered = self._failed[id] ~= nil
@@ -194,6 +218,7 @@ function WebPictures:_fetched(id, address, body, err)
   if recovered then
     log:info("Picture %s refreshes again", id)
   end
+  self:_schedule()
   -- The same length first, so most new pictures are told apart without reading the stored one.
   if not (#body == picture.bytes and body == self._pictures:load(id)) then
     local kept = self._pictures:replace(id, body)
@@ -202,26 +227,23 @@ function WebPictures:_fetched(id, address, body, err)
     else
       local look = self._watched and self._looks:get(self._watched)
       if look and look.icon.id == id then
-        self._arrived(look.id, body, kept.source)
+        self:_call("serving its new bytes", self._arrived, look.id, body, kept.source)
       end
     end
-    self._changed()
+    self:_call("telling the Button tab", self._changed)
   elseif recovered then
-    self._changed()
+    self:_call("telling the Button tab", self._changed)
   end
-  self:_schedule()
 end
 
 --- What the Button tab shows for a refreshing picture.
 --- @param id string
---- @return { refreshedAt: number|nil, error: string|nil, errorAt: number|nil } status
+--- @return { refreshedAt: number|nil, error: string|nil } status
 function WebPictures:status(id)
   local picture = self._pictures:get(id)
-  local failed = self._failed[id]
   return {
     refreshedAt = self._good[id] or (picture and tonumber(picture.fetchedAt)) or nil,
-    error = failed and failed.error or nil,
-    errorAt = failed and failed.at or nil,
+    error = self._failed[id],
   }
 end
 

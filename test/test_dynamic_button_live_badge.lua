@@ -1,6 +1,11 @@
 --- A badge whose text holds a variable, under the C4 shim: the picture the controller draws, how often
 --- it draws one, a variable shared with Show when, a restart with the variable not there yet, and what
 --- goes wrong out loud.
+---
+--- Run from the driver root:
+---   make test
+--- or:
+---   ./test/run_test.sh test_dynamic_button_live_badge.lua
 
 local T = require("testlib")
 local H = require("dynamic_button_harness")
@@ -483,14 +488,14 @@ T.truthy("the log says", warned("Badge:") == 1)
 
 T.section("The tab's preview of a badge")
 H.tab("_EVAL_EXPRESSION", { id = "b1", expression = "PARAM{100,1002}: 12.345", mode = "string" })
-local answer = H.lastUi("EVAL_RESULT")
+local answer = JSON:decode(H.lastUi("EVAL_RESULT").data)
 T.eq("the answer goes by its id", answer.id, "b1")
 T.eq("the text as it reads", answer.result, "Idle: 12.345")
 T.eq("and as it fits", answer.fitted, "Idle:")
 H.tab("_EVAL_EXPRESSION", { id = "b2", expression = "PARAM{100,NOPE}", mode = "string" })
-T.contains("a missing variable is an error", H.lastUi("EVAL_RESULT").error, "NOPE")
+T.contains("a missing variable is an error", JSON:decode(H.lastUi("EVAL_RESULT").data).error, "NOPE")
 H.tab("_EVAL_EXPRESSION", { id = "w1", expression = "1 < 2" })
-T.eq("Show when's preview is as it was", H.lastUi("EVAL_RESULT").result, "true")
+T.eq("Show when's preview is as it was", JSON:decode(H.lastUi("EVAL_RESULT").data).result, "true")
 
 T.section("What the driver takes")
 local function refused(badge)
