@@ -949,7 +949,12 @@ function UIR._ADD_WEB_PICTURE(tParams)
       picture, refused = pictures:addWeb(body, address, params.every)
     end
     if not picture then
-      C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused })
+      -- Marked only when the fetch brought nothing, so a copy leaves out just this look; a refusal of
+      -- what was fetched stops it with its own reason.
+      C4:SendDataToUI(
+        "PICTURE_STORED",
+        { request = request, error = refused, unfetched = body == nil and "true" or nil }
+      )
       return
     end
     refresher:noteFetched(picture.id)
@@ -1022,6 +1027,37 @@ function UIR._GET_DEVICES()
     return a.id < b.id
   end)
   return uiRespond("DEVICES_DATA", { devices = JSON:encode(devices) })
+end
+
+--- The other Dynamic Buttons in the project, by room and name, for Copy To, and this one's own name
+--- for an export's file. Asked for no device ids, C4iNames lists only this driver's items.
+function UIR._GET_BUTTONS()
+  log:trace("UIR._GET_BUTTONS()")
+  local own = tointeger(C4:GetDeviceID())
+  local buttons, self = {}, { id = own, name = "", roomName = "" }
+  for id, device in pairs(C4:GetDevices({ C4iNames = C4:GetDriverFileName() }) or {}) do
+    local entry = {
+      id = tointeger(id),
+      name = tostring(device.deviceName or ("Dynamic Button " .. tostring(id))),
+      roomName = tostring(device.roomName or ""),
+    }
+    if entry.id == own then
+      self = entry
+    else
+      table.insert(buttons, entry)
+    end
+  end
+  table.sort(buttons, function(a, b)
+    local roomA, roomB, nameA, nameB = a.roomName:lower(), b.roomName:lower(), a.name:lower(), b.name:lower()
+    if roomA ~= roomB then
+      return roomA < roomB
+    end
+    if nameA ~= nameB then
+      return nameA < nameB
+    end
+    return a.id < b.id
+  end)
+  return uiRespond("BUTTONS", { buttons = JSON:encode(buttons), self = JSON:encode(self) })
 end
 
 --- @param text string
@@ -1317,7 +1353,9 @@ followAllowed = function()
 end
 
 -- _GET_STATE and _SET_DRIVER stay open while stopped: they only do what Composer's own Properties tab can.
--- _GET_PICTURE does too: it only shows the tab a picture the button already keeps.
+-- _GET_PICTURE does too: it only shows the tab a picture the button already keeps. So does _GET_BUTTONS, which only
+-- names this driver's items: a copy changes another button through that button's own commands, which its own
+-- license decides.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
 EC.Next_Look = whileLicensed(EC.Next_Look)
