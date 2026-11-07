@@ -1,6 +1,7 @@
 -- A look's stored PNG, prepared so a badge can be redrawn without compressing the whole picture
 -- again: the rows above and below the badge stay compressed, and only the badge's rows are redone.
 
+-- LuaJIT's own bit, not bitn: bitn's masked calls make this CRC about 7 times slower with JIT off.
 local bit = require("bit")
 local LibDeflate = require("LibDeflate")
 
