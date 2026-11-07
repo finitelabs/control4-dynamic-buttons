@@ -789,8 +789,13 @@ function esc(s) {
 function $(id) { return document.getElementById(id); }
 function showError(msg) {
   var el = $('err');
-  el.textContent = msg ? ('The driver refused: ' + msg) : '';
+  el.textContent = msg ? ('The driver refused: ' + plainRefusal(msg)) : '';
   el.hidden = !msg;
+}
+// A refused Show when, in the words its preview uses.
+function plainRefusal(msg) {
+  var m = /^"Show when": ([\s\S]*)$/.exec(String(msg));
+  return m ? '"Show when": ' + friendlyError(m[1], $('f-when').value) : msg;
 }
 function setStatus(msg, bad) {
   var el = $('status');
@@ -2532,6 +2537,8 @@ function syncBadgeText() {
   if (!$('fld-when-browser').hidden && gVarBox === 'c-badge') renderVarTree();
   clearTimeout(gBadgeTimer);
   gBadgeSeq++;
+  gEditor.badgeHold = '';
+  box.classList.toggle('input-error', !live && long);
   if (!live) {
     gEditor.look.badgeNow = null;
     $('c-badge-note').textContent = long ? 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.' : 'Up to ' + BADGE_MAX + ' characters, or a variable\u2019s value.';
@@ -2549,6 +2556,8 @@ function onBadgeResult(p) {
   if (!gEditor.look || String(p.id) !== 'b' + gBadgeSeq) return; // an answer to earlier text
   var note = $('c-badge-note'), now = p.error ? '' : String(p.fitted == null ? '' : p.fitted);
   note.classList.toggle('bad', !!p.error);
+  gEditor.badgeHold = p.hold ? friendlyError(p.error, $('c-badge').value, p.rendered) : '';
+  $('c-badge').classList.toggle('input-error', !!p.hold);
   note.textContent = p.error ? friendlyError(p.error, $('c-badge').value, p.rendered) : 'Shows ' + (now || 'nothing') + ' now. Up to ' + BADGE_MAX + ' characters, and a number shortens to fit.';
   note.title = p.error || '';
   gEditor.look.badgeNow = now;
@@ -2695,6 +2704,9 @@ function openEditor(look, title) {
   $('f-grayscale').checked = gEditor.look.grayscale;
   gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;
   $('f-when').value = gEditor.look.showWhen || '';
+  gEditor.whenHold = '';
+  gEditor.badgeHold = '';
+  showPreviewHint();
   $('f-default').checked = gEditor.look.isDefault;
   $('fld-when-browser').hidden = true;
   renderShapes();
@@ -2729,6 +2741,9 @@ function checkLook(l) {
   if (isPicture(l.icon) && !l.icon.body) return 'Your picture is still loading. Try again in a moment.';
   var badge = String((l.custom && l.custom.badge && l.custom.badge.text) || '').trim();
   if (!isLiveText(badge) && Array.from(badge).length > BADGE_MAX) return 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.';
+  // What the driver would refuse, as its preview said.
+  if (gEditor.whenHold) return '"Show when": ' + gEditor.whenHold;
+  if (isLiveText(badge) && gEditor.badgeHold) return 'Badge: ' + gEditor.badgeHold;
   return null;
 }
 
@@ -3629,6 +3644,7 @@ function whenLines(l) {
 function requestPreview() {
   clearTimeout(gEvalTimer);
   gEvalSeq++;
+  gEditor.whenHold = '';
   var text = $('f-when').value.trim();
   if (!text || !byValue()) { showPreviewHint(); return; }
   gEvalTimer = setTimeout(function() {
@@ -3649,8 +3665,9 @@ function onEvalResult(p) {
   if (String(p.id) !== String(gEvalSeq)) return; // an answer to earlier text
   $('prev-rendered').textContent = String(p.rendered == null ? '' : p.rendered);
   $('prev-substituted').textContent = String(p.substituted == null ? '' : p.substituted).replace(/ERROR_VARIABLE_NOT_FOUND/g, '(not found)');
-  $('prev-sub-wrap').hidden = false;
+  $('prev-sub-wrap').hidden = !!p.hold;
   $('prev-res-wrap').hidden = false;
+  gEditor.whenHold = p.hold ? friendlyError(p.error, $('f-when').value, p.rendered) : '';
   var result = $('prev-result'), error = $('prev-error');
   result.hidden = !!p.error;
   error.hidden = !p.error;
@@ -3808,7 +3825,11 @@ function demoEval(text) {
   };
   if (missing) return answer('', missing);
   var source = text.replace(DEMO_TOKEN, function() { return '__p[' + (++slot) + ']'; });
-  var fail = function(kind, message) { return answer('', kind + ' error: [string "return ' + source + '"]:1: ' + message); };
+  var fail = function(kind, message) {
+    var a = answer('', kind + ' error: [string "return ' + source + '"]:1: ' + message);
+    if (kind === 'compile') a.hold = 'yes';
+    return a;
+  };
   if ((text.match(/"/g) || []).length % 2) return fail('compile', "unfinished string near '<eof>'");
   if (/(?:[<>=~+\-*\/%^(]|\band|\bor|\bnot)\s*$/.test(text)) return fail('compile', "unexpected symbol near '<eof>'");
   if ((text.match(/\(/g) || []).length > (text.match(/\)/g) || []).length) return fail('compile', "')' expected near '<eof>'");

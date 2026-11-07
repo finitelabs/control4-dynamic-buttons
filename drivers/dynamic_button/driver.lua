@@ -78,11 +78,23 @@ local pictures = Pictures:new({
     return used
   end,
 })
+--- This button's own ids: its device's and its proxy's.
+--- @return integer[] ids
+local function ownIds()
+  local own = tointeger(C4:GetDeviceID())
+  local ids = { own }
+  local device = (C4:GetDevices({ DeviceIds = tostring(own) }) or {})[own]
+  for proxyId in pairs(type(device) == "table" and device.proxies or {}) do
+    table.insert(ids, tointeger(proxyId))
+  end
+  return ids
+end
+
 looks = Looks:new(persist, function(id)
   return pictures:get(id) ~= nil
 end, function(id)
   return pictures:refreshes(id)
-end)
+end, ownIds)
 local images = Images:new()
 
 --- @type Button
@@ -1003,6 +1015,17 @@ function UIR._GET_DEVICES()
       table.insert(devices, device)
     end
   end
+  table.sort(devices, function(a, b)
+    local roomA, roomB = tostring(a.roomName):lower(), tostring(b.roomName):lower()
+    if roomA ~= roomB then
+      return roomA < roomB
+    end
+    local nameA, nameB = tostring(a.name):lower(), tostring(b.name):lower()
+    if nameA ~= nameB then
+      return nameA < nameB
+    end
+    return a.id < b.id
+  end)
   return uiRespond("DEVICES_DATA", { devices = JSON:encode(devices) })
 end
 
@@ -1065,14 +1088,24 @@ function UIR._EVAL_EXPRESSION(tParams)
   log:trace("UIR._EVAL_EXPRESSION()")
   local params = tabParams(tParams)
   local mode = params.mode == "string" and "string" or "condition"
-  local evaluation = Expressions.evaluate(mode, tostring(params.expression or ""):sub(1, Looks.MAX_SHOW_WHEN))
+  local expression = tostring(params.expression or ""):sub(1, Looks.MAX_SHOW_WHEN)
+  -- What a save refuses holds Save in the tab: the other errors depend on values, which change.
+  local hold
+  if Looks.readsOwn(expression, ownIds(), mode) then
+    hold = Looks.OWN_VARIABLES
+  elseif mode == "condition" then
+    hold = Looks.compileError(expression)
+  end
+  local evaluation = hold and { rendered = Expressions.render(expression, mode) }
+    or Expressions.evaluate(mode, expression)
   return uiRespond("EVAL_RESULT", {
     id = tostring(params.id or ""),
     fitted = mode == "string" and evaluation.result and LiveBadges.fit(evaluation.result) or nil,
     rendered = evaluation.rendered or "",
     substituted = cutText(evaluation.substituted or "", Looks.MAX_SHOW_WHEN),
     result = evaluation.result ~= nil and tostring(evaluation.result) or "",
-    error = evaluation.error or "",
+    error = hold or evaluation.error or "",
+    hold = hold and "yes" or nil,
   })
 end
 
