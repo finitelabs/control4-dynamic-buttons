@@ -3064,14 +3064,16 @@ async function applyLooks(link, name, items, replace, say) {
     existing = [];
   }
   var taking = items.slice(0, Math.max(0, max - existing.length)), leftOut = items.length - taking.length;
-  var names = existing.map(function(l) { return l.name; }), given = {}, copied = 0;
+  var names = existing.map(function(l) { return l.name; }), given = {}, copied = 0, unfetched = [];
   for (var n = 0; n < taking.length; n++) {
     say((link.own ? 'Importing ' : 'Copying ') + (n + 1) + ' of ' + taking.length + ' looks' + (link.own ? '' : ' to ' + name) + '…');
     var r = await giveLook(link, taking[n], names, given, replace);
-    if (r.error) return { copied: copied, leftOut: leftOut, max: max, error: taking[n].look.name + ': ' + r.error };
+    // A refreshing picture the button couldn't fetch costs only its own look.
+    if (r.unfetched) { unfetched.push(taking[n].look.name); continue; }
+    if (r.error) return { copied: copied, leftOut: leftOut, max: max, unfetched: unfetched, error: taking[n].look.name + ': ' + r.error };
     copied++;
   }
-  return { copied: copied, leftOut: leftOut, max: max };
+  return { copied: copied, leftOut: leftOut, max: max, unfetched: unfetched };
 }
 async function giveLook(link, item, names, given, replace) {
   var look = JSON.parse(JSON.stringify(item.look)), pic = item.picture;
@@ -3092,7 +3094,7 @@ async function giveLook(link, item, names, given, replace) {
       var kept = every
         ? await linkCall(link, '_ADD_WEB_PICTURE', { request: 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), url: pic.url, every: every }, 'PICTURE_STORED', 60000)
         : await linkChunks(link, '_PUT_PICTURE', pic.b64, { width: pic.width, height: pic.height, name: pic.name }, 'PICTURE_STORED');
-      if (kept.error || !kept.picture) return { error: kept.error || 'its picture wasn’t kept' };
+      if (kept.error || !kept.picture) return { error: kept.error || 'its picture wasn’t kept', unfetched: !!every && !link.failure() };
       given[pic.key] = String(kept.picture);
     }
     var rec = ((link.state() || {}).pictures || []).find(function(p) { return p.id === given[pic.key]; });
@@ -3115,7 +3117,9 @@ function resultLine(label, r, verb) {
   var text = label + ': ' + (r.copied ? plural(r.copied, 'look') + ' ' + verb : 'nothing ' + verb);
   if (r.leftOut) text += ', ' + r.leftOut + ' left out: a button keeps up to ' + (r.max || gState.max) + ' looks';
   if (why) text += r.copied ? ', then ' + why : ': ' + why;
-  return { text: text + '.', bad: !!why };
+  var unfetched = r.unfetched || [];
+  if (unfetched.length) text += '. Left out, ' + (unfetched.length === 1 ? 'its web picture didn’t' : 'their web pictures didn’t') + ' fetch: ' + unfetched.join(', ');
+  return { text: text + '.', bad: !!why || !!unfetched.length };
 }
 function lineHtml(line) { return line ? '<div' + (line.bad ? ' class="bad"' : '') + '>' + esc(line.text) + '</div>' : ''; }
 
@@ -3143,7 +3147,7 @@ function syncCopyGo() {
   unconfirm($('cp-go'));
   var looks = checkedIn('cp-looks', 'look').length, buttons = checkedIn('cp-buttons', 'button').length;
   $('cp-go').disabled = gApplying || !looks || !buttons;
-  if (!$('cp-go').dataset.confirm) $('cp-go').textContent = 'Copy ' + plural(looks, 'Look') + ' to ' + plural(buttons, 'Button');
+  if (!$('cp-go').dataset.confirm) $('cp-go').textContent = looks && buttons ? 'Copy ' + plural(looks, 'Look') + ' to ' + plural(buttons, 'Button') : 'Copy';
 }
 async function copyToButton(target, items, replace, say) {
   var link = deviceLink(target.id);
@@ -3225,7 +3229,7 @@ async function exportLooks() {
     // An address can carry a login or a token, and the file carries the address.
     var webs = Object.keys(file.pictures).filter(function(k) { return file.pictures[k].kind === 'web'; }).length;
     var note = 'Exported ' + plural(ready.items.length, 'look') + ' as ' + a.download + '.';
-    if (webs) note += ' It holds the web address of ' + plural(webs, 'picture') + ' that refresh, which can carry a login or token.';
+    if (webs) note += ' It holds the web address of ' + plural(webs, 'picture') + (webs === 1 ? ' that refreshes' : ' that refresh') + ', which can carry a login or token.';
     if (ready.missing.length) note += ' ' + missingLine(ready.missing).text;
     looksNote(note, !!ready.missing.length);
   } catch (e) {

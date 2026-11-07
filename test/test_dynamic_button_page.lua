@@ -499,6 +499,18 @@ T.truthy(
     and has("<code>' + esc(r[1]) + '</code>")
 )
 
+T.section("A refreshing picture that doesn't fetch costs only its look")
+T.truthy(
+  "the look is left out and the rest go on",
+  has("if (r.unfetched) { unfetched.push(taking[n].look.name); continue; }")
+)
+T.truthy("and the result names it", has("'. Left out, ' + (unfetched.length === 1 ? 'its web picture didn’t'"))
+T.truthy("Export's note agrees with one picture or many", has("(webs === 1 ? ' that refreshes' : ' that refresh')"))
+T.truthy(
+  "Copy is plainly labeled until there are looks and buttons to count",
+  has("looks && buttons ? 'Copy ' + plural(looks, 'Look') + ' to ' + plural(buttons, 'Button') : 'Copy'")
+)
+
 T.section("Replace deletes the shown look last")
 T.truthy(
   "the others go first, so no delete shows another look and runs its Shown programming",
@@ -542,7 +554,7 @@ T.truthy(
     and has("function syncImportGo() {\n  unconfirm($('im-go'));")
     and has("$('im-trust').addEventListener('change', syncImportGo);")
 )
-T.truthy("Export says the file holds addresses", has("' that refresh, which can carry a login or token.'"))
+T.truthy("Export says the file holds addresses", has("', which can carry a login or token.'"))
 T.truthy(
   "a look whose picture is gone is left out by name",
   has("if (!rec || (!rec.every && !src.b64)) { missing.push(l.name); return; }")
