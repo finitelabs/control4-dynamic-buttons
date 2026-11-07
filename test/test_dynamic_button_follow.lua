@@ -485,6 +485,8 @@ local OWN = "A look can't follow this button's own variables."
 H.tab("_EVAL_EXPRESSION", { id = "10", expression = "PARAM{" .. H.DEVICE_ID .. ",1} == 'x'" })
 preview = H.lastUi("EVAL_RESULT")
 T.eq("this button's own variable holds Save, in a plain sentence", { preview.error, preview.hold }, { OWN, "yes" })
+H.tab("_EVAL_EXPRESSION", { id = "14", expression = LEVEL .. " > 3 -- was PARAM{" .. H.DEVICE_ID .. ",1} == 'x'" })
+T.eq("but not one in a comment, which isn't read", H.lastUi("EVAL_RESULT").hold, nil)
 H.tab("_EVAL_EXPRESSION", { id = "11", expression = "PARAM{" .. (H.DEVICE_ID + 1) .. ",1} == 1" })
 T.eq("and its proxy's", H.lastUi("EVAL_RESULT").error, OWN)
 H.tab("_EVAL_EXPRESSION", { id = "b12", expression = "PARAM{" .. H.DEVICE_ID .. ",1}", mode = "string" })

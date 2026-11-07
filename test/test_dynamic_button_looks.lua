@@ -462,6 +462,17 @@ T.eq("its device's variable is refused", guardWhy({ showWhen = 'PARAM{4242,1} ==
 T.eq("and its proxy's", guardWhy({ showWhen = "PARAM{ 4243 , LOOK } == 1" }), Looks.OWN_VARIABLES)
 T.eq("another device's is kept", guardWhy({ showWhen = "PARAM{100,1} > 3" }), nil)
 T.eq(
+  "its own in a line comment isn't read, so it's kept",
+  guardWhy({ showWhen = "PARAM{100,1} > 3 -- was PARAM{4242,1} == 'x'" }),
+  nil
+)
+T.eq("nor in a block comment", guardWhy({ showWhen = "PARAM{100,1} > 3 --[[ PARAM{4242,1} == 'x' ]]" }), nil)
+T.eq(
+  "but its own inside a string is read, so refused",
+  guardWhy({ showWhen = "'PARAM{4242,1}' == 'x'" }),
+  Looks.OWN_VARIABLES
+)
+T.eq(
   "a live badge on its own variable is refused",
   guardWhy({ custom = liveBadge("PARAM{4242,1}") }),
   Looks.OWN_VARIABLES

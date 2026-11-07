@@ -3,6 +3,7 @@
 -- order the button cycles through them.
 
 local log = require("lib.logging")
+local Expressions = require("lib.expressions")
 
 --- @class LookIcon
 --- @field id string The icon's Iconify name, `<pack>:<name>`, or the id of one of the button's own pictures.
@@ -227,12 +228,20 @@ Looks.OWN_VARIABLES = "A look can't follow this button's own variables."
 
 --- @param text string A Show when or a badge's text.
 --- @param own integer[] Ids whose variables the text mustn't read.
---- @return boolean reads Whether a variable in the text belongs to one of them.
-function Looks.readsOwn(text, own)
-  for device in text:gmatch("PARAM%s*{%s*([^,}]-)%s*,") do
-    local id = tonumber(device)
+--- @param mode string The text's mode, "condition" or "string": a variable in a comment isn't read.
+--- @return boolean reads Whether a variable the text reads belongs to one of them.
+function Looks.readsOwn(text, own, mode)
+  local refs, missing = Expressions.references(text, mode)
+  local devices = {}
+  for _, ref in ipairs(refs) do
+    devices[#devices + 1] = ref.deviceId
+  end
+  for _, ref in ipairs(missing) do
+    devices[#devices + 1] = tonumber(ref.device)
+  end
+  for _, id in ipairs(devices) do
     for _, ownId in ipairs(own) do
-      if id ~= nil and id == tonumber(ownId) then
+      if id == tonumber(ownId) then
         return true
       end
     end
@@ -473,7 +482,10 @@ function Looks:_check(fields, exceptId)
   end
   local own = self._ownIds()
   local badgeText = custom and custom.badge and custom.badge.text or ""
-  if Looks.readsOwn(showWhen, own) or (Looks.isLiveText(badgeText) and Looks.readsOwn(badgeText, own)) then
+  if
+    Looks.readsOwn(showWhen, own, "condition")
+    or (Looks.isLiveText(badgeText) and Looks.readsOwn(badgeText, own, "string"))
+  then
     return nil, Looks.OWN_VARIABLES
   end
   if showWhen ~= "" then

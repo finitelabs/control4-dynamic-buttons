@@ -1055,7 +1055,7 @@ function UIR._EVAL_EXPRESSION(tParams)
   local expression = tostring(params.expression or ""):sub(1, Looks.MAX_SHOW_WHEN)
   -- What a save refuses holds Save in the tab: the other errors depend on values, which change.
   local hold
-  if Looks.readsOwn(expression, ownIds()) then
+  if Looks.readsOwn(expression, ownIds(), mode) then
     hold = Looks.OWN_VARIABLES
   elseif mode == "condition" then
     hold = Looks.compileError(expression)
