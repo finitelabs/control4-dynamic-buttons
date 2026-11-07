@@ -239,6 +239,7 @@ T.eq("the deleted look's pictures are gone", { H.served()["3.png"], H.stored()["
 T.eq("Look Changed fires, then the shown look's own event", H.fired, { "Look Changed", "Charged Shown" })
 T.eq("the Look variable follows", Variables["Look"], "Charged")
 T.eq("Look Is lists what is left", select(2, lookIs()), "Charged (1)")
+test = lookIs()
 T.falsy("and a test naming the deleted look is false", test("", { VALUE = "Empty (3)", LOGIC = "EQUAL" }))
 T.truthy("while NOT_EQUAL is true", test("", { VALUE = "Empty (3)", LOGIC = "NOT_EQUAL" }))
 

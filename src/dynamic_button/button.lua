@@ -21,6 +21,7 @@ Button.__index = Button
 local SHOWN_PERSIST_KEY = "ShownLook"
 local VERSION_PERSIST_KEY = "ImageVersion"
 
+--- Creates a new instance of the Button class.
 --- @param opts { looks: Looks, images: Images, store: table, deviceId: integer, driverName: string, sendIcon: fun(icon: string, description: string), badges: LiveBadges, refresher?: WebPictures }
 --- @return Button button
 function Button:new(opts)
@@ -66,6 +67,7 @@ function Button:_watch(look)
   end
 end
 
+--- The look the button shows now.
 --- @return Look|nil look The look the button shows, or nil for the driver's own icon.
 function Button:shown()
   return self.looks:get(self.store:get(SHOWN_PERSIST_KEY))

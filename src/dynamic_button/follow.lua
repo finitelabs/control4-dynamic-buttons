@@ -28,6 +28,7 @@ local BOOT_TIMER = "FollowBootWait"
 --- reading one variable all recompute together.
 local EVALUATE_MS = 50
 
+--- Creates a new instance of the Follow class.
 --- @param opts { looks: Looks, store: table, show: fun(id: integer): boolean, string|nil, changed: fun(), allowed: fun(): boolean, engine: Expressions }
 --- @return Follow follow
 function Follow:new(opts)
@@ -53,6 +54,7 @@ function Follow:expressionChanged()
   end)
 end
 
+--- Each look's Show when, for the expressions engine to watch.
 --- @return table<string, table> expressions Each look's Show when, by look id, as the engine reads them.
 function Follow:expressions()
   local expressions = {}
@@ -72,11 +74,13 @@ function Follow:_subscribe()
   end
 end
 
+--- The look the current values call for.
 --- @return integer|nil id The look the values call for.
 function Follow:matched()
   return self._matched
 end
 
+--- Why a look's Show when has no result.
 --- @param id integer
 --- @return string|nil error Why the look's Show when has no result.
 function Follow:whenError(id)

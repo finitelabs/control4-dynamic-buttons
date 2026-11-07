@@ -1,5 +1,10 @@
 --- A live badge's picture work: a stored PNG prepared once, then its badge rows redone on their own,
 --- checked by decoding the result here, without the code under test.
+---
+--- Run from the driver root:
+---   make test
+--- or:
+---   ./test/run_test.sh test_dynamic_button_png.lua
 
 local T = require("testlib")
 require("c4_shim")

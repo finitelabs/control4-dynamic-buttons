@@ -32,6 +32,7 @@ local function pillAt(badge, canvas, width, height)
   return (canvas - width) / 2, canvas - height - canvas * 0.02
 end
 
+--- The rows a badge can draw on.
 --- @param badge LookBadge
 --- @param canvas integer The picture's width and height.
 --- @return integer y0 The first row the badge can touch, from 0.
