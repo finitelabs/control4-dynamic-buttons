@@ -45,6 +45,20 @@ ShimSetDevices({
 buttons = JSON:decode(JSON:decode(H.tab("_GET_BUTTONS")).buttons)
 T.eq("they come in id order", { buttons[1].id, buttons[2].id }, { 950, 951 })
 
+T.section("Upper and lower case sort together")
+ShimSetDevices({
+  [H.DEVICE_ID] = { deviceName = "Lake House", driverFileName = FILE, roomName = "Dock" },
+  [960] = { deviceName = "TV", driverFileName = FILE, roomName = "family room" },
+  [961] = { deviceName = "Thermostat", driverFileName = FILE, roomName = "Family Room" },
+  [962] = { deviceName = "amp", driverFileName = FILE, roomName = "Family Room" },
+})
+buttons = JSON:decode(JSON:decode(H.tab("_GET_BUTTONS")).buttons)
+local names = {}
+for _, b in ipairs(buttons) do
+  table.insert(names, b.name)
+end
+T.eq("by room, then name, whatever their case", names, { "amp", "Thermostat", "TV" })
+
 T.section("A project with no other Dynamic Button")
 ShimSetDevices({ [H.DEVICE_ID] = { deviceName = "Lake House", driverFileName = FILE, roomName = "Dock" } })
 reply = JSON:decode(H.tab("_GET_BUTTONS"))

@@ -1020,11 +1020,12 @@ function UIR._GET_BUTTONS()
     end
   end
   table.sort(buttons, function(a, b)
-    if a.roomName ~= b.roomName then
-      return a.roomName < b.roomName
+    local roomA, roomB, nameA, nameB = a.roomName:lower(), b.roomName:lower(), a.name:lower(), b.name:lower()
+    if roomA ~= roomB then
+      return roomA < roomB
     end
-    if a.name ~= b.name then
-      return a.name < b.name
+    if nameA ~= nameB then
+      return nameA < nameB
     end
     return a.id < b.id
   end)
