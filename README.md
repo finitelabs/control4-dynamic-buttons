@@ -57,7 +57,6 @@ the programming you attach to it.
 # <span style="color:#7C3AED">System Requirements</span>
 
 - Control4 OS 3.3.1 or later
-- Composer Pro, to set up each button's looks in its Button tab
 
 # <span style="color:#7C3AED">Features</span>
 
