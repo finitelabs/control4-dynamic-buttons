@@ -99,6 +99,14 @@ T.eq("renames its link", linkId("Shut (" .. closed .. ")"), closedLink.id)
 T.eq("under its new name only", linkId("Closed (" .. closed .. ")"), nil)
 T.eq("and keeps what it's bound to", C4:GetBoundProviderDevice(H.DEVICE_ID, closedLink.id), LIGHT)
 
+T.section("Renaming a look whose link shares the device's link with another look")
+local openLink = links()["Open (" .. open .. ")"]
+C4:Bind(LIGHT, LIGHT_TOGGLE, H.DEVICE_ID, openLink.id, "BUTTON_LINK")
+H.tab("_SAVE_LOOK", H.lookFields("Ajar", { id = open }))
+T.eq("keeps the renamed look's link bound", C4:GetBoundProviderDevice(H.DEVICE_ID, openLink.id), LIGHT)
+T.eq("and the other look's", C4:GetBoundProviderDevice(H.DEVICE_ID, closedLink.id), LIGHT)
+H.tab("_SAVE_LOOK", H.lookFields("Open", { id = open }))
+
 T.section("A Director restart")
 local readded = {}
 local wasAdd, wasLateInit = C4.AddDynamicBinding, ShimLateInit
