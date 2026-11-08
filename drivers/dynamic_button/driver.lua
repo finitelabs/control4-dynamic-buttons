@@ -444,8 +444,9 @@ end
 byLink = ByLink:new({
   looks = looks,
   store = persist,
-  bound = function(id)
-    return boundLink(id) ~= nil
+  provider = function(id)
+    local link = bindings:getDynamicBinding(LOOK_LINKS, tostring(id))
+    return link and tointeger(C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId)) or 0
   end,
   show = function(id)
     local before = button:shown()
@@ -1370,8 +1371,13 @@ function RFP.MATCH_LED_STATE(idBinding, _strCommand, tParams)
   for key, link in pairs(bindings:getDynamicBindings(LOOK_LINKS)) do
     if link.bindingId == tointeger(idBinding) then
       local on = ByLink.isOn(Select(tParams, "STATE"))
+      if on == nil then
+        -- A link's text or color update carries no state.
+        log:debug("Look %s's Button Link sent no state", key)
+        return
+      end
       log:debug("Look %s's Button Link is %s", key, on and "on" or "off")
-      byLink:report(tonumber(key), on)
+      byLink:report(tonumber(key), on, tointeger(C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId)) or 0)
       return
     end
   end

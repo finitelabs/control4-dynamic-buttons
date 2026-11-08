@@ -15,8 +15,9 @@ local persist = require("lib.persist")
 local gate = require("lib.drivercentral")
 local Looks = require("dynamic_button.looks")
 
---- A light offering an On, Off and Toggle link, as a keypad button binds to it.
+--- A light offering an On, Off and Toggle link, as a keypad button binds to it, and another light.
 local LIGHT, LIGHT_ON, LIGHT_OFF, LIGHT_TOGGLE = 900, 300, 301, 302
+local OTHER_LIGHT = 901
 
 --- @param id integer
 --- @return integer|nil bindingId The look's Button Link, found by its name as Composer lists it.
@@ -160,19 +161,29 @@ setLookControl("By Link")
 T.eq("By Link again shows what the links call for", shown(), "Bulb off")
 
 T.section("Every form a STATE comes in")
-for _, form in ipairs({ true, "True", "true", 1, "1" }) do
+for _, form in ipairs({ true, "True", "true", "TRUE", "yes", "on", "On", 1, 2, "1" }) do
   led(bulbOn, false)
   led(bulbOn, form)
   T.eq(string.format("%s (%s) is on", tostring(form), type(form)), tabLook(bulbOn).linkState, "on")
 end
-for _, form in ipairs({ false, "False", "false", 0, "0", "on", "TRUE", "" }) do
+for _, form in ipairs({ false, "False", "false", 0, "0", "off", "no", "dim" }) do
   led(bulbOn, true)
   led(bulbOn, form)
   T.eq(string.format("%q (%s) is off", tostring(form), type(form)), tabLook(bulbOn).linkState, "off")
 end
+
+T.section("A message with no state")
 led(bulbOn, true)
+led(bulbOff, true)
+T.eq("the light is on", shown(), "Bulb on")
+H.mark()
 ReceivedFromProxy(linkOf(bulbOn), "MATCH_LED_STATE", {})
-T.eq("and none at all is off", tabLook(bulbOn).linkState, "off")
+ReceivedFromProxy(linkOf(bulbOff), "MATCH_LED_STATE", { STATE = "" })
+T.eq("leaves each link's state as it was", { tabLook(bulbOn).linkState, tabLook(bulbOff).linkState }, { "on", "on" })
+T.eq("so the look that shows while its link is off stays out", shown(), "Bulb on")
+T.eq("and nothing fires", H.fired, {})
+led(bulbOn, false)
+led(bulbOff, false)
 ReceivedFromProxy(5001, "MATCH_LED_STATE", { STATE = true })
 T.eq(
   "a state on another binding is no link's",
@@ -225,12 +236,36 @@ C4:Unbind(H.DEVICE_ID, linkOf(bulbOn))
 OnBindingChanged(linkOf(bulbOn), "BUTTON_LINK", false, LIGHT, LIGHT_ON)
 T.eq("unbound, it doesn't, though its state is on", shown(), "Away")
 T.eq("the tab says it isn't bound", tabLook(bulbOn).linkBound, false)
-T.eq("and keeps its last state", tabLook(bulbOn).linkState, "on")
+T.eq("and gives no state", tabLook(bulbOn).linkState, nil)
 led(bulbOff, false)
 T.eq("nor does it on the next report", shown(), "Away")
+H.mark()
+C4:Bind(OTHER_LIGHT, LIGHT_ON, H.DEVICE_ID, linkOf(bulbOn), "BUTTON_LINK")
+OnBindingChanged(linkOf(bulbOn), "BUTTON_LINK", true, OTHER_LIGHT, LIGHT_ON)
+T.eq("bound to another light, the first light's state doesn't count", shown(), "Away")
+T.eq("nothing fires", H.fired, {})
+T.eq(
+  "and the tab says the light bound now hasn't reported",
+  { tabLook(bulbOn).linkBound, tabLook(bulbOn).linkState },
+  { true, nil }
+)
+led(bulbOff, false)
+T.eq("nor on the next report", shown(), "Away")
+led(bulbOn, true)
+T.eq("until the light bound now reports", shown(), "Bulb on")
+led(bulbOn, false)
 bind(bulbOn, LIGHT_ON)
 OnBindingChanged(linkOf(bulbOn), "BUTTON_LINK", true, LIGHT, LIGHT_ON)
-T.eq("bound again, it matches", shown(), "Bulb on")
+T.eq("bound back, the other light's state doesn't count either", shown(), "Away")
+led(bulbOn, true)
+T.eq("until the first light reports", shown(), "Bulb on")
+C4:Unbind(H.DEVICE_ID, linkOf(bulbOn))
+OnBindingChanged(linkOf(bulbOn), "BUTTON_LINK", false, LIGHT, LIGHT_ON)
+T.eq("unbound again", shown(), "Away")
+bind(bulbOn, LIGHT_ON)
+OnBindingChanged(linkOf(bulbOn), "BUTTON_LINK", true, LIGHT, LIGHT_ON)
+T.eq("bound again to the same light, its state was kept and matches", shown(), "Bulb on")
+T.eq("as the tab says", tabLook(bulbOn).linkState, "on")
 local fresh = addLook("Fresh")
 C4:Bind(LIGHT, LIGHT_ON, H.DEVICE_ID, linkOf(fresh), "BUTTON_LINK")
 H.tab("_ORDER_LOOKS", { ids = { fresh, bulbOn, bulbOff, away } })
@@ -246,7 +281,14 @@ T.eq("so moving a look changes which", shown(), "Bulb on")
 T.section("A look's link removed")
 H.tab("_DELETE_LOOK", { id = fresh })
 T.eq("forgets its state", kept()[tostring(fresh)], nil)
-T.eq("and only its", kept()[tostring(bulbOn)], true)
+T.eq("and only its", (kept()[tostring(bulbOn)] or {}).on, true)
+
+T.section("A rename")
+save(bulbOn, "Lamp on")
+T.eq("re-binds its link to the same light", C4:GetBoundProviderDevice(H.DEVICE_ID, linkOf(bulbOn)), LIGHT)
+T.eq("and keeps its state", tabLook(bulbOn).linkState, "on")
+T.eq("so its look still shows", shown(), "Lamp on")
+save(bulbOn, "Bulb on")
 
 T.section("A save")
 save(bulbOn, "Bulb on", { showWhile = "off" })
