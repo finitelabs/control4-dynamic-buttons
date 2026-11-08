@@ -21,6 +21,7 @@ local persist = require("lib.persist")
 local values = require("lib.values")
 local conditionals = require("lib.conditionals")
 local events = require("lib.events")
+local bindings = require("lib.bindings")
 local http = require("lib.http")
 local updateSettings = require("lib.update-settings")
 --#ifdef DRIVERCENTRAL
@@ -58,6 +59,9 @@ local LOOK_CHANGED_EVENT = "Look Changed"
 
 --- Namespace of the dynamic events, one per look, keyed by look id.
 local LOOK_EVENTS = "Looks"
+
+--- Namespace of the Button Link connections, one per look, keyed by look id.
+local LOOK_LINKS = "Look Links"
 
 --- What a press of the button does, by Look Control mode. A value not listed acts as Manual.
 --- @type table<string, fun()>
@@ -175,6 +179,36 @@ local function syncLookEvents()
   end
   for _, key in ipairs(gone) do
     events:deleteEvent(LOOK_EVENTS, key)
+  end
+end
+
+--- Give each look its Button Link connection, named and renamed with the look, and remove the links of looks that
+--- are gone. A link keeps its binding id for the life of its look, so Composer keeps what it is bound to.
+local function syncLookLinks()
+  local kept = {}
+  for _, look in ipairs(looks:list()) do
+    local key = tostring(look.id)
+    kept[key] = true
+    bindings:getOrAddDynamicBinding(LOOK_LINKS, key, "CONTROL", false, Looks.label(look), "BUTTON_LINK")
+  end
+  local gone = {}
+  for key in pairs(bindings:getDynamicBindings(LOOK_LINKS)) do
+    if not kept[key] then
+      table.insert(gone, key)
+    end
+  end
+  for _, key in ipairs(gone) do
+    bindings:deleteBinding(LOOK_LINKS, key)
+  end
+end
+
+--- Tap the look's Button Link as a keypad button does, so a device bound to it acts on the press.
+--- @param look Look|nil
+local function tapLink(look)
+  local link = look and bindings:getDynamicBinding(LOOK_LINKS, tostring(look.id))
+  if link and C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId) ~= 0 then
+    C4:SendToProxy(link.bindingId, "DO_PUSH", {})
+    C4:SendToProxy(link.bindingId, "DO_CLICK", {})
   end
 end
 
@@ -492,6 +526,8 @@ function OnDriverInit()
   log:trace("OnDriverInit()")
 
   values:restoreValues()
+  -- Before late init: Director reattaches a saved connection only to a link that exists by then.
+  bindings:restoreBindings()
 end
 
 --#ifdef DRIVERCENTRAL
@@ -606,6 +642,7 @@ function OnDriverLateInit()
   pictures:collect()
   events:restoreEvents()
   syncLookEvents()
+  syncLookLinks()
   announceShown(nil)
   -- Test functions live in memory: Look Is answers from its saved list until the looks change.
   local saved = Select(conditionals:getConditionals(), PROGRAMMING, "look_is", "list_items")
@@ -851,6 +888,7 @@ function UIR._SAVE_LOOK(tParams)
   end
   registerLookIs(lookChoices())
   syncLookEvents()
+  syncLookLinks()
   follow:lookSaved(look.id)
   pictures:collect()
   -- A picture that refreshes is served as the site sent it: no picture comes from the tab for it.
@@ -1010,6 +1048,7 @@ function UIR._DELETE_LOOK(tParams)
   announceShown(before and before.id or nil)
   registerLookIs(lookChoices())
   syncLookEvents()
+  syncLookLinks()
   follow:lookDeleted(removed.id, before ~= nil and before.id == removed.id)
   return pushState()
 end
@@ -1237,11 +1276,13 @@ end
 PRESS_ACTIONS["Manual"] = function() end
 PRESS_ACTIONS["By Value"] = function() end
 
---- A press of the button in Navigator. The proxy fires its own Selected event in every mode.
+--- A press of the button in Navigator: it taps the shown look's Button Link, then does what Look Control says. The
+--- proxy fires its own Selected event in every mode.
 --- @param idBinding integer
 function RFP.SELECT(idBinding)
   log:trace("RFP.SELECT(%s)", idBinding)
   if idBinding == PROXY_BINDING then
+    tapLink(button:shown())
     PRESS_ACTIONS[lookControl()]()
   end
 end
@@ -1348,6 +1389,7 @@ function EC.Reset_Driver(params)
   values:reset()
   conditionals:reset()
   events:reset()
+  bindings:deleteAllBindings(LOOK_LINKS)
   lookIsItems = nil
   -- As a fresh install: the variable comes back empty, and no Look Changed fires.
   announceShown(nil)

@@ -54,6 +54,7 @@ the programming you attach to it.
     - [Timed Looks](#timed-looks)
   - [Following a Value](#following-a-value)
     - [Show When Syntax](#show-when-syntax)
+  - [Button Links](#button-links)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
       - [Cloud Settings](#cloud-settings)
@@ -98,6 +99,8 @@ the programming you attach to it.
   set time
 - Show Look, Next Look and Previous Look programming commands, a Look variable,
   a Look Changed event, an event for each look and a Look Is conditional
+- A Button Link connection for each look, which a press taps as a keypad button
+  does
 - The button's picture updates in Navigator as soon as programming changes it
 
 # <span style="color:#7C3AED">Installer Setup</span>
@@ -216,10 +219,10 @@ The Support Code is entered in Composer's "Properties" tab only.
    eight looks.
 1. **↑ / ↓** - moves the look up or down. The button cycles through the looks in
    this order, and programming lists them in it.
-1. **Delete** - deletes the look, its picture, and its `Shown` event with the
-   programming on it, after a second press on `Confirm Delete`. Deleting the
-   shown look shows the first remaining look with a picture, or the driver's own
-   icon when none has one.
+1. **Delete** - deletes the look, its picture, its `Shown` event with the
+   programming on it, and its Button Link, after a second press on
+   `Confirm Delete`. Deleting the shown look shows the first remaining look with
+   a picture, or the driver's own icon when none has one.
 1. **Add Look** - opens the editor for a new look. A button has up to eight
    looks.
 
@@ -432,17 +435,17 @@ was added, and all of them go when the button is deleted or reset.
    button's own, as many as fit in its eight. `Replace` deletes a button's looks
    first, and the default look among the copies becomes its default. It asks for
    a second press on `Confirm Replace`, since a button's current looks, their
-   pictures and the programming on their `Shown` events go.
+   pictures, the programming on their `Shown` events and their Button Links go.
 1. **Copy** - copies to one button after another and shows a line for each: how
    many looks it got, how many didn't fit, and what stopped it.
 
-A copy brings everything a look has: its picture, colors, tile shape, `Cycle`,
-`Show when`, timer and badge. A timer whose look isn't copied with it shows the
-look before, and the button's line says so. Your own pictures go with the looks
-and are kept by the other button as its own, and a picture that refreshes is
-fetched by the other button from the same address. A look whose name the other
-button already uses gets the next number. A look whose own picture this button
-no longer has is left out and named.
+A copy brings everything a look has but its Button Link connection: its picture,
+colors, tile shape, `Cycle`, `Show when`, timer and badge. A timer whose look
+isn't copied with it shows the look before, and the button's line says so. Your
+own pictures go with the looks and are kept by the other button as its own, and
+a picture that refreshes is fetched by the other button from the same address. A
+look whose name the other button already uses gets the next number. A look whose
+own picture this button no longer has is left out and named.
 
 <!-- #ifdef DRIVERCENTRAL -->
 
@@ -596,6 +599,23 @@ problem.
 A value that is a number or `true` or `false` compares as one. Any other value
 compares as text.
 
+## Button Links
+
+Each look has a Button Link connection, named for the look and its number as the
+Show Look command lists it. Bind it to a device's On, Off or Toggle button link,
+as you would a keypad button. A press of the button in Navigator taps the link
+of the look it shows at that moment, then Look Control acts as it does without
+one. A look with nothing bound does nothing more on a press.
+
+1. Add the look in the Button tab, then refresh Composer (F5) so its connection
+   shows.
+1. In **Connections**, select the button and bind the look's Button Link to the
+   device's link.
+
+Renaming a look renames its connection and keeps it bound. Deleting a look
+removes its connection. Copy To, Export and Import bring looks without their
+connections: bind the looks again on the other button.
+
 ## Driver Setup
 
 ### Driver Properties
@@ -710,16 +730,16 @@ Button, regardless of the current version.
 
 #### Reset Driver
 
-> ⚠️ Reset Driver deletes every look, its picture, and its `Shown` event with
-> the programming on it. They cannot be brought back.
+> ⚠️ Reset Driver deletes every look, its picture, its `Shown` event with the
+> programming on it, and its Button Link. They cannot be brought back.
 
-Returns the driver to a fresh install: it deletes every look with its picture
-and its `Shown` event, shows the driver's own icon, and returns the properties
-to their defaults, with Look Control back to `Manual`. The update settings stay
-as they are, since every Dynamic Button shares them. The button keeps its place
-in Navigator and the programming on its other events and commands. Programming
-that names a deleted look does nothing, even after a new look takes the same
-name: choose the new look in that programming.
+Returns the driver to a fresh install: it deletes every look with its picture,
+its `Shown` event and its Button Link, shows the driver's own icon, and returns
+the properties to their defaults, with Look Control back to `Manual`. The update
+settings stay as they are, since every Dynamic Button shares them. The button
+keeps its place in Navigator and the programming on its other events and
+commands. Programming that names a deleted look does nothing, even after a new
+look takes the same name: choose the new look in that programming.
 
 **Parameters:**
 

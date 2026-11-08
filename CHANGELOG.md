@@ -38,6 +38,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   default look shows when none is
 - Added Next Look and Previous Look commands, and an In cycle setting for each
   look that presses and both commands pass over when it is off
+- Added a Button Link connection for each look: a press of the button taps the
+  link of the look it shows, as a keypad button does
 - Added an event for each look, named for the look, that fires when it becomes
   the shown look
 - Added three icon packs with the same 100 subjects in each: Classic Device and
