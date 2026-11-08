@@ -10,4 +10,5 @@
 9-pictures-that-refresh|img=my-images-web.png&fit=1&t=Pictures%20that%20refresh&s=Show%20a%20camera%20snapshot%20or%20any%20web%20picture%2C%20fetched%20again%20while%20its%20look%20shows.
 10-copy-looks|img=copy-looks.png&fit=1&t=Copy%20and%20share%20looks&s=Copy%20looks%20to%20other%20buttons%2C%20or%20export%20them%20for%20another%20project.
 11-import|img=import.png&fit=1&t=Import%20looks&s=Pick%20the%20looks%20you%20want%20from%20an%20exported%20file.
-12-programming|img=composer-programming.png&fit=1&t=Control4%20programming&s=Show%20Look%2C%20Next%20Look%20and%20web%20picture%20commands%2C%20an%20event%20for%20each%20look%20and%20a%20Look%20Is%20conditional.
+12-timer|img=timer.png&fit=1&t=Looks%20that%20go%20back%20on%20their%20own&s=After%20a%20set%20time%2C%20a%20look%20shows%20the%20one%20before%20it%20or%20another%20look%20you%20pick.
+13-programming|img=composer-programming.png&fit=1&t=Control4%20programming&s=Show%20Look%2C%20Next%20Look%20and%20web%20picture%20commands%2C%20an%20event%20for%20each%20look%20and%20a%20Look%20Is%20conditional.
