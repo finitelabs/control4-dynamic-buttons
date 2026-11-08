@@ -511,8 +511,7 @@ Director restart and a driver update, and no event fires when the driver starts.
 
 <img alt="Button tab - Timer" src="./images/ui-timer.png" width="640"/>
 
-1. **Timer** - in the Looks list, how long the look's timer runs and the look it
-   shows then.
+1. **Looks list** - how long a look's timer runs and the look it shows then.
 1. **Timer** - `Stay` or `After`.
 1. **Time** - from 1 second to 24 hours, in `seconds`, `minutes` or `hours`.
 1. **Show** - `the look before`, the look shown just before this one, or another
