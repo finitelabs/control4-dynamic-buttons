@@ -435,17 +435,17 @@ was added, and all of them go when the button is deleted or reset.
    button's own, as many as fit in its eight. `Replace` deletes a button's looks
    first, and the default look among the copies becomes its default. It asks for
    a second press on `Confirm Replace`, since a button's current looks, their
-   pictures and the programming on their `Shown` events go.
+   pictures, the programming on their `Shown` events and their Button Links go.
 1. **Copy** - copies to one button after another and shows a line for each: how
    many looks it got, how many didn't fit, and what stopped it.
 
-A copy brings everything a look has: its picture, colors, tile shape, `Cycle`,
-`Show when`, timer and badge. A timer whose look isn't copied with it shows the
-look before, and the button's line says so. Your own pictures go with the looks
-and are kept by the other button as its own, and a picture that refreshes is
-fetched by the other button from the same address. A look whose name the other
-button already uses gets the next number. A look whose own picture this button
-no longer has is left out and named.
+A copy brings everything a look has but its Button Link connection: its picture,
+colors, tile shape, `Cycle`, `Show when`, timer and badge. A timer whose look
+isn't copied with it shows the look before, and the button's line says so. Your
+own pictures go with the looks and are kept by the other button as its own, and
+a picture that refreshes is fetched by the other button from the same address. A
+look whose name the other button already uses gets the next number. A look whose
+own picture this button no longer has is left out and named.
 
 <!-- #ifdef DRIVERCENTRAL -->
 
