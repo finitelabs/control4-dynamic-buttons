@@ -524,9 +524,10 @@ showing the look again starts it over. Showing another look stops it. When its
 time is up, the button shows the chosen look and fires its events as any change
 does. If the look before is gone, or there was none, the default look shows, or
 else the first look with a picture. Deleting the chosen look turns the timer to
-`the look before`. The look a timer shows doesn't start a timer of its own. The
-timer keeps its time through a Director restart and a driver update. A time that
-runs out while the driver is stopped takes effect as the driver starts.
+`the look before`. A look a timer shows starts its own timer, so looks can
+follow one another, and a chain stops at a look it already showed. The timer
+keeps its time through a Director restart and a driver update. A time that runs
+out while the driver is stopped takes effect as the driver starts.
 
 Under `By Value`, a look that shows because its Show when is true stays, and its
 timer doesn't run. A look that programming or the Button tab shows goes back to
