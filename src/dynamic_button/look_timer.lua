@@ -24,8 +24,20 @@ local TIMER = "LookTimer"
 --- The shown look, the look shown before it, and while its timer runs, when its time is up, in seconds.
 local PERSIST_KEY = "LookTimer"
 
+--- @class LookTimerOptions
+--- @field looks Looks
+--- @field store table
+--- @field shown fun(): Look|nil
+--- @field show fun(id: integer): boolean, string|nil
+--- @field byValue fun(): boolean
+--- @field release fun()
+--- @field allowed fun(): boolean
+--- @field now? fun(): number
+--- @field setTimer? fun(name: string, ms: number, fn: function)
+--- @field cancelTimer? fun(name: string)
+
 --- Creates a new instance of the LookTimer class.
---- @param opts { looks: Looks, store: table, shown: fun(): Look|nil, show: fun(id: integer): boolean, string|nil, byValue: fun(): boolean, release: fun(), allowed: fun(): boolean, now?: fun(): number, setTimer?: fun(name: string, ms: number, fn: function), cancelTimer?: fun(name: string) }
+--- @param opts LookTimerOptions
 --- @return LookTimer timer
 function LookTimer:new(opts)
   local instance = setmetatable({}, self)
