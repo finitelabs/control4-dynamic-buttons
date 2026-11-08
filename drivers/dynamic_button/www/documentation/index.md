@@ -505,7 +505,9 @@ Button tab. To run something different for each look:
 
 Renaming a look renames its event and keeps its programming. Deleting a look
 deletes its event and the programming on it. The shown look stays through a
-Director restart and a driver update, and no event fires when the driver starts.
+Director restart and a driver update, and no event fires when the driver starts,
+unless a look's timer ran out while the driver was stopped: the timer's look
+then shows as the driver starts, and its events fire.
 
 ### Timed Looks
 
@@ -523,7 +525,8 @@ time is up, the button shows the chosen look and fires its events as any change
 does. If the look before is gone, or there was none, the default look shows, or
 else the first look with a picture. Deleting the chosen look turns the timer to
 `the look before`. The look a timer shows doesn't start a timer of its own. The
-timer keeps its time through a Director restart and a driver update.
+timer keeps its time through a Director restart and a driver update. A time that
+runs out while the driver is stopped takes effect as the driver starts.
 
 Under `By Value`, a look that shows because its Show when is true stays, and its
 timer doesn't run. A look that programming or the Button tab shows goes back to

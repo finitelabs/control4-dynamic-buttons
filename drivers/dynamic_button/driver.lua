@@ -635,9 +635,10 @@ function OnDriverLateInit()
     store = persist,
     engine = engine,
     show = function(id)
+      local before = button:shown()
       local ok, err = showPicked(id)
       if ok then
-        lookTimer:cancel()
+        lookTimer:shown(id, before and before.id or nil)
       end
       return ok, err
     end,
@@ -843,6 +844,7 @@ function UIR._SAVE_LOOK(tParams)
   elseif looks:defaultId() == look.id then
     looks:setDefault(nil)
   end
+  lookTimer:saved(look.id)
   if before and before.id == look.id and before.name ~= look.name then
     button:retell()
     announceShown(look.id)
@@ -1001,7 +1003,8 @@ function UIR._DELETE_LOOK(tParams)
   end
   log:info("Deleted look %s", removed.name)
   if before and before.id == removed.id then
-    lookTimer:cancel()
+    local now = button:shown()
+    lookTimer:shown(now and now.id or nil, nil)
   end
   pictures:collect()
   announceShown(before and before.id or nil)

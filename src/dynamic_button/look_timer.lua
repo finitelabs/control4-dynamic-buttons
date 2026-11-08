@@ -1,6 +1,6 @@
 -- A look's timer: once its time is up, the button shows the look shown before it or another look,
--- or under By Value the look the values call for. One runs at a time, for the shown look, and its
--- due time is kept, so a restart or an update comes back to it.
+-- or under By Value the look the values call for. One runs at a time, for the shown look. The shown
+-- look, the look before it and any due time are kept, so a restart or an update comes back to them.
 
 local log = require("lib.logging")
 local Looks = require("dynamic_button.looks")
@@ -21,7 +21,7 @@ LookTimer.__index = LookTimer
 
 local TIMER = "LookTimer"
 
---- The timed look, the look shown before it, and when its time is up, in seconds.
+--- The shown look, the look shown before it, and while its timer runs, when its time is up, in seconds.
 local PERSIST_KEY = "LookTimer"
 
 --- Creates a new instance of the LookTimer class.
@@ -47,13 +47,28 @@ function LookTimer:new(opts)
 end
 
 --- @private
---- @return { look: integer, before?: integer, due: number }|nil state
+--- @return { look: integer, before?: integer, due?: number }|nil state
 function LookTimer:_state()
   local state = self._store:get(PERSIST_KEY)
-  if type(state) == "table" and tonumber(state.look) and tonumber(state.due) then
+  if type(state) == "table" and tonumber(state.look) then
     return state
   end
   return nil
+end
+
+--- Note the look the button shows now and the look before it. The same look shown again keeps the
+--- look from before.
+--- @private
+--- @param id integer
+--- @param beforeId integer|nil
+--- @param due number|nil When its time is up, while its timer runs.
+function LookTimer:_record(id, beforeId, due)
+  local before = beforeId
+  if before == id then
+    local state = self:_state()
+    before = state and tonumber(state.look) == id and tonumber(state.before) or nil
+  end
+  self._store:set(PERSIST_KEY, { look = id, before = before, due = due })
 end
 
 --- @private
@@ -69,21 +84,50 @@ end
 --- @param beforeId integer|nil The look shown before it.
 function LookTimer:start(id, beforeId)
   local look = self._looks:get(id)
-  if not (look and look.timerAfter) then
-    self:cancel()
+  local after = look and look.timerAfter
+  self:_record(id, beforeId, after and self._now() + after or nil)
+  if after then
+    self:_arm(after)
+  else
+    self._cancelTimer(TIMER)
+  end
+end
+
+--- The values, a timer or a delete showed a look: any timer stops, and the look's own doesn't start.
+--- @param id integer|nil The look shown now; nil for the driver's own icon.
+--- @param beforeId integer|nil The look shown before it.
+function LookTimer:shown(id, beforeId)
+  self._cancelTimer(TIMER)
+  if id then
+    self:_record(id, beforeId, nil)
+  else
+    self._store:set(PERSIST_KEY, nil)
+  end
+end
+
+--- A look's fields were saved. A timer counting for it ends no later than its new time allows, and
+--- stops when the look no longer has one.
+--- @param id integer
+function LookTimer:saved(id)
+  local state = self:_state()
+  local due = state and tonumber(state.due)
+  if not (due and tonumber(state.look) == id) then
     return
   end
-  local before = beforeId
-  if before == look.id then
-    -- Shown again: it still goes back to the look from before.
-    local state = self:_state()
-    before = state and tonumber(state.look) == look.id and tonumber(state.before) or nil
+  local look = self._looks:get(id)
+  if not (look and look.timerAfter) then
+    self:shown(id, id)
+    return
   end
-  self._store:set(PERSIST_KEY, { look = look.id, before = before, due = self._now() + look.timerAfter })
+  local now = self._now()
+  if now + look.timerAfter >= due then
+    return
+  end
+  self:_record(id, id, now + look.timerAfter)
   self:_arm(look.timerAfter)
 end
 
---- Stop the timer: another look showed for another reason, or the driver was reset.
+--- Stop the timer and forget the looks: the driver was reset.
 function LookTimer:cancel()
   self._cancelTimer(TIMER)
   if self._store:get(PERSIST_KEY) ~= nil then
@@ -95,11 +139,19 @@ end
 function LookTimer:restore()
   local state = self:_state()
   local shown = self._shown()
-  if not (state and shown and shown.id == tonumber(state.look) and shown.timerAfter) then
+  if not (state and shown and shown.id == tonumber(state.look)) then
     self:cancel()
     return
   end
-  local left = tonumber(state.due) - self._now()
+  local due = tonumber(state.due)
+  if not due then
+    return
+  end
+  if not shown.timerAfter then
+    self:shown(shown.id, shown.id)
+    return
+  end
+  local left = due - self._now()
   if left <= 0 then
     self:_fire()
     return
@@ -138,9 +190,12 @@ end
 --- @private
 function LookTimer:_fire()
   local state = self:_state()
-  self:cancel()
   local shown = self._shown()
-  if not (state and shown and shown.id == tonumber(state.look) and shown.timerAfter) then
+  if not (state and tonumber(state.due) and shown and shown.id == tonumber(state.look)) then
+    return
+  end
+  self:shown(shown.id, shown.id)
+  if not shown.timerAfter then
     return
   end
   if not self._allowed() then
@@ -155,6 +210,7 @@ function LookTimer:_fire()
   for _, id in ipairs(self:_targets(shown, tonumber(state.before))) do
     local ok, err = self._show(id)
     if ok then
+      self:shown(id, shown.id)
       return
     end
     log:warn("Look %s's timer could not show look %s: %s", shown.name, tostring(id), tostring(err))
