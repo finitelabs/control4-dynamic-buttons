@@ -4097,7 +4097,11 @@ function initTabs() {
       // #endif
       ['Driver Settings', 'Driver Status', 'Ready'],
       ['Driver Settings', 'Driver Version', '20261104'],
+      // #ifdef DRIVERCENTRAL
+      ['Driver Settings', 'Log Level', '3 - Info', ['0 - Fatal', '1 - Error', '2 - Warning', '3 - Info', '4 - Debug']],
+      // #else
       ['Driver Settings', 'Log Level', '3 - Info', ['0 - Fatal', '1 - Error', '2 - Warning', '3 - Info', '4 - Debug', '5 - Trace', '6 - Ultra']],
+      // #endif
       ['Driver Settings', 'Log Mode', 'Off', ['Off', 'Print', 'Log', 'Print and Log']],
       // #ifdef DRIVERCENTRAL
       ['Driver Settings', 'Cloud Monitoring', 'Enabled', ['Disabled', 'Enabled']],

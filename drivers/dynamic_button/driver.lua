@@ -227,7 +227,7 @@ local tabPropertiesCache = nil
 
 --- @return table[] properties Each property the Button tab shows, in driver.xml order: its name,
 --- the label above it as its group, whether it is read-only, and a list's choices. Passwords stay in
---- Composer.
+--- Composer. Log Level is a DYNAMIC_LIST whose choices the logger gives at each render.
 local function tabProperties()
   if tabPropertiesCache then
     return tabPropertiesCache
@@ -238,7 +238,10 @@ local function tabProperties()
     local kind = XMLCapture(xml, "type")
     if kind == "LABEL" then
       group = XMLCapture(xml, "default") or ""
-    elseif (kind == "LIST" or kind == "STRING") and XMLCapture(xml, "password") ~= "true" then
+    elseif
+      (kind == "LIST" or kind == "STRING" or (kind == "DYNAMIC_LIST" and XMLCapture(xml, "name") == "Log Level"))
+      and XMLCapture(xml, "password") ~= "true"
+    then
       local property =
         { name = XMLCapture(xml, "name"), group = group, readonly = XMLCapture(xml, "readonly") == "true" }
       if kind == "LIST" then
@@ -290,7 +293,7 @@ local function tabState()
       name = property.name,
       group = property.group,
       readonly = property.readonly,
-      choices = property.choices,
+      choices = property.name == "Log Level" and log:getLogLevelNames() or property.choices,
       value = Properties[property.name] or "",
     })
   end
@@ -696,19 +699,6 @@ end
 function OPC.Log_Level(propertyValue)
   log:trace("OPC.Log_Level(%s)", propertyValue)
   log:setLogLevel(propertyValue)
-  if log:getLogLevel() >= 6 and log:isPrintEnabled() then
-    DEBUGPRINT = true
-    DEBUG_TIMER = true
-    DEBUG_RFN = true
-    DEBUG_URL = true
-    DEBUG_WEBSOCKET = true
-  else
-    DEBUGPRINT = false
-    DEBUG_TIMER = false
-    DEBUG_RFN = false
-    DEBUG_URL = false
-    DEBUG_WEBSOCKET = false
-  end
   syncTab()
 end
 
@@ -749,6 +739,11 @@ end
 function OPC.Support_Code(propertyValue)
   supportCode:enter(propertyValue)
 end
+
+-- Log Level's choices change with the Support Code's hour, which runs no handler a tab follows.
+supportCode:onChange(function()
+  syncTab()
+end)
 
 --- Turns Cloud Monitoring on or off.
 --- @param propertyValue string
