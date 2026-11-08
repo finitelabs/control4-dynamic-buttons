@@ -1,4 +1,5 @@
 # <output name>|<query>: one listing photo per line, in upload order. README.md lists the fields.
+1-in-navigator|img=navigator.png&fit=1&t=Buttons%20that%20show%20what%27s%20happening&s=Live%20badges%20and%20pictures%2C%20a%20camera%20snapshot%20too%2C%20right%20in%20the%20Control4%20app%20and%20on%20touch%20screens.
 2-looks|img=looks.png&fit=1&t=Up%20to%20eight%20looks&s=Each%20look%20has%20its%20own%20picture%2C%20colors%20and%20badge.%20Presses%2C%20programming%20or%20values%20pick%20the%20one%20shown.
 3-icon-packs|img=icon-packs.png&fit=1&t=Pictures%20that%20match%20Control4&s=Classic%20and%20Modern%20icon%20packs%2C%20included%20icons%20and%20free%20icon%20libraries.
 4-icon-libraries|img=icon-search.png&fit=1&t=Free%20icon%20libraries&s=Search%20free%20icon%20libraries%20online%20by%20name%2C%20filled%20or%20outline.
