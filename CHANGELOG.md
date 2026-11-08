@@ -69,6 +69,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   look's Update setting
 - Added the driver's properties to the Button tab, where they can be changed as
   in Composer's Properties tab, with Look Control beside the shown button
+- Added a Timer to each look: from 1 second to 24 hours after a press,
+  programming or the Button tab shows it, the button shows the look before or
+  another look, and under `By Value` the look the values call for
   <!-- #ifdef DRIVERCENTRAL -->
 - Added DriverCentral licensing: without an active license the button shows the
   driver's own icon after five minutes and its looks can't change, and a license

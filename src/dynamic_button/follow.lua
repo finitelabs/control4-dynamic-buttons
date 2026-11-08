@@ -152,6 +152,12 @@ function Follow:lookDeleted(id, wasShown)
   self:evaluate()
 end
 
+--- End a hold from programming: the look the values call for shows again, as soon as they say.
+function Follow:release()
+  self._store:set(APPLIED_PERSIST_KEY, nil)
+  self:evaluate()
+end
+
 --- A device left the project. Expressions reading it have an error from now on.
 --- @param id integer|string
 function Follow:deviceRemoved(id)

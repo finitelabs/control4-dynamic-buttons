@@ -40,6 +40,7 @@ local WebPictures = require("dynamic_button.web_pictures")
 local Button = require("dynamic_button.button")
 local Iconify = require("dynamic_button.iconify")
 local Follow = require("dynamic_button.follow")
+local LookTimer = require("dynamic_button.look_timer")
 local LiveBadges = require("dynamic_button.live_badges")
 local Expressions = require("lib.expressions")
 
@@ -105,6 +106,8 @@ local badges
 local refresher
 --- @type Follow
 local follow
+--- @type LookTimer
+local lookTimer
 
 --- Whether the values may change the look.
 --- @return boolean
@@ -280,6 +283,8 @@ local function tabState()
       grayscale = Looks.grayscale(look),
       custom = look.custom,
       showWhen = look.showWhen,
+      timerAfter = look.timerAfter,
+      timerShow = look.timerShow,
       showWhenText = byValue and look.showWhen and Expressions.render(look.showWhen, "condition") or nil,
       whenError = byValue and follow:whenError(look.id) or nil,
       badgeNow = badgeNow,
@@ -350,6 +355,21 @@ end
 --- @return string json
 local function pushShown()
   return uiRespond("SHOWN", { shown = tostring(button:shown().id) })
+end
+
+--- Show a look the driver picks itself, and tell programming and the Button tab.
+--- @param id integer
+--- @return boolean ok
+--- @return string|nil err Why it was not shown.
+local function showPicked(id)
+  local before = button:shown()
+  local ok, err = button:show(id)
+  if not ok then
+    return false, err
+  end
+  announceShown(before and before.id or nil)
+  pushShown()
+  return true
 end
 
 --- While true, property changes leave the state push to the command that made them.
@@ -593,19 +613,33 @@ function OnDriverLateInit()
     registerLookIs(saved, true)
   end
   registerLookIs(lookChoices())
+  lookTimer = LookTimer:new({
+    looks = looks,
+    store = persist,
+    shown = function()
+      return button:shown()
+    end,
+    show = showPicked,
+    byValue = function()
+      return lookControl() == "By Value"
+    end,
+    release = function()
+      follow:release()
+    end,
+    allowed = function()
+      return followAllowed()
+    end,
+  })
   follow = Follow:new({
     looks = looks,
     store = persist,
     engine = engine,
     show = function(id)
-      local before = button:shown()
-      local ok, err = button:show(id)
-      if not ok then
-        return false, err
+      local ok, err = showPicked(id)
+      if ok then
+        lookTimer:cancel()
       end
-      announceShown(before and before.id or nil)
-      pushShown()
-      return true
+      return ok, err
     end,
     changed = pushState,
     allowed = function()
@@ -622,6 +656,7 @@ function OnDriverLateInit()
   --#endif
   -- After the gate: it decides whether the values may change the look.
   follow:start(lookControl() == "By Value")
+  lookTimer:restore()
 end
 
 --#ifdef DRIVERCENTRAL
@@ -965,6 +1000,9 @@ function UIR._DELETE_LOOK(tParams)
     return pushError("no such look")
   end
   log:info("Deleted look %s", removed.name)
+  if before and before.id == removed.id then
+    lookTimer:cancel()
+  end
   pictures:collect()
   announceShown(before and before.id or nil)
   registerLookIs(lookChoices())
@@ -993,6 +1031,7 @@ function UIR._SHOW_LOOK(tParams)
   if not ok then
     return pushError(err or "the look was not shown")
   end
+  lookTimer:start(button:shown().id, before and before.id or nil)
   announceShown(before and before.id or nil)
   return pushShown()
 end
@@ -1143,6 +1182,7 @@ function EC.Show_Look(params)
     log:warn("Show Look %s: %s", look.name, err)
     return
   end
+  lookTimer:start(look.id, before and before.id or nil)
   announceShown(before and before.id or nil)
   pushShown()
 end
@@ -1160,6 +1200,7 @@ local function stepLook(step)
     end
     local ok, err = button:show(look.id)
     if ok then
+      lookTimer:start(look.id, before and before.id or nil)
       announceShown(before and before.id or nil)
       -- A look passed over may have lost its picture, which only the whole state tells.
       if next(tried) then
@@ -1298,6 +1339,7 @@ function EC.Reset_Driver(params)
   end
   log:print("Resetting driver to initial state")
   follow:stop()
+  lookTimer:cancel()
   button:reset()
   pictures:clear()
   values:reset()
