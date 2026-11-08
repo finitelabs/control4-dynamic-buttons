@@ -581,11 +581,11 @@ There are two ways to set up a light:
 - **One link** - bind both looks to the light's Toggle link. Set "Light on" to
   show while its link is on, and "Light off" while its link is off. A press
   toggles the light, and the button follows.
-- **Separate links** - bind "Light on" to the light's On link and "Light off" to
-  its Off link, and set both to show while their link is on. The On link is on
-  while the light is on, and the Off link while it is off, as a keypad's LEDs
-  show. A press taps the link of the look shown, so it leaves the light as it
-  is: use this setup for a button that only shows the light.
+- **Separate links** - bind "Light off" to the light's On link and "Light on" to
+  its Off link, and set both to show while their link is off. The On link is off
+  while the light is off, and the Off link is off while the light is on, as a
+  keypad's LEDs show. A press taps the link of the look shown, so it switches
+  the light, and the button follows.
 
 Show Look, Next Look, Previous Look and the Button tab's `Show` button still
 work. The look they show stays until the links call for a different look, or
