@@ -57,7 +57,6 @@ the programming you attach to it.
 # <span style="color:#7C3AED">System Requirements</span>
 
 - Control4 OS 3.3.1 or later
-- Composer Pro, to set up each button's looks in its Button tab
 
 # <span style="color:#7C3AED">Features</span>
 
@@ -548,10 +547,11 @@ Button, regardless of the current version.
 
 Returns the driver to a fresh install: it deletes every look with its picture
 and its `Shown` event, shows the driver's own icon, and returns the properties
-to their defaults, with Look Control back to `Manual`. The button keeps its
-place in Navigator and the programming on its other events and commands.
-Programming that names a deleted look does nothing, even after a new look takes
-the same name: choose the new look in that programming.
+to their defaults, with Look Control back to `Manual`. The update settings stay
+as they are, since every Dynamic Button shares them. The button keeps its place
+in Navigator and the programming on its other events and commands. Programming
+that names a deleted look does nothing, even after a new look takes the same
+name: choose the new look in that programming.
 
 **Parameters:**
 

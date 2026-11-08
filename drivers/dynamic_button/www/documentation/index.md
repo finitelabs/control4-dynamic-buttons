@@ -76,7 +76,6 @@ the programming you attach to it.
 # <span style="color:#7C3AED">System Requirements</span>
 
 - Control4 OS 3.3.1 or later
-- Composer Pro, to set up each button's looks in its Button tab
 
 # <span style="color:#7C3AED">Features</span>
 
@@ -120,7 +119,8 @@ for setting it up.
 
 <!-- #ifdef DRIVERCENTRAL -->
 
-1. Download the latest `control4-dynamic-buttons.zip` from DriverCentral.
+1. Download the latest `control4-dynamic-buttons.zip` from
+   [DriverCentral](https://drivercentral.io/platforms/control4-drivers/utility/dynamic-buttons).
 
 1. Extract and
    [install](https://www.control4.com/help/c4/software/cpro/dealer-composer-help/content/composerpro_userguide/adding_drivers_manually.htm)
@@ -668,10 +668,11 @@ Button, regardless of the current version.
 
 Returns the driver to a fresh install: it deletes every look with its picture
 and its `Shown` event, shows the driver's own icon, and returns the properties
-to their defaults, with Look Control back to `Manual`. The button keeps its
-place in Navigator and the programming on its other events and commands.
-Programming that names a deleted look does nothing, even after a new look takes
-the same name: choose the new look in that programming.
+to their defaults, with Look Control back to `Manual`. The update settings stay
+as they are, since every Dynamic Button shares them. The button keeps its place
+in Navigator and the programming on its other events and commands. Programming
+that names a deleted look does nothing, even after a new look takes the same
+name: choose the new look in that programming.
 
 **Parameters:**
 
@@ -788,7 +789,8 @@ herein are proprietary to Finite Labs LLC and its suppliers and may be covered
 by U.S. and Foreign Patents, patents in process, and are protected by trade
 secret or copyright law. Dissemination of this information or reproduction of
 this material is strictly forbidden unless prior written permission is obtained
-from Finite Labs LLC.
+from Finite Labs LLC. For the latest information, please visit
+https://drivercentral.io/platforms/control4-drivers/utility/dynamic-buttons
 
 <!-- #endif -->
 
