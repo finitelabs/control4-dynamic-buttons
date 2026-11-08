@@ -1472,7 +1472,7 @@ function iconName(icon) {
 }
 
 function deleteWarning(name) {
-  return 'Deletes ' + name + ', its picture, and its ' + name + ' Shown event with the programming on it.';
+  return 'Deletes ' + name + ', its picture, its ' + name + ' Shown event with the programming on it, and its Button Link.';
 }
 
 var STALE_PILL = '<span class="pill pending" title="Navigator still shows the picture from before the last edit. Save the look again to send the new one.">Picture out of date</span>';
@@ -3227,7 +3227,7 @@ async function runCopy() {
   if (!lookIds.length || !targets.length || gApplying) return;
   var replace = modeOf('cp-mode') === 'replace';
   if (replace && !confirmed($('cp-go'), 'cp-confirm', 'Replaces the looks on ' + targets.map(function(t) { return t.name; }).join(', ') +
-    ': their current looks, their pictures and the programming on their Shown events go.')) return;
+    ': their current looks, their pictures, the programming on their Shown events and their Button Links go.')) return;
   var out = $('cp-result'), lines = [];
   var say = function(text) { out.innerHTML = lines.map(lineHtml).join('') + (text ? '<div>' + esc(text) + '</div>' : ''); };
   setApplying(true);
@@ -3470,7 +3470,7 @@ async function runImport() {
     return true;
   }).map(withoutReach);
   if (!items.length) { out.innerHTML = lineHtml({ text: 'Left out without their web addresses: ' + cut.join(', ') + '.', bad: true }); return; }
-  if (replace && !confirmed($('im-go'), 'im-confirm', 'Replaces this button’s looks: its current looks, their pictures and the programming on their Shown events go.')) return;
+  if (replace && !confirmed($('im-go'), 'im-confirm', 'Replaces this button’s looks: its current looks, their pictures, the programming on their Shown events and their Button Links go.')) return;
   setApplying(true);
   var line;
   try {
