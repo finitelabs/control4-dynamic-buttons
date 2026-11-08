@@ -51,6 +51,7 @@ the programming you attach to it.
     - [My Images](#my-images)
     - [Copy To, Export and Import](#copy-to-export-and-import)
   - [Cycling Through Looks](#cycling-through-looks)
+    - [Timed Looks](#timed-looks)
   - [Following a Value](#following-a-value)
     - [Show When Syntax](#show-when-syntax)
   - [Driver Setup](#driver-setup)
@@ -93,6 +94,8 @@ the programming you attach to it.
 - Look Control: each press shows the next look in the cycle, the look follows
   other devices' variables through an expression on each look, or the look
   changes only from programming
+- A timer on any look that shows the look before it, or another look, after a
+  set time
 - Show Look, Next Look and Previous Look programming commands, a Look variable,
   a Look Changed event, an event for each look and a Look Is conditional
 - The button's picture updates in Navigator as soon as programming changes it
@@ -233,6 +236,9 @@ The Support Code is entered in Composer's "Properties" tab only.
 1. **Tile color** - the color of the tile behind the icon.
 1. **Cycle** - with `In cycle` off, presses, Next Look and Previous Look pass
    over the look. Show Look can still show it.
+1. **Timer** - `Stay`, the default, keeps the look until something else changes
+   it. `After` shows another look once a set time has passed, as
+   [Timed Looks](#timed-looks) describes.
 1. **Picture** - where the picture comes from: `All included`, the default, one
    of the driver's three icon packs (see [Icon Packs](#icon-packs)),
    `Basic icons`, `Free icon libraries` online (see
@@ -431,11 +437,12 @@ was added, and all of them go when the button is deleted or reset.
    many looks it got, how many didn't fit, and what stopped it.
 
 A copy brings everything a look has: its picture, colors, tile shape, `Cycle`,
-`Show when` and badge. Your own pictures go with the looks and are kept by the
-other button as its own, and a picture that refreshes is fetched by the other
-button from the same address. A look whose name the other button already uses
-gets the next number. A look whose own picture this button no longer has is left
-out and named.
+`Show when`, timer and badge. A timer whose look isn't copied with it shows the
+look before, and the button's line says so. Your own pictures go with the looks
+and are kept by the other button as its own, and a picture that refreshes is
+fetched by the other button from the same address. A look whose name the other
+button already uses gets the next number. A look whose own picture this button
+no longer has is left out and named.
 
 <!-- #ifdef DRIVERCENTRAL -->
 
@@ -498,7 +505,34 @@ Button tab. To run something different for each look:
 
 Renaming a look renames its event and keeps its programming. Deleting a look
 deletes its event and the programming on it. The shown look stays through a
-Director restart and a driver update, and no event fires when the driver starts.
+Director restart and a driver update, and no event fires when the driver starts,
+unless a look's timer ran out while the driver was stopped: the timer's look
+then shows as the driver starts, and its events fire.
+
+### Timed Looks
+
+<img alt="Button tab - Timer" src="./images/ui-timer.png" width="640"/>
+
+1. **Looks list** - how long a look's timer runs and the look it shows then.
+1. **Timer** - `Stay` or `After`.
+1. **Time** - from 1 second to 24 hours, in `seconds`, `minutes` or `hours`.
+1. **Show** - `the look before`, the look shown just before this one, or another
+   look on the button.
+
+A press, programming or the Button tab's `Show` starts a look's timer, and
+showing the look again starts it over. Showing another look stops it. When its
+time is up, the button shows the chosen look and fires its events as any change
+does. If the look before is gone, or there was none, the default look shows, or
+else the first look with a picture. Deleting the chosen look turns the timer to
+`the look before`. A look a timer shows starts its own timer, so looks can
+follow one another, and a chain stops at a look it already showed. The timer
+keeps its time through a Director restart and a driver update. A time that runs
+out while the driver is stopped takes effect as the driver starts.
+
+Under `By Value`, a look that shows because its Show when is true stays, and its
+timer doesn't run. A look that programming or the Button tab shows goes back to
+the look the values call for once its time is up, and its Timer row reads
+`go back to the values`.
 
 ## Following a Value
 
@@ -532,8 +566,9 @@ and with no default the shown look stays.
 1. **Default look** - makes this look the default, in place of any other.
 
 Show Look, Next Look, Previous Look and the Button tab's `Show` button still
-work. The look they show stays until the expressions call for a different look.
-That holds through a Director restart and a driver update.
+work. The look they show stays until the expressions call for a different look,
+or until its timer is up. That holds through a Director restart and a driver
+update.
 
 After a Director restart, other drivers add their variables as they start. For
 10 minutes, a look whose variable isn't there yet keeps the button on its
@@ -576,9 +611,9 @@ Displays the DriverCentral cloud license status.
 When the driver has had no active license for five minutes, whether since it
 started or since a license or trial ended, Driver Status reads
 `No active license` and the button shows the driver's own icon. Until a license
-is active, presses, programming, `By Value` and the Button tab can't change its
-look, and Shown Look keeps the name of the look it showed. The button shows that
-look again as soon as a license is active.
+is active, presses, programming, `By Value`, a timer and the Button tab can't
+change its look, and Shown Look keeps the name of the look it showed. The button
+shows that look again as soon as a license is active.
 
 <!-- #endif -->
 

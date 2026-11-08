@@ -27,6 +27,9 @@ local Expressions = require("lib.expressions")
 --- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
 --- @field custom? LookCustom How the look changes its picture; the picture as it comes without the field.
 --- @field showWhen? string When Look Control's By Value shows the look, an expression; never true without the field.
+--- @field timerAfter? integer Seconds after the look shows that the button shows another, `Looks.MAX_TIMER` at most;
+--- the look stays without the field.
+--- @field timerShow? "before"|integer What its timer shows: the look shown before it, or another look on the button.
 --- @field image? { bytes: integer, stale?: boolean, version?: integer, source?: string } The drawn picture,
 --- once the Button tab has sent it; stale while the look's fields have changed since it was drawn. Its
 --- version is the number it's served under; for a refreshing picture, its source names the bytes.
@@ -108,6 +111,12 @@ Looks.MAX_ICON_BODY = 16 * 1024
 
 --- The longest Show when expression, in bytes.
 Looks.MAX_SHOW_WHEN = 2000
+
+--- The longest a look's timer runs, in seconds: a day.
+Looks.MAX_TIMER = 86400
+
+--- A timer that shows the look shown before the timed one.
+Looks.TIMER_BEFORE = "before"
 
 local LOOKS_PERSIST_KEY = "Looks"
 
@@ -502,6 +511,20 @@ function Looks:_check(fields, exceptId)
       return nil, '"Show when": ' .. compileErr
     end
   end
+  local timerAfter, timerShow = fields.timerAfter, nil
+  if timerAfter ~= nil then
+    if not wholeBetween(timerAfter, 1, Looks.MAX_TIMER) then
+      return nil, string.format("a look's timer is a whole number of seconds from 1 to %d", Looks.MAX_TIMER)
+    end
+    timerShow = fields.timerShow == nil and Looks.TIMER_BEFORE or fields.timerShow
+    if timerShow ~= Looks.TIMER_BEFORE then
+      local target = self:get(timerShow)
+      if not target or target.id == exceptId then
+        return nil, "a look's timer shows the look before it or another look on this button"
+      end
+      timerShow = target.id
+    end
+  end
   return {
     name = name,
     icon = {
@@ -522,6 +545,8 @@ function Looks:_check(fields, exceptId)
     grayscale = grayscale,
     custom = custom,
     showWhen = showWhen ~= "" and showWhen or nil,
+    timerAfter = timerAfter,
+    timerShow = timerShow,
   }
 end
 
@@ -655,7 +680,7 @@ function Looks:setImage(id, bytes, version, source)
   return nil
 end
 
---- Delete a look.
+--- Delete a look. A timer that showed it shows the look before instead.
 --- @param id integer
 --- @return Look|nil removed The removed look, or nil if there was none.
 function Looks:delete(id)
@@ -666,6 +691,11 @@ function Looks:delete(id)
       table.remove(data.list, i)
       if data.defaultId == id then
         data.defaultId = nil
+      end
+      for _, other in ipairs(data.list) do
+        if other.timerShow == id then
+          other.timerShow = Looks.TIMER_BEFORE
+        end
       end
       self:_save(data)
       return look
