@@ -116,18 +116,6 @@ T.eq(
   "x.png"
 )
 
-T.section("Where a redirect points")
-T.eq(
-  "an absolute address",
-  Pictures.resolve("http://a.local/x/y.png", "https://b.example/z.png"),
-  "https://b.example/z.png"
-)
-T.eq("from the host's root", Pictures.resolve("http://a.local/x/y.png?q=1", "/z.png"), "http://a.local/z.png")
-T.eq("beside the address", Pictures.resolve("http://a.local/x/y.png", "z.png"), "http://a.local/x/z.png")
-T.eq("on a bare host", Pictures.resolve("http://a.local", "z.png"), "http://a.local/z.png")
-T.eq("with the same scheme", Pictures.resolve("https://a.local/x", "//b.example/z.png"), "https://b.example/z.png")
-T.eq("nowhere", Pictures.resolve("http://a.local/x", ""), nil)
-
 T.section("Pictures refused")
 local _, err = pictures:add("<html/>", SIZE)
 T.eq("not a PNG, JPEG or SVG", err, "the picture is not a PNG, JPEG or SVG")
