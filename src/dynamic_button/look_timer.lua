@@ -1,8 +1,8 @@
 -- A look's timer: once its time is up, the button shows the look shown before it or another look,
--- or under By Value the look the values call for. A look a timer shows starts its own timer, so looks
--- can follow one another, and a chain stops at a look it already showed. One timer runs at a time,
--- for the shown look. The shown look, the look before it, the chain's looks and any due time are
--- kept, so a restart or an update comes back to them.
+-- or under By Value or By Link the look the values or the links call for. A look a timer shows starts
+-- its own timer, so looks can follow one another, and a chain stops at a look it already showed. One
+-- timer runs at a time, for the shown look. The shown look, the look before it, the chain's looks and
+-- any due time are kept, so a restart or an update comes back to them.
 
 local log = require("lib.logging")
 local Looks = require("dynamic_button.looks")
@@ -12,8 +12,8 @@ local Looks = require("dynamic_button.looks")
 --- @field _store table A persist-like store with get(key, default) and set(key, value).
 --- @field _shown fun(): Look|nil The look the button shows.
 --- @field _show fun(id: integer): boolean, string|nil Shows a look, which tells this nothing.
---- @field _byValue fun(): boolean Look Control is By Value.
---- @field _release fun() Lets the values pick the look again.
+--- @field _following fun(): boolean Look Control is By Value or By Link, which pick the look themselves.
+--- @field _release fun() Lets the values or the links pick the look again.
 --- @field _allowed fun(): boolean False while nothing may change the look.
 --- @field _now fun(): number The clock, in seconds.
 --- @field _setTimer fun(name: string, ms: number, fn: function)
@@ -24,7 +24,8 @@ LookTimer.__index = LookTimer
 local TIMER = "LookTimer"
 
 --- The shown look, the look shown before it, the looks its chain showed since a press, programming,
---- the Button tab or the values began it, and while its timer runs, when its time is up, in seconds.
+--- the Button tab, the values or the links began it, and while its timer runs, when its time is up, in
+--- seconds.
 local PERSIST_KEY = "LookTimer"
 
 --- @class LookTimerOptions
@@ -32,7 +33,7 @@ local PERSIST_KEY = "LookTimer"
 --- @field store table
 --- @field shown fun(): Look|nil
 --- @field show fun(id: integer): boolean, string|nil
---- @field byValue fun(): boolean
+--- @field following fun(): boolean
 --- @field release fun()
 --- @field allowed fun(): boolean
 --- @field now? fun(): number
@@ -48,7 +49,7 @@ function LookTimer:new(opts)
   instance._store = opts.store
   instance._shown = opts.shown
   instance._show = opts.show
-  instance._byValue = opts.byValue
+  instance._following = opts.following
   instance._release = opts.release
   instance._allowed = opts.allowed
   instance._now = opts.now or os.time
@@ -125,7 +126,7 @@ function LookTimer:start(id, beforeId)
   end
 end
 
---- The values or a delete showed a look: any timer stops, and the look's own doesn't start.
+--- The values, the links or a delete showed a look: any timer stops, and the look's own doesn't start.
 --- @param id integer|nil The look shown now; nil for the driver's own icon.
 --- @param beforeId integer|nil The look shown before it.
 function LookTimer:shown(id, beforeId)
@@ -261,7 +262,7 @@ function LookTimer:_fire()
     return
   end
   log:debug("Look %s's time is up", shown.name)
-  if self._byValue() then
+  if self._following() then
     self._release()
     return
   end

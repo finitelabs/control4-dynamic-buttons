@@ -500,8 +500,11 @@ T.truthy(
 T.section("The Button tab's Timer row")
 T.truthy("the editor's save sends the timer", has("Object.assign(fields, timerFields());"))
 T.truthy("Stay sends none", has("return { timerAfter: null, timerShow: null };"))
-T.truthy("under By Value there's no look to pick", has("$('f-timer-show').hidden = !after || byValue();"))
-T.truthy("and the row goes back to the values", has("byValue() ? ', go back to the values' : ', show'"))
+T.truthy("under By Value or By Link there's no look to pick", has("$('f-timer-show').hidden = !after || following();"))
+T.truthy(
+  "and the row goes back to the values or the links",
+  has("byValue() ? ', go back to the values' : byLink() ? ', go back to the links' : ', show'")
+)
 T.truthy("the list shows a timed look's timer", has("timerLines(l) + badgeLines(l)"))
 T.truthy("the editor holds a time past a day", has("total >= 1 && total <= TIMER_MAX"))
 T.eq("which is the driver's", tonumber(page:match("var TIMER_MAX = (%d+)")), require("dynamic_button.looks").MAX_TIMER)

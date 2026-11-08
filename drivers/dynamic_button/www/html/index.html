@@ -112,6 +112,7 @@
   #f-timer-n { width: 76px; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
   #f-timer-n.input-error { border-color: var(--danger); }
   #f-timer-show { max-width: 220px; }
+  #f-while { width: auto; }
   .timer-then { margin-left: -6px; color: var(--text); }
   #fld-glow .rangerow { width: 280px; max-width: 100%; }
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; min-height: 28px; }
@@ -364,6 +365,10 @@
             </div>
             <div class="fnote" id="timer-note" hidden></div>
           </div>
+          <div class="frow" id="fld-while" hidden>
+            <label for="f-while">Show while</label>
+            <div class="fctl"><select id="f-while"><option value="on">its link is on</option><option value="off">its link is off</option></select></div>
+          </div>
           <div class="frow" id="fld-when" hidden>
             <div class="whenlabel">
               <label for="f-when">Show when</label>
@@ -435,7 +440,7 @@
           </div>
           <div class="frow" id="fld-default" hidden>
             <label for="f-default">Default look</label>
-            <div class="fctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> Show this look when no "Show when" is true</label></div>
+            <div class="fctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> <span id="f-default-text">Show this look when no "Show when" is true</span></label></div>
           </div>
         </div>
         <div class="lookform picker" id="pick-form">
@@ -1404,7 +1409,8 @@ function shownLook() {
 var CONTROL_NOTES = {
   'On Select': 'Each press shows the next look in the cycle.',
   'Manual': 'A press leaves the look as it is: programming changes it.',
-  'By Value': 'The first look whose "Show when" is true shows.'
+  'By Value': 'The first look whose "Show when" is true shows.',
+  'By Link': 'The first look whose link matches its "Show while" shows.'
 };
 function renderControl() {
   var mode = CONTROL_NOTES[gState.lookControl] ? gState.lookControl : 'Manual';
@@ -1499,11 +1505,11 @@ async function renderList() {
     var badges = (id === gState.shown ? ' <span class="pill online">Shown</span>' : '') +
       (!l.hasImage ? ' <span class="pill pending">No picture yet</span>' : (l.stale ? ' ' + STALE_PILL : '')) +
       (l.inCycle === false ? ' <span class="pill info" title="Presses, Next Look and Previous Look pass over this look.">Not in cycle</span>' : '') +
-      (byValue() && id === gState.defaultLook ? ' <span class="pill info" title="Shows when no &quot;Show when&quot; is true.">Default</span>' : '') +
-      (byValue() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the values call for a different look.">Matched</span>' : '');
+      (following() && id === gState.defaultLook ? ' <span class="pill info" title="' + (byLink() ? 'Shows when no link matches.' : 'Shows when no &quot;Show when&quot; is true.') + '">Default</span>' : '') +
+      (following() && id === gState.matched && id !== gState.shown ? ' <span class="pill pending" title="Programming showed another look. This one shows again when the ' + (byLink() ? 'links' : 'values') + ' call for a different look.">Matched</span>' : '');
     return '<div class="lookrow">' +
       '<img alt="" data-thumb="' + id + '">' +
-      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(iconName(l.icon)) + ' · ' + esc(pictureEvery(l.icon) ? 'Refreshed ' + REFRESH_WORDS[pictureEvery(l.icon)] : l.tileShape) + '</div>' + refreshLines(l) + whenLines(l) + timerLines(l) + badgeLines(l) + '</div>' +
+      '<div><div class="nm">' + esc(l.name) + badges + '</div><div class="sub">' + esc(iconName(l.icon)) + ' · ' + esc(pictureEvery(l.icon) ? 'Refreshed ' + REFRESH_WORDS[pictureEvery(l.icon)] : l.tileShape) + '</div>' + refreshLines(l) + whenLines(l) + linkLines(l) + timerLines(l) + badgeLines(l) + '</div>' +
       '<div class="acts">' +
         '<button class="btn btn-secondary sm" type="button" data-act="show" data-id="' + id + '"' + (l.hasImage && id !== gState.shown ? '' : ' disabled') + '>Show</button>' +
         '<button class="btn btn-secondary sm" type="button" data-act="edit" data-id="' + id + '">Edit</button>' +
@@ -2724,6 +2730,7 @@ function openEditor(look, title) {
   $('f-grayscale').checked = gEditor.look.grayscale;
   gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;
   $('f-when').value = gEditor.look.showWhen || '';
+  $('f-while').value = whileOf(gEditor.look);
   gEditor.whenHold = '';
   gEditor.badgeHold = '';
   showPreviewHint();
@@ -2801,7 +2808,7 @@ async function saveLook() {
     }
     var icon = l.icon && savedIcon(l.icon);
     var fields = { id: l.id, name: l.name, icon: icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor, inCycle: $('f-in-cycle').checked,
-      glow: savedGlow(l), grayscale: !!l.grayscale, showWhen: l.showWhen || '', isDefault: !!l.isDefault };
+      glow: savedGlow(l), grayscale: !!l.grayscale, showWhile: whileOf(l), showWhen: l.showWhen || '', isDefault: !!l.isDefault };
     if (custom) fields.custom = custom;
     Object.assign(fields, timerFields());
     if (!gApiHost) {
@@ -2868,7 +2875,7 @@ function demoSave(fields) {
   if (existing) Object.assign(existing, fields, { custom: fields.custom, hasImage: true, stale: false });
   else {
     id = gState.looks.reduce(function(m, x) { return Math.max(m, x.id); }, 0) + 1;
-    gState.looks.push(existing = Object.assign({}, fields, { id: id, hasImage: true, stale: false }));
+    gState.looks.push(existing = Object.assign({}, fields, { id: id, hasImage: true, stale: false, linkBound: false }));
     if (!gState.shown) gState.shown = id;
   }
   existing.showWhenText = demoRendered(fields.showWhen);
@@ -3046,7 +3053,7 @@ async function linkChunks(link, cmd, b64, fields, expect) {
 // or a refreshing picture's address), and whether it's the default.
 function lookFields(l) {
   return { id: l.id, name: l.name, icon: l.icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor,
-    inCycle: l.inCycle !== false, glow: savedGlow(l), grayscale: !!l.grayscale, showWhen: l.showWhen || '', custom: l.custom || {},
+    inCycle: l.inCycle !== false, glow: savedGlow(l), grayscale: !!l.grayscale, showWhile: whileOf(l), showWhen: l.showWhen || '', custom: l.custom || {},
     timerAfter: l.timerAfter || null, timerShow: l.timerAfter ? (l.timerShow == null ? 'before' : l.timerShow) : null };
 }
 async function sourcesReady(ids) {
@@ -3161,7 +3168,7 @@ async function giveLook(link, item, names, given, replace, ids) {
     look.icon = Object.assign({}, look.icon, { id: given[pic.key], stored: true }, rec ? { width: rec.width, height: rec.height } : {});
   }
   var fields = { id: null, name: look.name, icon: savedIcon(look.icon), iconColor: look.iconColor, tileShape: look.tileShape, tileColor: look.tileColor,
-    inCycle: look.inCycle !== false, glow: look.glow, grayscale: !!look.grayscale, showWhen: look.showWhen || '', isDefault: !!(replace && item.isDefault) };
+    inCycle: look.inCycle !== false, glow: look.glow, grayscale: !!look.grayscale, showWhile: whileOf(look), showWhen: look.showWhen || '', isDefault: !!(replace && item.isDefault) };
   if (custom) fields.custom = custom;
   // A timer names a look by the id it came with: the button's own id for it, once that look is given.
   var timerLook = look.timerAfter && look.timerShow != null && String(look.timerShow) !== 'before' ? String(look.timerShow) : null;
@@ -3360,6 +3367,7 @@ function lookProblem(l, refreshes) {
   if (!isHexColor(l.iconColor) || !isHexColor(l.tileColor)) return 'a color isn’t #RRGGBB';
   if (l.showWhen != null && typeof l.showWhen !== 'string') return 'its Show when isn’t text';
   if (typeof l.showWhen === 'string' && utf8Bytes(l.showWhen.trim()) > 2000) return 'its Show when is longer than 2000 characters';
+  if (l.showWhile != null && l.showWhile !== 'on' && l.showWhile !== 'off') return 'its Show while isn’t on or off';
   if (l.timerAfter != null && !wholeIn(l.timerAfter, 1, TIMER_MAX)) return 'its timer isn’t from 1 second to 24 hours';
   if (refreshes) return null;
   if (SHAPES.indexOf(l.tileShape) < 0) return 'its tile shape isn’t one the driver knows';
@@ -3423,7 +3431,7 @@ async function readLooksFile(file) {
     if (problem) { skipped.push(label + ': ' + problem); continue; }
     var look = { name: String(l.name).trim(), icon: icon, iconColor: l.iconColor.toUpperCase(), tileShape: refreshes ? 'None' : l.tileShape,
       tileColor: l.tileColor.toUpperCase(), inCycle: l.inCycle !== false, glow: l.glow == null ? 100 : l.glow, grayscale: l.grayscale === true,
-      showWhen: typeof l.showWhen === 'string' ? l.showWhen.trim() : '', custom: l.custom ? JSON.parse(JSON.stringify(l.custom)) : {},
+      showWhile: whileOf(l), showWhen: typeof l.showWhen === 'string' ? l.showWhen.trim() : '', custom: l.custom ? JSON.parse(JSON.stringify(l.custom)) : {},
       timerAfter: l.timerAfter == null ? null : l.timerAfter, timerShow: l.timerAfter == null ? null : String(l.timerShow == null ? 'before' : l.timerShow) };
     var picture = key ? Object.assign({ key: 'file:' + key }, pictures[key]) : null;
     items.push({ key: l.id == null ? '#' + i : String(l.id), look: look, picture: picture, isDefault: data.defaultLook != null && String(l.id) === String(data.defaultLook) });
@@ -3521,7 +3529,7 @@ function timerTarget(l) {
 }
 function timerLines(l) {
   if (!l.timerAfter) return '';
-  var text = 'Timer: after ' + timerWords(l.timerAfter) + ', ' + (byValue() ? 'back to the values' : timerTarget(l));
+  var text = 'Timer: after ' + timerWords(l.timerAfter) + ', ' + (byValue() ? 'back to the values' : byLink() ? 'back to the links' : timerTarget(l));
   return '<div class="sub" title="' + esc(text) + '">' + esc(text) + '</div>';
 }
 function openTimer(l) {
@@ -3538,14 +3546,14 @@ function openTimer(l) {
   $('f-timer-n').classList.remove('input-error');
   syncTimerRow();
 }
-// Under By Value the look goes back to the values, so there's no look to pick.
+// Under By Value or By Link the look goes back to the values or the links, so there's no look to pick.
 function syncTimerRow() {
   var after = $('f-timer').value === 'after';
   ['f-timer-n', 'f-timer-unit', 'timer-then'].forEach(function(id) { $(id).hidden = !after; });
-  $('f-timer-show').hidden = !after || byValue();
-  $('timer-then').textContent = byValue() ? ', go back to the values' : ', show';
-  $('timer-note').hidden = !after || !byValue();
-  $('timer-note').textContent = 'Runs only when programming or Show shows this look, not when its Show when does.';
+  $('f-timer-show').hidden = !after || following();
+  $('timer-then').textContent = byValue() ? ', go back to the values' : byLink() ? ', go back to the links' : ', show';
+  $('timer-note').hidden = !after || !following();
+  $('timer-note').textContent = 'Runs only when programming or Show shows this look, not when its ' + (byLink() ? 'link' : 'Show when') + ' does.';
 }
 function timerProblem() {
   if ($('f-timer').value !== 'after') return null;
@@ -3569,11 +3577,19 @@ var gDevices = [], gVarsByDevice = {}, gExpanded = {}, gRequestedVars = {}, gEva
 var gVarBox = 'f-when', gBadgeSeq = 0, gBadgeTimer = null;
 
 function byValue() { return gState.lookControl === 'By Value'; }
+function byLink() { return gState.lookControl === 'By Link'; }
+// By Value and By Link pick the look themselves, and both have a default look.
+function following() { return byValue() || byLink(); }
+// A look without one shows while its link is on.
+function whileOf(l) { return l.showWhile === 'off' ? 'off' : 'on'; }
 
-// These only apply under By Value, so they're hidden otherwise.
+// These only apply under By Value or By Link, so they're hidden otherwise.
 function syncWhenRows() {
   var wasHidden = $('fld-when').hidden;
-  ['fld-when', 'fld-when-preview', 'fld-default'].forEach(function(id) { $(id).hidden = !byValue(); });
+  ['fld-when', 'fld-when-preview'].forEach(function(id) { $(id).hidden = !byValue(); });
+  $('fld-while').hidden = !byLink();
+  $('fld-default').hidden = !following();
+  $('f-default-text').textContent = byLink() ? 'Show this look when no link matches' : 'Show this look when no "Show when" is true';
   if (!byValue()) {
     // The list may be the badge's, which stays open under any Look Control.
     if (gVarBox === 'f-when') $('fld-when-browser').hidden = true;
@@ -3748,6 +3764,13 @@ function badgeLines(l) {
   return '<div class="sub" title="' + esc(l.badgeText) + '">Badge ' + esc(l.badgeText) + '</div>' +
     (l.badgeError ? '<div class="sub bad" title="' + esc(l.badgeError) + '">' + esc(friendlyError(l.badgeError, l.custom.badge.text, l.badgeText)) + '</div>' : '');
 }
+// Under By Link: what the look's link must be, and what it last was.
+function linkLines(l) {
+  if (!byLink()) return '';
+  var now = !l.linkBound ? 'not bound' : l.linkState === 'on' ? 'on' : l.linkState === 'off' ? 'off' : 'bound, no state yet';
+  var text = 'Show while its link is ' + whileOf(l) + ' · Link ' + now;
+  return '<div class="sub" title="' + esc(text) + '">' + esc(text) + '</div>';
+}
 function whenLines(l) {
   if (!byValue()) return '';
   var text = l.showWhen ? l.showWhenText || l.showWhen : '';
@@ -3810,6 +3833,7 @@ $('f-when').addEventListener('input', function() {
   syncWhen();
 });
 $('f-default').addEventListener('change', function() { gEditor.look.isDefault = $('f-default').checked; });
+$('f-while').addEventListener('change', function() { gEditor.look.showWhile = $('f-while').value; });
 
 $('when-insert').addEventListener('click', function() { toggleVarBrowser('f-when', $('fld-when')); });
 
@@ -4200,6 +4224,11 @@ function initTabs() {
       var look = gState.looks.find(function(l) { return l.name === d[0]; });
       if (look) { look.showWhen = d[1]; look.showWhenText = demoRendered(d[1]); }
     });
+    // Under By Link: Full and Charging follow a charger's plug, and Low has no link.
+    [['Full', 'off', true, 'off'], ['Low', 'on', false, null], ['Charging', 'on', true, 'off']].forEach(function(d) {
+      var look = gState.looks.find(function(l) { return l.name === d[0]; });
+      if (look) Object.assign(look, { showWhile: d[1], linkBound: d[2], linkState: d[3] });
+    });
     gState.defaultLook = 1;
     gState.properties = [
       // #ifdef DRIVERCENTRAL
@@ -4220,7 +4249,7 @@ function initTabs() {
       // #ifdef DRIVERCENTRAL
       ['Driver Settings', 'Cloud Monitoring', 'Enabled', ['Disabled', 'Enabled']],
       // #endif
-      ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual', 'By Value']],
+      ['Button Settings', 'Look Control', 'On Select', ['On Select', 'Manual', 'By Value', 'By Link']],
       ['Button Settings', 'Shown Look', 'Full']
     ].map(function(d) { return { group: d[0], name: d[1], value: d[2], choices: d[3], readonly: !d[3] }; });
     renderList();

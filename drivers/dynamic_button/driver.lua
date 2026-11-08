@@ -41,6 +41,7 @@ local WebPictures = require("dynamic_button.web_pictures")
 local Button = require("dynamic_button.button")
 local Iconify = require("dynamic_button.iconify")
 local Follow = require("dynamic_button.follow")
+local ByLink = require("dynamic_button.by_link")
 local LookTimer = require("dynamic_button.look_timer")
 local LiveBadges = require("dynamic_button.live_badges")
 local Expressions = require("lib.expressions")
@@ -112,6 +113,8 @@ local refresher
 local follow
 --- @type LookTimer
 local lookTimer
+--- @type ByLink
+local byLink
 
 --- Whether the values may change the look.
 --- @return boolean
@@ -182,14 +185,40 @@ local function syncLookEvents()
   end
 end
 
+--- @return string mode The Look Control property, Manual when it has no known value.
+local function lookControl()
+  local mode = Properties["Look Control"]
+  return PRESS_ACTIONS[mode] and mode or "Manual"
+end
+
+--- A look's Button Link, when a device is bound to it.
+--- @param id integer|nil
+--- @return Binding|nil link
+local function boundLink(id)
+  local link = id and bindings:getDynamicBinding(LOOK_LINKS, tostring(id))
+  if link and C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId) ~= 0 then
+    return link
+  end
+  return nil
+end
+
+--- A look's Button Link was bound or unbound.
+local function linkBindingChanged()
+  byLink:bindingChanged()
+end
+
 --- Give each look its Button Link connection, named and renamed with the look, and remove the links of looks that
---- are gone. A link keeps its binding id for the life of its look, so Composer keeps what it is bound to.
+--- are gone with their last state. A link keeps its binding id for the life of its look, so Composer keeps what it is
+--- bound to.
 local function syncLookLinks()
   local kept = {}
   for _, look in ipairs(looks:list()) do
     local key = tostring(look.id)
     kept[key] = true
-    bindings:getOrAddDynamicBinding(LOOK_LINKS, key, "CONTROL", false, Looks.label(look), "BUTTON_LINK")
+    local link = bindings:getOrAddDynamicBinding(LOOK_LINKS, key, "CONTROL", false, Looks.label(look), "BUTTON_LINK")
+    if link then
+      OBC[link.bindingId] = linkBindingChanged
+    end
   end
   local gone = {}
   for key in pairs(bindings:getDynamicBindings(LOOK_LINKS)) do
@@ -199,23 +228,18 @@ local function syncLookLinks()
   end
   for _, key in ipairs(gone) do
     bindings:deleteBinding(LOOK_LINKS, key)
+    byLink:forget(key)
   end
 end
 
 --- Tap the look's Button Link as a keypad button does, so a device bound to it acts on the press.
 --- @param look Look|nil
 local function tapLink(look)
-  local link = look and bindings:getDynamicBinding(LOOK_LINKS, tostring(look.id))
-  if link and C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId) ~= 0 then
+  local link = boundLink(look and look.id)
+  if link then
     C4:SendToProxy(link.bindingId, "DO_PUSH", {})
     C4:SendToProxy(link.bindingId, "DO_CLICK", {})
   end
-end
-
---- @return string mode The Look Control property, Manual when it has no known value.
-local function lookControl()
-  local mode = Properties["Look Control"]
-  return PRESS_ACTIONS[mode] and mode or "Manual"
 end
 
 --- @return string items The looks as the Look Is conditional lists them.
@@ -297,11 +321,18 @@ end
 local function tabState()
   local list = {}
   local byValue = follow ~= nil and lookControl() == "By Value"
+  local linked = lookControl() == "By Link"
   for _, look in ipairs(looks:list()) do
     local live = Looks.liveBadge(look)
     local badgeNow, badgeError
     if live then
       badgeNow, badgeError = LiveBadges.read(live.text)
+    end
+    local linkState, linkBound
+    if linked then
+      local on = byLink:state(look.id)
+      linkState = on ~= nil and (on and "on" or "off") or nil
+      linkBound = boundLink(look.id) ~= nil
     end
     table.insert(list, {
       id = look.id,
@@ -317,6 +348,7 @@ local function tabState()
       grayscale = Looks.grayscale(look),
       custom = look.custom,
       showWhen = look.showWhen,
+      showWhile = Looks.showsWhileOn(look) and Looks.SHOW_WHILE_ON or Looks.SHOW_WHILE_OFF,
       timerAfter = look.timerAfter,
       timerShow = look.timerShow,
       showWhenText = byValue and look.showWhen and Expressions.render(look.showWhen, "condition") or nil,
@@ -324,6 +356,8 @@ local function tabState()
       badgeNow = badgeNow,
       badgeError = badgeError,
       badgeText = live and Expressions.render(live.text, "string") or nil,
+      linkState = linkState,
+      linkBound = linkBound,
     })
   end
   local properties = {}
@@ -361,7 +395,7 @@ local function tabState()
     shown = shown and shown.id or nil,
     lookControl = lookControl(),
     defaultLook = looks:defaultId(),
-    matched = byValue and follow:matched() or nil,
+    matched = (byValue and follow:matched()) or (linked and byLink:matched()) or nil,
     max = Looks.MAX,
     maxChunk = Images.MAX_CHUNK,
     maxBytes = Images.MAX_BYTES,
@@ -405,6 +439,29 @@ local function showPicked(id)
   pushShown()
   return true
 end
+
+--- Made at load: a device can tell a link's state before late init.
+byLink = ByLink:new({
+  looks = looks,
+  store = persist,
+  bound = function(id)
+    return boundLink(id) ~= nil
+  end,
+  show = function(id)
+    local before = button:shown()
+    local ok, err = showPicked(id)
+    if ok then
+      lookTimer:shown(id, before and before.id or nil)
+    end
+    return ok, err
+  end,
+  changed = function()
+    pushState()
+  end,
+  allowed = function()
+    return followAllowed()
+  end,
+})
 
 --- While true, property changes leave the state push to the command that made them.
 local tabHeld = false
@@ -555,6 +612,7 @@ local function onLicense(licensed)
   registerLookIs(lookChoices(), true)
   UpdateProperty("Driver Status", "Ready")
   follow:evaluate()
+  byLink:evaluate()
   pushState()
 end
 --#endif
@@ -657,11 +715,16 @@ function OnDriverLateInit()
       return button:shown()
     end,
     show = showPicked,
-    byValue = function()
-      return lookControl() == "By Value"
+    following = function()
+      local mode = lookControl()
+      return mode == "By Value" or mode == "By Link"
     end,
     release = function()
-      follow:release()
+      if lookControl() == "By Link" then
+        byLink:release()
+      else
+        follow:release()
+      end
     end,
     allowed = function()
       return followAllowed()
@@ -692,8 +755,9 @@ function OnDriverLateInit()
   --#ifdef DRIVERCENTRAL
   drivercentral:startGate(onLicense)
   --#endif
-  -- After the gate: it decides whether the values may change the look.
+  -- After the gate: it decides whether the values or the links may change the look.
   follow:start(lookControl() == "By Value")
+  byLink:start(lookControl() == "By Link")
   lookTimer:restore()
 end
 
@@ -779,6 +843,9 @@ function OPC.Look_Control(propertyValue)
   log:trace("OPC.Look_Control(%s)", propertyValue)
   if follow then
     follow:setActive(lookControl() == "By Value")
+  end
+  if gInitialized then
+    byLink:setActive(lookControl() == "By Link")
   end
   syncTab()
 end
@@ -890,6 +957,7 @@ function UIR._SAVE_LOOK(tParams)
   syncLookEvents()
   syncLookLinks()
   follow:lookSaved(look.id)
+  byLink:evaluate()
   pictures:collect()
   -- A picture that refreshes is served as the site sent it: no picture comes from the tab for it.
   local web = pictures:refreshes(look.icon.id) and pictures:get(look.icon.id)
@@ -900,8 +968,9 @@ function UIR._SAVE_LOOK(tParams)
       return pushError(string.format("the picture for %s could not be kept", look.name))
     end
     announceShown(before and before.id or nil)
-    -- By Value saw the look before it had a picture, so it couldn't show it then.
+    -- By Value and By Link saw the look before it had a picture, so they couldn't show it then.
     follow:evaluate()
+    byLink:evaluate()
     look = looks:get(look.id)
   end
   local shown = button:shown()
@@ -939,6 +1008,7 @@ function UIR._PUT_IMAGE(tParams)
   log:info("Stored the picture for look %s (%d bytes)", look.name, #png)
   announceShown(before and before.id or nil)
   follow:evaluate()
+  byLink:evaluate()
   return reply("IMAGE_STORED", { look = tostring(look.id) })
 end
 
@@ -1050,6 +1120,7 @@ function UIR._DELETE_LOOK(tParams)
   syncLookEvents()
   syncLookLinks()
   follow:lookDeleted(removed.id, before ~= nil and before.id == removed.id)
+  byLink:lookDeleted(before ~= nil and before.id == removed.id)
   return pushState()
 end
 
@@ -1062,6 +1133,7 @@ function UIR._ORDER_LOOKS(tParams)
   end
   registerLookIs(lookChoices())
   follow:evaluate()
+  byLink:evaluate()
   return pushState()
 end
 
@@ -1275,6 +1347,7 @@ PRESS_ACTIONS["On Select"] = function()
 end
 PRESS_ACTIONS["Manual"] = function() end
 PRESS_ACTIONS["By Value"] = function() end
+PRESS_ACTIONS["By Link"] = function() end
 
 --- A press of the button in Navigator: it taps the shown look's Button Link, then does what Look Control says. The
 --- proxy fires its own Selected event in every mode.
@@ -1284,6 +1357,23 @@ function RFP.SELECT(idBinding)
   if idBinding == PROXY_BINDING then
     tapLink(button:shown())
     PRESS_ACTIONS[lookControl()]()
+  end
+end
+
+--- A device bound to a look's Button Link tells its LED state, as it tells a keypad button's: when the link is bound
+--- and whenever the state changes. Kept for By Link, which picks the look from it.
+--- @param idBinding integer
+--- @param _strCommand string
+--- @param tParams table
+function RFP.MATCH_LED_STATE(idBinding, _strCommand, tParams)
+  log:trace("RFP.MATCH_LED_STATE(%s, %s)", idBinding, tParams)
+  for key, link in pairs(bindings:getDynamicBindings(LOOK_LINKS)) do
+    if link.bindingId == tointeger(idBinding) then
+      local on = ByLink.isOn(Select(tParams, "STATE"))
+      log:debug("Look %s's Button Link is %s", key, on and "on" or "off")
+      byLink:report(tonumber(key), on)
+      return
+    end
   end
 end
 
@@ -1383,6 +1473,7 @@ function EC.Reset_Driver(params)
   end
   log:print("Resetting driver to initial state")
   follow:stop()
+  byLink:reset()
   lookTimer:cancel()
   button:reset()
   pictures:clear()
@@ -1433,6 +1524,7 @@ end
 
 -- Open while stopped: _GET_STATE/_SET_DRIVER do only what Composer's Properties tab can, _GET_PICTURE shows a kept
 -- picture, _GET_BUTTONS names this driver's items; a copy acts through the other button's own gated commands.
+-- MATCH_LED_STATE keeps each link's state, which By Link acts on only while licensed.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
 EC.Next_Look = whileLicensed(EC.Next_Look)

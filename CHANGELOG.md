@@ -40,6 +40,9 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   look that presses and both commands pass over when it is off
 - Added a Button Link connection for each look: a press of the button taps the
   link of the look it shows, as a keypad button does
+- Added `By Link` to Look Control: each look gets a Show while setting, and the
+  button shows the first look whose Button Link is on or off as it says, so the
+  button follows the device bound to the link whatever changes it
 - Added an event for each look, named for the look, that fires when it becomes
   the shown look
 - Added three icon packs with the same 100 subjects in each: Classic Device and

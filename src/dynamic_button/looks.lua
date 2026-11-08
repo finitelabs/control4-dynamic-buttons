@@ -27,6 +27,8 @@ local Expressions = require("lib.expressions")
 --- @field grayscale? boolean True for a look drawn in grays, which draws no glow; false without the field.
 --- @field custom? LookCustom How the look changes its picture; the picture as it comes without the field.
 --- @field showWhen? string When Look Control's By Value shows the look, an expression; never true without the field.
+--- @field showWhile? "on"|"off" Whether Look Control's By Link shows the look while its Button Link is on or off;
+--- on without the field.
 --- @field timerAfter? integer Seconds after the look shows that the button shows another, `Looks.MAX_TIMER` at most;
 --- the look stays without the field.
 --- @field timerShow? "before"|integer What its timer shows: the look shown before it, or another look on the button.
@@ -117,6 +119,10 @@ Looks.MAX_TIMER = 86400
 
 --- A timer that shows the look shown before the timed one.
 Looks.TIMER_BEFORE = "before"
+
+--- What a look's Show while can be: By Link shows it while its Button Link is on, or while it is off.
+Looks.SHOW_WHILE_ON = "on"
+Looks.SHOW_WHILE_OFF = "off"
 
 local LOOKS_PERSIST_KEY = "Looks"
 
@@ -511,6 +517,10 @@ function Looks:_check(fields, exceptId)
       return nil, '"Show when": ' .. compileErr
     end
   end
+  local showWhile = fields.showWhile == nil and Looks.SHOW_WHILE_ON or fields.showWhile
+  if showWhile ~= Looks.SHOW_WHILE_ON and showWhile ~= Looks.SHOW_WHILE_OFF then
+    return nil, '"Show while" is "on" or "off"'
+  end
   local timerAfter, timerShow = fields.timerAfter, nil
   if timerAfter ~= nil then
     if not wholeBetween(timerAfter, 1, Looks.MAX_TIMER) then
@@ -545,6 +555,7 @@ function Looks:_check(fields, exceptId)
     grayscale = grayscale,
     custom = custom,
     showWhen = showWhen ~= "" and showWhen or nil,
+    showWhile = showWhile,
     timerAfter = timerAfter,
     timerShow = timerShow,
   }
@@ -583,6 +594,13 @@ end
 --- @return boolean grayscale Whether the look is drawn in grays.
 function Looks.grayscale(look)
   return look.grayscale == true
+end
+
+--- What a look's Button Link must be for By Link to show it.
+--- @param look Look
+--- @return boolean on True while its link is on, false while it is off.
+function Looks.showsWhileOn(look)
+  return look.showWhile ~= Looks.SHOW_WHILE_OFF
 end
 
 --- Whether stepping through the cycle can land on a look.
