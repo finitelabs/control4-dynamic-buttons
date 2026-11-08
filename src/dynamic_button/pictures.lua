@@ -3,6 +3,7 @@
 -- by id; a picture no look names is deleted.
 
 local deferred = require("deferred")
+local http = require("lib.http")
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
 --#ifdef DRIVERCENTRAL
@@ -287,118 +288,48 @@ local function header(headers, name)
   return nil
 end
 
---- @param code any
---- @return boolean passing A response on the way to the answer: a redirect or an interim response.
-local function passing(code)
-  code = tonumber(code) or 0
-  return code < 200 or (code >= 300 and code < 400)
-end
-
---- Where a redirect points, from the address it came from.
---- @param base string
---- @param location any
---- @return string|nil address
-function Pictures.resolve(base, location)
-  location = tostring(location or ""):match("^%s*(.-)%s*$")
-  if location == "" then
-    return nil
-  end
-  if location:lower():match("^https?://") then
-    return location
-  end
-  local scheme, authority, path = base:match("^(%a[%w+.-]*:)//([^/?#]*)([^?#]*)")
-  if not scheme then
-    return nil
-  end
-  if location:sub(1, 2) == "//" then
-    return scheme .. location
-  end
-  if location:sub(1, 1) == "/" then
-    return scheme .. "//" .. authority .. location
-  end
-  return scheme .. "//" .. authority .. (path:match("^(.*/)") or "/") .. location
-end
-
 --- Fetch a picture for the Button tab. What can't be a picture is refused as soon as the answer
 --- shows it: a status, a length over `MAX_FETCH` or a page or stream by its headers, and a body that
---- grows past `MAX_FETCH` while it arrives, so nothing large is held on the controller. A raw
---- `C4:url()`, not `lib.http`: only it can stop a transfer by its headers or mid-body.
+--- grows past `MAX_FETCH` while it arrives, so nothing large is held on the controller.
 --- @param address string
---- @param hops? integer Redirects followed so far (optional).
 --- @return Deferred fetched Resolves with the picture's bytes, or rejects with why it was refused.
-function Pictures.fetch(address, hops)
-  hops = hops or 0
+function Pictures.fetch(address)
   local d = deferred.new()
-  local parts, bytes, refused = {}, 0, nil
-  local function onHeaders(_, response)
-    parts, bytes = {}, 0
-    if passing(response.code) then
-      return false
-    end
-    local code = tonumber(response.code) or 0
-    local length = tonumber(header(response.headers, "Content-Length"))
-    local kind = (header(response.headers, "Content-Type") or ""):lower()
-    if code >= 400 then
-      refused = Pictures.fetchError({ code = code })
-    elseif length and length > Pictures.MAX_FETCH then
-      refused = TOO_LARGE
-    elseif kind:match("^%s*multipart/") or kind:match("^%s*text/html") then
-      refused = NOT_A_PICTURE
-    end
-    return refused ~= nil
-  end
-  local function onBodyChunk(_, response, chunk)
-    if passing(response.code) then
-      return false
-    end
-    bytes = bytes + #chunk
-    if bytes > Pictures.MAX_FETCH then
-      refused, parts = TOO_LARGE, {}
-      return true
-    end
-    table.insert(parts, chunk)
-    return false
-  end
-  local function onDone(_, responses, errCode)
-    if refused then
-      return d:reject(refused)
-    end
-    if tonumber(errCode) ~= 0 then
-      -- Only the code: curl's message can carry the address's host.
-      log:debug("A picture's fetch ended with error %s", tostring(errCode))
-      return d:reject(tonumber(errCode) == 28 and "The address took too long to answer." or Pictures.fetchError(nil))
-    end
-    local final = type(responses) == "table" and responses[#responses] or nil
-    if final and passing(final.code) then
-      local nextAddress = hops < MAX_HOPS and Pictures.resolve(address, header(final.headers, "Location"))
-      if not (nextAddress and Pictures.checkAddress(nextAddress)) then
-        return d:reject(Pictures.fetchError({ code = final.code }))
+  http
+    :get(address, { ["User-Agent"] = "Control4" }, {
+      timeout = Pictures.FETCH_SECONDS,
+      connect_timeout = Pictures.CONNECT_SECONDS,
+      maxBytes = Pictures.MAX_FETCH,
+      maxRedirects = MAX_HOPS,
+      privateUrl = true,
+      onHeaders = function(code, headers)
+        local kind = (header(headers, "Content-Type") or ""):lower()
+        if code >= 400 then
+          return Pictures.fetchError({ code = code })
+        elseif kind:match("^%s*multipart/") or kind:match("^%s*text/html") then
+          return NOT_A_PICTURE
+        end
+        return nil
+      end,
+    })
+    :next(function(response)
+      local bad = Pictures.checkFetched(response.body)
+      if bad then
+        return d:reject(bad)
       end
-      return Pictures.fetch(nextAddress, hops + 1):next(function(body)
-        d:resolve(body)
-      end, function(reason)
-        d:reject(reason)
-      end)
-    end
-    local body = table.concat(parts)
-    local bad = Pictures.checkFetched(body)
-    if bad then
-      return d:reject(bad)
-    end
-    d:resolve(body)
-  end
-  --#ifdef DRIVERCENTRAL
-  -- No dispatcher runs these, so Cloud Monitoring sees their errors only through a wrap.
-  onHeaders = diagnostics:wrap(onHeaders, "Pictures.fetch")
-  onBodyChunk = diagnostics:wrap(onBodyChunk, "Pictures.fetch")
-  onDone = diagnostics:wrap(onDone, "Pictures.fetch")
-  --#endif
-  C4:url()
-    :SetOptions({ fail_on_error = false, timeout = Pictures.FETCH_SECONDS, connect_timeout = Pictures.CONNECT_SECONDS })
-    :OnHeaders(onHeaders)
-    :OnBodyChunk(onBodyChunk)
-    :OnDone(onDone)
-    :Get(address, { ["User-Agent"] = "Control4" })
+      d:resolve(response.body)
+    end, function(failure)
+      failure = type(failure) == "table" and failure or {}
+      log:debug("A picture's fetch failed: %s", tostring(failure.error))
+      if failure.refused ~= nil then
+        return d:reject(failure.refused)
+      elseif failure.tooLarge then
+        return d:reject(TOO_LARGE)
+      elseif failure.timedOut then
+        return d:reject("The address took too long to answer.")
+      end
+      d:reject(Pictures.fetchError(failure))
+    end)
   return d
 end
 
