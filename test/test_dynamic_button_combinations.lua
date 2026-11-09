@@ -777,7 +777,7 @@ local Light = {}
 Light.__index = Light
 
 --- @param id integer
---- @param opts { reports: boolean, answers: boolean, form: fun(on: boolean): any, colors?: table }
+--- @param opts { reports: boolean, answers: boolean, colors?: table, form: fun(on: boolean): any }
 --- @return Light
 function Light.new(id, opts)
   return setmetatable(
