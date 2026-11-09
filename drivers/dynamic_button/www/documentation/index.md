@@ -55,7 +55,7 @@ the programming you attach to it.
   - [Following a Value](#following-a-value)
     - [Show When Syntax](#show-when-syntax)
   - [Button Links](#button-links)
-  - [Following a Light](#following-a-light)
+  - [Following a Button Link](#following-a-button-link)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
       - [Cloud Settings](#cloud-settings)
@@ -95,8 +95,8 @@ the programming you attach to it.
   alert pictures where a subject has states
 - Look Control: each press shows the next look in the cycle, the look follows
   other devices' variables through an expression on each look, the look follows
-  the light or other device each look's Button Link is bound to, or the look
-  changes only from programming
+  the device each look's Button Link is bound to, or the look changes only from
+  programming
 - A timer on any look that shows the look before it, or another look, after a
   set time
 - Show Look, Next Look and Previous Look programming commands, a Look variable,
@@ -246,7 +246,8 @@ The Support Code is entered in Composer's "Properties" tab only.
    it. `After` shows another look once a set time has passed, as
    [Timed Looks](#timed-looks) describes.
 1. **Show while** - shows under `By Link` only: `its link is on` or
-   `its link is off`, as [Following a Light](#following-a-light) describes.
+   `its link is off`, as [Following a Button Link](#following-a-button-link)
+   describes.
 1. **Picture** - where the picture comes from: `All included`, the default, one
    of the driver's three icon packs (see [Icon Packs](#icon-packs)),
    `Basic icons`, `Free icon libraries` online (see
@@ -502,8 +503,8 @@ only programming changes it. With `By Value`, a press also leaves the look as it
 is, and each look's expression changes it, as
 [Following a Value](#following-a-value) describes. With `By Link`, a press taps
 the shown look's link, and the device's reply changes the look, as
-[Following a Light](#following-a-light) describes. Show Look, Next Look and
-Previous Look work in every mode.
+[Following a Button Link](#following-a-button-link) describes. Show Look, Next
+Look and Previous Look work in every mode.
 
 Each look has its own event: the look's name followed by `Shown`. It fires when
 that look becomes the shown look, from a press, from programming or from the
@@ -613,12 +614,12 @@ compares as text.
 ## Button Links
 
 Each look has a Button Link connection, named for the look and its number as the
-Show Look command lists it. Bind it to a device's On, Off or Toggle button link,
-as you would a keypad button. A press of the button in Navigator taps the link
-of the look it shows at that moment, then Look Control acts as it does without
-one. A look with nothing bound does nothing more on a press. Under `By Link`,
-the look also follows what each link's device reports, as
-[Following a Light](#following-a-light) describes.
+Show Look command lists it. Bind it to a device's On/Top, Off/Bottom or Toggle
+button link, as you would a keypad button. A press of the button in Navigator
+taps the link of the look it shows at that moment, then Look Control acts as it
+does without one. A look with nothing bound does nothing more on a press. Under
+`By Link`, the look also follows what each link's device reports, as
+[Following a Button Link](#following-a-button-link) describes.
 
 1. Add the look in the Button tab, then refresh Composer (F5) so its connection
    shows.
@@ -629,7 +630,7 @@ Renaming a look renames its connection and keeps it bound. Deleting a look
 removes its connection. Copy To, Export and Import bring looks without their
 connections: bind the looks again on the other button.
 
-## Following a Light
+## Following a Button Link
 
 Set the [Look Control](#look-control--on-select--manual--by-value--by-link-)
 property to `By Link` to make the button's look follow the devices its looks'
@@ -640,7 +641,7 @@ none matches, the look set as the default shows, and with no default the shown
 look stays.
 
 A press taps the shown look's link, and the look changes only once the device
-reports back. A light changed from anywhere else changes the button the same
+reports back. A device switched from anywhere else changes the button the same
 way. The button asks each device for its state and its LED colors when a look's
 link is bound and when the driver starts, so a device that answers shows the
 right look at once.
@@ -657,16 +658,19 @@ right look at once.
    list changes which look is checked first.
 1. **Default look** - makes this look the default, in place of any other.
 
-There are two ways to set up a light:
+There are two ways to set up a device with On/Top, Off/Bottom and Toggle links,
+for two looks named "On" and "Off":
 
-- **One link** - bind both looks to the light's Toggle link. Set "Light on" to
-  show while its link is on, and "Light off" while its link is off. A press
-  toggles the light, and the button follows.
-- **Separate links** - bind "Light off" to the light's On link and "Light on" to
-  its Off link, and set both to show while their link is off. The On link is off
-  while the light is off, and the Off link is off while the light is on, as a
-  keypad's LEDs show. A press taps the link of the look shown, so it switches
-  the light, and the button follows.
+- **One link** - bind both looks to the device's Toggle link. Set "On" to show
+  while its link is on, and "Off" while its link is off. A press toggles the
+  device, and the button follows.
+- **Separate links** - bind "Off" to the device's On/Top link and "On" to its
+  Off/Bottom link, and set both to show while their link is off. The On/Top link
+  is off while the device is off, and the Off/Bottom link is off while it's on,
+  as a keypad's LEDs show. A press taps the link of the look shown, so it
+  switches the device, and the button follows. Bound the other way round, each
+  to the link for its own state, the button still shows the right look, but a
+  press repeats what the device is already doing.
 
 Show Look, Next Look, Previous Look and the Button tab's `Show` button still
 work. The look they show stays until the links call for a different look, or
@@ -771,9 +775,9 @@ address is removed.
 Sets what changes the look. `On Select` shows the next look in the cycle on each
 press, `Manual` leaves the look for programming to change, `By Value` shows the
 first look whose [Show when](#following-a-value) expression is true, and
-`By Link` shows the first look whose [Button Link](#following-a-light) is on or
-off as its Show while says. The button's own Selected event fires on every press
-in every mode.
+`By Link` shows the first look whose [Button Link](#following-a-button-link) is
+on or off as its Show while says. The button's own Selected event fires on every
+press in every mode.
 
 ##### Shown Look (read-only)
 
