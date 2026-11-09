@@ -152,7 +152,6 @@ function ByLink:setActive(active)
     return
   end
   self._active = true
-  self._store:set(APPLIED_PERSIST_KEY, nil)
   self:evaluate()
 end
 
