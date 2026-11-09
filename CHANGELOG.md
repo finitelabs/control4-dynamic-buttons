@@ -45,10 +45,3 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Added a DriverCentral license check. Without an active license the button
   shows the driver's own icon after five minutes and its looks can't change.
   <!-- #endif -->
-
-### Changed
-
-- Changed Log Level in the DriverCentral build to stop at `4 - Debug`:
-  `5 - Trace` and `6 - Ultra` are offered only while a Support Code from Finite
-  Labs support has the Lua tab open, and a driver set to either goes back to
-  `4 - Debug`.
