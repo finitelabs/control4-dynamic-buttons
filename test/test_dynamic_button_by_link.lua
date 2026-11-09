@@ -340,6 +340,17 @@ Properties["Look Control"] = "By Link"
 H.update()
 T.eq("picks from the states kept too", shown(), "Bulb off")
 
+T.section("Back to By Link after a change made while the driver was stopped")
+led(bulbOn, true)
+led(bulbOff, false)
+T.eq("the links show a look", shown(), "Bulb on")
+Properties["Look Control"] = "On Select"
+H.update()
+EC.Show_Look({ Look = "Bulb off (" .. bulbOff .. ")" })
+T.eq("programming shows another", shown(), "Bulb off")
+setLookControl("By Link")
+T.eq("and By Link again shows the look the links call for", shown(), "Bulb on")
+
 T.section("A timed look")
 local bell = addLook("Doorbell", { timerAfter = 30 })
 led(bulbOn, true)

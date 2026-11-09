@@ -135,6 +135,9 @@ function ByLink:start(active)
   self._active = active
   if active then
     self:evaluate()
+  else
+    -- Look Control can change while the driver is stopped: a hold kept from then would outlive By Link.
+    self._store:set(APPLIED_PERSIST_KEY, nil)
   end
 end
 
@@ -149,6 +152,7 @@ function ByLink:setActive(active)
     return
   end
   self._active = true
+  self._store:set(APPLIED_PERSIST_KEY, nil)
   self:evaluate()
 end
 
