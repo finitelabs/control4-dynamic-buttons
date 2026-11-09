@@ -21,6 +21,7 @@ require("lib.utils")
 --- @field _matched integer|nil The look the links call for.
 --- @field _showFailed table<integer, string> Why a matched look couldn't show, by look id, so it logs once.
 --- @field _reported boolean A report changed a link's state since the links last picked.
+--- @field _pending boolean Reports are waiting for the links to pick.
 local ByLink = {}
 ByLink.__index = ByLink
 
@@ -73,6 +74,7 @@ function ByLink:new(opts)
   instance._matched = nil
   instance._showFailed = {}
   instance._reported = false
+  instance._pending = false
   return instance
 end
 
@@ -139,14 +141,30 @@ function ByLink:report(id, on, device)
     return
   end
   self._reported = self._reported or changed
+  self._pending = true
   SetTimer(EVALUATE_TIMER, EVALUATE_MS, function()
-    local reported = self._reported
-    self._reported = false
-    if not self:evaluate() and reported then
-      -- The Button tab shows each link's state under By Link.
-      self._changed()
-    end
+    self:_settle()
   end)
+end
+
+--- @private
+function ByLink:_settle()
+  self._pending = false
+  local reported = self._reported
+  self._reported = false
+  if not self:evaluate() and reported then
+    -- The Button tab shows each link's state under By Link.
+    self._changed()
+  end
+end
+
+--- Pick now the look that reports still waiting call for. Programming and the Button tab call this before they
+--- show a look, so the links' pick lands first and the look they show holds.
+function ByLink:flush()
+  if self._pending then
+    CancelTimer(EVALUATE_TIMER)
+    self:_settle()
+  end
 end
 
 --- @private
@@ -241,6 +259,7 @@ end
 --- the devices last said.
 function ByLink:stop()
   CancelTimer(EVALUATE_TIMER)
+  self._pending = false
   self._reported = false
   self._active = false
   self._matched = nil

@@ -1180,6 +1180,7 @@ end
 --- @param tParams table
 function UIR._SHOW_LOOK(tParams)
   log:trace("UIR._SHOW_LOOK()")
+  byLink:flush()
   local before = button:shown()
   local ok, err = button:show(tabParams(tParams).id)
   if not ok then
@@ -1330,6 +1331,7 @@ function EC.Show_Look(params)
     log:warn("Show Look: no look %s", tostring(Select(params, "Look")))
     return
   end
+  byLink:flush()
   local before = button:shown()
   local ok, err = button:show(look.id)
   if not ok then
@@ -1345,6 +1347,7 @@ end
 --- passed over, and the tab is told when none could be.
 --- @param step integer
 local function stepLook(step)
+  byLink:flush()
   local before = button:shown()
   local tried = {}
   for _ = 1, #looks:list() do
