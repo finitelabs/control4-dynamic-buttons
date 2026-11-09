@@ -124,6 +124,7 @@
           <item>On Select</item>
           <item>Manual</item>
           <item>By Value</item>
+          <item>By Link</item>
         </items>
         <default>Manual</default>
         <description>What changes the look the button shows.</description>

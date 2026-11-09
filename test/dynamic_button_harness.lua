@@ -19,11 +19,17 @@ end
 -- nil, which runs. test_license_gate.lua drives the gate with the real client.
 require("lib.drivercentral").PRODUCT_ID = 900
 
+--- @type string|nil
+local xmlText
+
+--- @return string xml driver.xml, read once: nothing changes it during a run.
 local function readXml()
-  local f = assert(io.open(H.XML, "r"))
-  local xml = f:read("*a")
-  f:close()
-  return xml
+  if not xmlText then
+    local f = assert(io.open(H.XML, "r"))
+    xmlText = f:read("*a")
+    f:close()
+  end
+  return xmlText
 end
 
 --- @return table<string, string> props Each property's driver.xml default.
@@ -213,18 +219,29 @@ function H.start()
   ShimLateInit()
 end
 
---- A Director restart: the driver stops, its variables, conditional tests and cached state are gone,
---- and only what it stored comes back.
-function H.restart()
-  OnDriverDestroyed()
-  ShimRestartDirector()
-  ShimResetEvents()
+--- What a new Lua VM no longer has: the stored values' cache, the conditional tests and the variable listeners, whose
+--- callbacks would otherwise reach the stopped driver's objects.
+local function forgetMemory()
   require("lib.persist")._persist = {}
   for name in pairs(TC) do
     if type(name) == "string" and name:match("^CONDITIONAL_%d+$") then
       TC[name] = nil
     end
   end
+  for device in pairs(OWVC) do
+    if type(device) == "number" then
+      OWVC[device] = nil
+    end
+  end
+end
+
+--- A Director restart: the driver stops, its variables, conditional tests and cached state are gone,
+--- and only what it stored comes back.
+function H.restart()
+  OnDriverDestroyed()
+  ShimRestartDirector()
+  ShimResetEvents()
+  forgetMemory()
   H.start()
 end
 
@@ -233,12 +250,7 @@ end
 function H.update()
   OnDriverDestroyed()
   ShimUpdateDriver()
-  require("lib.persist")._persist = {}
-  for name in pairs(TC) do
-    if type(name) == "string" and name:match("^CONDITIONAL_%d+$") then
-      TC[name] = nil
-    end
-  end
+  forgetMemory()
   H.start()
 end
 

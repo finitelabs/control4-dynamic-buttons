@@ -55,6 +55,7 @@ the programming you attach to it.
   - [Following a Value](#following-a-value)
     - [Show When Syntax](#show-when-syntax)
   - [Button Links](#button-links)
+  - [Following a Button Link](#following-a-button-link)
   - [Driver Setup](#driver-setup)
     - [Driver Properties](#driver-properties)
       - [Cloud Settings](#cloud-settings)
@@ -93,8 +94,9 @@ the programming you attach to it.
   match the OS 3 look, and Modern, which matches the X4 look, with on, off and
   alert pictures where a subject has states
 - Look Control: each press shows the next look in the cycle, the look follows
-  other devices' variables through an expression on each look, or the look
-  changes only from programming
+  other devices' variables through an expression on each look, the look follows
+  the device each look's Button Link is bound to, or the look changes only from
+  programming
 - A timer on any look that shows the look before it, or another look, after a
   set time
 - Show Look, Next Look and Previous Look programming commands, a Look variable,
@@ -204,8 +206,8 @@ The Support Code is entered in Composer's "Properties" tab only.
 1. **Shown now** - the button as the Control4 app shows it, with the name of the
    look it shows, or `Driver icon` until a look has a picture.
 1. **Look Control** - what changes the look. It sets the
-   [Look Control](#look-control--on-select--manual--by-value-) property, and a
-   change to the property in Composer shows here.
+   [Look Control](#look-control--on-select--manual--by-value--by-link-)
+   property, and a change to the property in Composer shows here.
 1. **Looks** - each look with its picture, name, icon and tile shape. `Shown`
    marks the look the button shows. `No picture yet` marks a look whose picture
    has not reached the driver, and `Picture out of date` a look edited since its
@@ -222,7 +224,8 @@ The Support Code is entered in Composer's "Properties" tab only.
 1. **Delete** - deletes the look, its picture, its `Shown` event with the
    programming on it, and its Button Link, after a second press on
    `Confirm Delete`. Deleting the shown look shows the first remaining look with
-   a picture, or the driver's own icon when none has one.
+   a picture, or the driver's own icon when none has one. Under `By Value` or
+   `By Link`, the look the values or the links call for shows instead.
 1. **Add Look** - opens the editor for a new look. A button has up to eight
    looks.
 
@@ -242,6 +245,9 @@ The Support Code is entered in Composer's "Properties" tab only.
 1. **Timer** - `Stay`, the default, keeps the look until something else changes
    it. `After` shows another look once a set time has passed, as
    [Timed Looks](#timed-looks) describes.
+1. **Show while** - shows under `By Link` only: `its link is on` or
+   `its link is off`, as [Following a Button Link](#following-a-button-link)
+   describes.
 1. **Picture** - where the picture comes from: `All included`, the default, one
    of the driver's three icon packs (see [Icon Packs](#icon-packs)),
    `Basic icons`, `Free icon libraries` online (see
@@ -440,12 +446,13 @@ was added, and all of them go when the button is deleted or reset.
    many looks it got, how many didn't fit, and what stopped it.
 
 A copy brings everything a look has but its Button Link connection: its picture,
-colors, tile shape, `Cycle`, `Show when`, timer and badge. A timer whose look
-isn't copied with it shows the look before, and the button's line says so. Your
-own pictures go with the looks and are kept by the other button as its own, and
-a picture that refreshes is fetched by the other button from the same address. A
-look whose name the other button already uses gets the next number. A look whose
-own picture this button no longer has is left out and named.
+colors, tile shape, `Cycle`, `Show when`, `Show while`, timer and badge. A timer
+whose look isn't copied with it shows the look before, and the button's line
+says so. Your own pictures go with the looks and are kept by the other button as
+its own, and a picture that refreshes is fetched by the other button from the
+same address. A look whose name the other button already uses gets the next
+number. A look whose own picture this button no longer has is left out and
+named.
 
 <!-- #ifdef DRIVERCENTRAL -->
 
@@ -487,15 +494,17 @@ from, so check them after importing into another project.
 
 ## Cycling Through Looks
 
-Set the [Look Control](#look-control--on-select--manual--by-value-) property to
-`On Select` to make each press of the button show the next look. The button
-steps through the looks in the order the Button tab lists them, wrapping from
-the last look back to the first, and passes over a look with **In cycle** off or
-with no picture yet. With `Manual`, a press leaves the look as it is and only
-programming changes it. With `By Value`, a press also leaves the look as it is,
-and each look's expression changes it, as
-[Following a Value](#following-a-value) describes. Show Look, Next Look and
-Previous Look work in all three modes.
+Set the [Look Control](#look-control--on-select--manual--by-value--by-link-)
+property to `On Select` to make each press of the button show the next look. The
+button steps through the looks in the order the Button tab lists them, wrapping
+from the last look back to the first, and passes over a look with **In cycle**
+off or with no picture yet. With `Manual`, a press leaves the look as it is and
+only programming changes it. With `By Value`, a press also leaves the look as it
+is, and each look's expression changes it, as
+[Following a Value](#following-a-value) describes. With `By Link`, a press taps
+the shown look's link, and the device's reply changes the look, as
+[Following a Button Link](#following-a-button-link) describes. Show Look, Next
+Look and Previous Look work in every mode.
 
 Each look has its own event: the look's name followed by `Shown`. It fires when
 that look becomes the shown look, from a press, from programming or from the
@@ -509,8 +518,9 @@ Button tab. To run something different for each look:
 Renaming a look renames its event and keeps its programming. Deleting a look
 deletes its event and the programming on it. The shown look stays through a
 Director restart and a driver update, and no event fires when the driver starts,
-unless a look's timer ran out while the driver was stopped: the timer's look
-then shows as the driver starts, and its events fire.
+unless the look changes then: a look's timer ran out while the driver was
+stopped, or the values or the links call for another look than before. That look
+shows as the driver starts, and its events fire.
 
 ### Timed Looks
 
@@ -535,15 +545,17 @@ out while the driver is stopped takes effect as the driver starts.
 Under `By Value`, a look that shows because its Show when is true stays, and its
 timer doesn't run. A look that programming or the Button tab shows goes back to
 the look the values call for once its time is up, and its Timer row reads
-`go back to the values`.
+`go back to the values`. Under `By Link` it's the same with the links: the look
+goes back to the look the links call for, and its Timer row reads
+`go back to the links`.
 
 ## Following a Value
 
-Set the [Look Control](#look-control--on-select--manual--by-value-) property to
-`By Value` to make the button's look follow other devices' variables. Each look
-gets a **Show when** expression. The first look in the Button tab's list whose
-expression is true shows. When none is true, the look set as the default shows,
-and with no default the shown look stays.
+Set the [Look Control](#look-control--on-select--manual--by-value--by-link-)
+property to `By Value` to make the button's look follow other devices'
+variables. Each look gets a **Show when** expression. The first look in the
+Button tab's list whose expression is true shows. When none is true, the look
+set as the default shows, and with no default the shown look stays.
 
 <img alt="Button tab - By Value" src="./images/ui-by-value.png" width="640"/>
 
@@ -602,10 +614,12 @@ compares as text.
 ## Button Links
 
 Each look has a Button Link connection, named for the look and its number as the
-Show Look command lists it. Bind it to a device's On, Off or Toggle button link,
-as you would a keypad button. A press of the button in Navigator taps the link
-of the look it shows at that moment, then Look Control acts as it does without
-one. A look with nothing bound does nothing more on a press.
+Show Look command lists it. Bind it to a device's On/Top, Off/Bottom or Toggle
+button link, as you would a keypad button. A press of the button in Navigator
+taps the link of the look it shows at that moment, then Look Control acts as it
+does without one. A look with nothing bound does nothing more on a press. Under
+`By Link`, the look also follows what each link's device reports, as
+[Following a Button Link](#following-a-button-link) describes.
 
 1. Add the look in the Button tab, then refresh Composer (F5) so its connection
    shows.
@@ -615,6 +629,57 @@ one. A look with nothing bound does nothing more on a press.
 Renaming a look renames its connection and keeps it bound. Deleting a look
 removes its connection. Copy To, Export and Import bring looks without their
 connections: bind the looks again on the other button.
+
+## Following a Button Link
+
+Set the [Look Control](#look-control--on-select--manual--by-value--by-link-)
+property to `By Link` to make the button's look follow the devices its looks'
+[Button Links](#button-links) are bound to, as a keypad button's LED does. Each
+look gets a **Show while** setting: `its link is on` or `its link is off`. The
+first look in the Button tab's list whose link is bound and matches shows. When
+none matches, the look set as the default shows, and with no default the shown
+look stays.
+
+A press taps the shown look's link, and the look changes only once the device
+reports back. A device switched from anywhere else changes the button the same
+way. The button asks each device for its state and its LED colors when a look's
+link is bound and when the driver starts, so a device that answers shows the
+right look at once.
+
+<img alt="Button tab - By Link" src="./images/ui-by-link.png" width="640"/>
+
+1. **Look Control** - `By Link` shows the rows below.
+1. **Link** - each look's Show while, and its link's last state, or `not bound`,
+   with the on and off colors its device gives the link, once it has. A look
+   with nothing bound, or whose device hasn't reported on the link it's bound
+   to, never matches.
+1. **Default** - marks the look that shows when no look matches.
+1. **Show while** - `its link is on` or `its link is off`. Moving a look in the
+   list changes which look is checked first.
+1. **Default look** - makes this look the default, in place of any other.
+
+There are two ways to set up a device with On/Top, Off/Bottom and Toggle links,
+for two looks named "On" and "Off":
+
+- **One link** - bind both looks to the device's Toggle link. Set "On" to show
+  while its link is on, and "Off" while its link is off. A press toggles the
+  device, and the button follows.
+- **Separate links** - bind "Off" to the device's On/Top link and "On" to its
+  Off/Bottom link, and set both to show while their link is off. The On/Top link
+  is off while the device is off, and the Off/Bottom link is off while it's on,
+  as a keypad's LEDs show. A press taps the link of the look shown, so it
+  switches the device, and the button follows. Bound the other way round, each
+  to the link for its own state, the button still shows the right look, but a
+  press repeats what the device is already doing.
+
+Show Look, Next Look, Previous Look and the Button tab's `Show` button still
+work. The look they show stays until the links call for a different look, or
+until its timer is up.
+
+The driver keeps each link's last state through a Director restart and a driver
+update, so the button shows the right look before the device next reports. Copy
+To, Export and Import bring each look's Show while, but not what its link is
+bound to.
 
 ## Driver Setup
 
@@ -631,9 +696,9 @@ Displays the DriverCentral cloud license status.
 When the driver has had no active license for five minutes, whether since it
 started or since a license or trial ended, Driver Status reads
 `No active license` and the button shows the driver's own icon. Until a license
-is active, presses, programming, `By Value`, a timer and the Button tab can't
-change its look, and Shown Look keeps the name of the look it showed. The button
-shows that look again as soon as a license is active.
+is active, presses, programming, `By Value`, `By Link`, a timer and the Button
+tab can't change its look, and Shown Look keeps the name of the look it showed.
+The button shows that look again as soon as a license is active.
 
 <!-- #endif -->
 
@@ -705,12 +770,14 @@ address is removed.
 
 #### Button Settings
 
-##### Look Control \[ On Select | **_Manual_** | By Value \]
+##### Look Control \[ On Select | **_Manual_** | By Value | By Link \]
 
 Sets what changes the look. `On Select` shows the next look in the cycle on each
-press, `Manual` leaves the look for programming to change, and `By Value` shows
-the first look whose [Show when](#following-a-value) expression is true. The
-button's own Selected event fires on every press in every mode.
+press, `Manual` leaves the look for programming to change, `By Value` shows the
+first look whose [Show when](#following-a-value) expression is true, and
+`By Link` shows the first look whose [Button Link](#following-a-button-link) is
+on or off as its Show while says. The button's own Selected event fires on every
+press in every mode.
 
 ##### Shown Look (read-only)
 
