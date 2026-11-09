@@ -266,10 +266,34 @@ T.truthy(
   "a value the page sets in code shows on the swatch",
   has("set: function(v) { INPUT_VALUE.set.call(this, v); paintSwatch(this); }")
 )
-T.truthy("Escape puts the color back", has("if (e.key === 'Escape') { e.preventDefault(); closeColorPicker(false); }"))
+T.truthy("Escape puts the color back", has("if (pop.dropping) pop.stopDropping();\n    else closeColorPicker(false);"))
 T.truthy("as the look had it, not as the box's value", has("var was = JSON.parse(pop.before), l = gEditor.look;"))
 T.truthy("and only onto that look, if another is open by then", has("pop.before && gEditor.look === pop.look"))
 T.truthy("recent colors survive a browser that refuses storage", has("try { localStorage.setItem(RECENT_COLORS_KEY"))
+
+T.section("The dropper")
+T.falsy("Edge's own dropper is never used: it reads the wrong place in Composer's window", has("EyeDropper"))
+T.truthy(
+  "it reads the preview the page drew",
+  has("function previewPicture() { return $('edit-tile').querySelector('img'); }")
+)
+T.truthy(
+  "a pick is the color as the picture shows over its tile",
+  has("return hexOf(tileBackdrop().map(function(v, i) { return d[i] * a + v * (1 - a); }));")
+)
+T.truthy(
+  "a click on the picture picks, and the picker stays open",
+  has("e.preventDefault();\n        pickColor(input, hex);\n        show(hex);\n        return;")
+)
+T.truthy("Escape while picking only stops picking", has("if (pop.dropping) pop.stopDropping();"))
+T.truthy("only a left click picks", has("p = e.button === 0 && img && e.target === img && previewPixel(img, e)"))
+T.truthy("a near miss on the tile only stops the dropper", has("if ($('edit-tile').contains(e.target)) return;"))
+T.truthy(
+  "it shows for a look with a picture, even while the preview draws",
+  has("drop.hidden = !(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing);")
+)
+T.truthy("closing the editor closes the picker", has("function closeEditor() {\n  closeColorPicker(true);"))
+T.truthy("and the picker closing stops it too", has("pop.stopDropping();\n  pop.remove();"))
 
 T.section("Duplicate")
 T.truthy("each look's row has Duplicate", has('data-act="copy"'))
