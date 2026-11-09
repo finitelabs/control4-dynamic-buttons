@@ -466,7 +466,12 @@ byLink = ByLink:new({
   store = persist,
   provider = function(id)
     local link = bindings:getDynamicBinding(LOOK_LINKS, tostring(id))
-    return link and tointeger(C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId)) or 0
+    local me = tointeger(C4:GetDeviceID())
+    local device = link and tointeger(C4:GetBoundProviderDevice(me, link.bindingId)) or 0
+    if device == 0 then
+      return 0, nil
+    end
+    return device, tointeger(Select(GetDeviceBindings(me), link.bindingId, "boundprovider", "bound", "bindingid"))
   end,
   show = function(id)
     local before = button:shown()

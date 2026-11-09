@@ -316,6 +316,25 @@ T.eq("the first look that matches shows", shown(), "Fresh")
 H.tab("_ORDER_LOOKS", { ids = { bulbOn, fresh, bulbOff, away } })
 T.eq("so moving a look changes which", shown(), "Bulb on")
 
+T.section("A link moved to another of the light's links")
+T.eq("bound to the On link, it matches", shown(), "Bulb on")
+bind(bulbOn, LIGHT_OFF)
+OnBindingChanged(linkOf(bulbOn), "BUTTON_LINK", true, LIGHT, LIGHT_OFF)
+T.eq("moved to the Off link, whose LED means the opposite, the On link's state doesn't count", shown(), "Fresh")
+T.eq("as the tab says", { tabLook(bulbOn).linkBound, tabLook(bulbOn).linkState }, { true, nil })
+led(bulbOn, true)
+T.eq("until the Off link reports", shown(), "Bulb on")
+T.eq(
+  "kept with the light's link that reported it",
+  (persist:get("LinkStates") or {})[tostring(bulbOn)],
+  { on = true, device = LIGHT, binding = LIGHT_OFF }
+)
+bind(bulbOn, LIGHT_ON)
+OnBindingChanged(linkOf(bulbOn), "BUTTON_LINK", true, LIGHT, LIGHT_ON)
+T.eq("moved back, the Off link's state doesn't count either", tabLook(bulbOn).linkState, nil)
+led(bulbOn, true)
+T.eq("until the On link reports again", shown(), "Bulb on")
+
 T.section("A look's link removed")
 H.tab("_DELETE_LOOK", { id = fresh })
 T.eq("forgets its state", kept()[tostring(fresh)], nil)
@@ -428,9 +447,9 @@ H.mark()
 giveColors(porch, "0000FF", "#000000", { BUTTON_ID = "1", TEXT = "Porch", IMAGE_ON = "on.png" })
 T.eq("the device's BUTTON_COLORS are kept", tabLook(porch).linkColors, { on = "0000ff", off = "000000" })
 T.eq(
-  "with the device that gave them, and nothing else it sent",
+  "with the device and its link that gave them, and nothing else it sent",
   (persist:get("LinkColors") or {})[tostring(porch)],
-  { on = "0000ff", off = "000000", device = LIGHT }
+  { on = "0000ff", off = "000000", device = LIGHT, binding = LIGHT_TOGGLE }
 )
 T.eq("they change no look's picture", H.lastIcon(), nil)
 T.eq("and fire nothing", H.fired, {})
@@ -592,8 +611,8 @@ T.truthy(
   )
 )
 T.truthy(
-  "and keep the rule for a device that hasn't reported",
-  docs:find("hasn't reported yet, never matches", 1, true)
+  "and keep the rule for a device that hasn't reported on the link bound",
+  docs:find("hasn't reported on the link it's bound", 1, true)
 )
 
 T.section("Reset Driver")

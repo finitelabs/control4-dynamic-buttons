@@ -574,7 +574,8 @@ right look at once.
 1. **Look Control** - `By Link` shows the rows below.
 1. **Link** - each look's Show while, and its link's last state, or `not bound`,
    with the on and off colors its device gives the link, once it has. A look
-   with nothing bound, or whose device hasn't reported yet, never matches.
+   with nothing bound, or whose device hasn't reported on the link it's bound
+   to, never matches.
 1. **Default** - marks the look that shows when no look matches.
 1. **Show while** - `its link is on` or `its link is off`. Moving a look in the
    list changes which look is checked first.

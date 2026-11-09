@@ -2,8 +2,8 @@
 -- does, and the first look whose link is bound and on or off as its Show while says is the one shown,
 -- and otherwise the default look. The look changes only when a device reports, so a press waits for it.
 -- A device reports each of its links bound to the button in turn, so the links pick a look once they all
--- have. A state, and the colors a device gives its LEDs, count only while the device that reported them is
--- the one bound to the link.
+-- have. A state, and the colors a device gives its LEDs, count only while the link is bound to the device
+-- and the device's own link that reported them.
 
 local log = require("lib.logging")
 local Looks = require("dynamic_button.looks")
@@ -13,7 +13,8 @@ require("lib.utils")
 --- @class ByLink
 --- @field _looks Looks
 --- @field _store table A persist-like store with get(key, default) and set(key, value).
---- @field _provider fun(id: integer): integer The device bound to a look's Button Link now, 0 for none.
+--- @field _provider fun(id: integer): integer, integer|nil The device bound to a look's Button Link now, 0 for none,
+--- and which of the device's links it is.
 --- @field _show fun(id: integer): boolean, string|nil Shows a look the way programming's Show Look does.
 --- @field _changed fun() Tells the Button tab what changed.
 --- @field _allowed fun(): boolean False while nothing may change the look.
@@ -25,7 +26,7 @@ require("lib.utils")
 local ByLink = {}
 ByLink.__index = ByLink
 
---- Each link's last LED state, true for on, and the device that reported it, by look id. Kept so a
+--- Each link's last LED state, true for on, and the device and its link that reported it, by look id. Kept so a
 --- restart shows the look the links called for before their devices next report.
 local STATES_PERSIST_KEY = "LinkStates"
 
@@ -79,14 +80,14 @@ function ByLink:new(opts)
 end
 
 --- @private
---- @return table<string, { on: boolean, device: integer }> states Each link's last state, by look id.
+--- @return table<string, { on: boolean, device: integer, binding?: integer }> states Each link's last state, by look id.
 function ByLink:_states()
   local states = self._store:get(STATES_PERSIST_KEY)
   return type(states) == "table" and states or {}
 end
 
 --- @private
---- @param states table<string, { on: boolean, device: integer }>
+--- @param states table<string, { on: boolean, device: integer, binding?: integer }>
 function ByLink:_saveStates(states)
   self._store:set(STATES_PERSIST_KEY, next(states) and states or nil)
 end
@@ -94,17 +95,18 @@ end
 --- @private
 --- @param kept any A link's kept state or colors.
 --- @param id integer
---- @return boolean fromBound The device bound to the link now is the one that reported them.
+--- @return boolean fromBound The link is bound now to the device and the device's link that reported them.
 function ByLink:_fromBound(kept, id)
   if type(kept) ~= "table" then
     return false
   end
-  local provider = tonumber(self._provider(id)) or 0
-  return provider ~= 0 and tonumber(kept.device) == provider
+  local device, binding = self._provider(id)
+  device = tonumber(device) or 0
+  return device ~= 0 and tonumber(kept.device) == device and tonumber(kept.binding) == tonumber(binding)
 end
 
 --- @private
---- @param states table<string, { on: boolean, device: integer }>
+--- @param states table<string, { on: boolean, device: integer, binding?: integer }>
 --- @param id integer
 --- @return boolean|nil on The link's last state, when the device bound to it now reported it.
 function ByLink:_trusted(states, id)
@@ -115,15 +117,15 @@ function ByLink:_trusted(states, id)
   return state.on
 end
 
---- A look's link's last LED state. A state another device reported, before the link was bound to
---- the one bound now, doesn't count.
+--- A look's link's last LED state. A state another device or another of its links reported, before the
+--- link was bound to the one bound now, doesn't count.
 --- @param id integer
 --- @return boolean|nil on True for on, false for off, nil when the device bound now hasn't reported.
 function ByLink:state(id)
   return self:_trusted(self:_states(), id)
 end
 
---- A look's link reported its LED state: keep it with the device that reported it, and under By Link
+--- A look's link reported its LED state: keep it with the device and its link that reported it, and under By Link
 --- see which look the links call for once the device's other reports are in.
 --- @param id integer
 --- @param on boolean
@@ -132,9 +134,13 @@ function ByLink:report(id, on, device)
   local states = self:_states()
   local key = tostring(id)
   local kept = states[key]
-  local changed = type(kept) ~= "table" or kept.on ~= on or tonumber(kept.device) ~= device
+  local _, binding = self._provider(id)
+  local changed = type(kept) ~= "table"
+    or kept.on ~= on
+    or tonumber(kept.device) ~= device
+    or tonumber(kept.binding) ~= tonumber(binding)
   if changed then
-    states[key] = { on = on, device = device }
+    states[key] = { on = on, device = device, binding = binding }
     self:_saveStates(states)
   end
   if not self._active then
@@ -168,14 +174,14 @@ function ByLink:flush()
 end
 
 --- @private
---- @return table<string, { on?: string, off?: string, device: integer }> colors Each link's last colors, by look id.
+--- @return table<string, { on?: string, off?: string, device: integer, binding?: integer }> colors Each link's last colors, by look id.
 function ByLink:_colors()
   local colors = self._store:get(COLORS_PERSIST_KEY)
   return type(colors) == "table" and colors or {}
 end
 
---- A look's link's LED colors. Colors another device gave, before the link was bound to the one bound now, don't
---- count.
+--- A look's link's LED colors. Colors another device or another of its links gave, before the link was bound to the
+--- one bound now, don't count.
 --- @param id integer
 --- @return { on?: string, off?: string }|nil colors Each as six lowercase hex digits; nil when the device bound now
 --- hasn't given them.
@@ -196,10 +202,17 @@ function ByLink:reportColors(id, on, off, device)
   local colors = self:_colors()
   local key = tostring(id)
   local kept = colors[key]
-  if type(kept) == "table" and kept.on == on and kept.off == off and tonumber(kept.device) == device then
+  local _, binding = self._provider(id)
+  if
+    type(kept) == "table"
+    and kept.on == on
+    and kept.off == off
+    and tonumber(kept.device) == device
+    and tonumber(kept.binding) == tonumber(binding)
+  then
     return
   end
-  colors[key] = { on = on, off = off, device = device }
+  colors[key] = { on = on, off = off, device = device, binding = binding }
   self._store:set(COLORS_PERSIST_KEY, colors)
   if self._active then
     -- The Button tab shows each link's colors under By Link.
