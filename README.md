@@ -28,7 +28,7 @@ the programming you attach to it.
     - [Properties](#properties)
     - [Looks](#looks)
     - [Look Editor](#look-editor)
-    - [Icon](#icon)
+    - [Customize](#customize)
     - [Badge](#badge)
     - [Icon Packs](#icon-packs)
     - [Free Icon Libraries](#free-icon-libraries)
@@ -199,13 +199,13 @@ Every color box opens a picker with the look's own colors and your recent colors
 as swatches, a hex box, and hue, saturation and lightness sliders. The picture
 changes as you pick, and `Esc` puts the color back.
 
-### Icon
+### Customize
 
-<img alt="Button tab - Icon" src="./images/ui-customize.png" width="640"/>
+<img alt="Button tab - Customize" src="./images/ui-customize.png" width="640"/>
 
-`Icon`, under the picture, changes the look's picture before it is saved. It
-shows only what the picked picture can use, and opens by itself on a look that
-changes its picture.
+`Customize`, under the picture, changes the look's picture before it is saved.
+It shows only what the picked picture can use, and opens by itself on a look
+that changes its picture.
 
 1. **Reset to the pack's look** - puts the picture back as it comes: no changes,
    its own glow and in color. The look keeps its badge. For a basic or library
@@ -234,8 +234,8 @@ changes its picture.
 
 <img alt="Button tab - Badge" src="./images/ui-badge.png" width="640"/>
 
-`Badge`, under `Icon`, draws text over the picture. It opens by itself on a look
-that has a badge.
+`Badge`, under `Customize`, draws text over the picture. It opens by itself on a
+look that has a badge.
 
 1. **Text** - up to 5 characters, or text with a variable's value in it. Empty
    means no badge. `Browse Variables` picks a variable. The controller draws a
@@ -278,7 +278,7 @@ one applies. They work with no internet.
 1. **Pack note** - how many pictures show, and what the pack looks like.
 1. **Preview** - a pack picture keeps its own colors, so `Tile shape`,
    `Icon color` and `Tile color` are hidden for it. The Classic packs add the
-   soft shadow the OS 3 look has. [Icon](#icon) can change its colors.
+   soft shadow the OS 3 look has. [Customize](#customize) can change its colors.
 
 ### Free Icon Libraries
 
@@ -346,7 +346,7 @@ was added, and all of them go when the button is deleted or reset.
      controller fetches the address again this often while the look shows, and
      at once when the look shows and its picture is older than that. The
      Control4 app shows the picture as the site sends it, so it has to be a PNG
-     or JPEG, and `Tile shape`, the colors, the Icon section and the Badge
+     or JPEG, and `Tile shape`, the colors, the Customize section and the Badge
      section don't apply. A fetch that brings the same picture changes nothing.
      Each new picture is written to the controller's storage and loaded by every
      Navigator, so less often is better.

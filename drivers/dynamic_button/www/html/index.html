@@ -201,7 +201,7 @@
   .packlist label { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
   .packlist .all { grid-column: 1 / -1; display: flex; gap: 8px; margin-bottom: 4px; }
   .customize { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
-  .customize > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text); }
+  .customize > summary { cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
   #badge-form { margin-top: 10px; }
   .custom-head { display: flex; justify-content: flex-end; margin: -18px 0 8px; }
   /* A note sits under its control, on its own grid row, so its label stays level with the control. */
@@ -536,7 +536,7 @@
           </div>
         </div>
         <details class="customize" id="customize">
-          <summary>Icon</summary>
+          <summary>Customize</summary>
           <div class="custom-head"><button type="button" class="linkbtn" id="c-reset">Reset to the pack’s look</button></div>
           <div class="lookform" id="custom-form">
             <div class="frow" id="fld-c-color">

@@ -210,7 +210,7 @@ T.truthy(
 )
 
 T.section("The editor's sections")
-T.truthy("the icon's changes have their own section", has("<summary>Icon</summary>"))
+T.truthy("the picture's changes have their own section", has("<summary>Customize</summary>"))
 T.truthy("and the badge has its own", has("<summary>Badge</summary>"))
 T.truthy("reset leaves the badge, which isn't in its section", has("l.custom = badge ? { badge: badge } : {};"))
 T.truthy(
