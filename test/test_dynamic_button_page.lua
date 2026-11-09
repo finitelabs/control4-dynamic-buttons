@@ -286,6 +286,13 @@ T.truthy(
   has("e.preventDefault();\n        pickColor(input, hex);\n        show(hex);\n        return;")
 )
 T.truthy("Escape while picking only stops picking", has("if (pop.dropping) pop.stopDropping();"))
+T.truthy("only a left click picks", has("p = e.button === 0 && img && e.target === img && previewPixel(img, e)"))
+T.truthy("a near miss on the tile only stops the dropper", has("if ($('edit-tile').contains(e.target)) return;"))
+T.truthy(
+  "it shows for a look with a picture, even while the preview draws",
+  has("drop.hidden = !(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing);")
+)
+T.truthy("closing the editor closes the picker", has("function closeEditor() {\n  closeColorPicker(true);"))
 T.truthy("and the picker closing stops it too", has("pop.stopDropping();\n  pop.remove();"))
 
 T.section("Duplicate")

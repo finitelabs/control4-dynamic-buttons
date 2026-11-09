@@ -2765,7 +2765,11 @@ function openEditor(look, title) {
   preview();
   $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-function closeEditor() { $('editor').hidden = true; gEditor.look = null; }
+function closeEditor() {
+  closeColorPicker(true);
+  $('editor').hidden = true;
+  gEditor.look = null;
+}
 $('add-look').addEventListener('click', function() { openEditor(null); });
 $('cancel').addEventListener('click', closeEditor);
 
@@ -4064,10 +4068,12 @@ var LOUPE_CELLS = 11, LOUPE_ZOOM = 9;
 var DROPPER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M13 8l3 3-8 8H5v-3z"/><path d="M12 5l7 7"/><path d="M15 6l2.2-2.2a2.3 2.3 0 0 1 3.3 3.3L18.3 9"/></svg>';
 function previewPicture() { return $('edit-tile').querySelector('img'); }
+// The picture's pixel under the pointer, kept inside it where a scaled edge falls between pixels.
 function previewPixel(img, e) {
   var r = img.getBoundingClientRect();
-  if (!img.naturalWidth || e.clientX < r.left || e.clientY < r.top || e.clientX >= r.right || e.clientY >= r.bottom) return null;
-  return { x: Math.floor((e.clientX - r.left) / r.width * img.naturalWidth), y: Math.floor((e.clientY - r.top) / r.height * img.naturalHeight) };
+  if (!img.naturalWidth || !r.width || !r.height) return null;
+  var at = function(v, from, size, n) { return Math.max(0, Math.min(n - 1, Math.floor((v - from) / size * n))); };
+  return { x: at(e.clientX, r.left, r.width, img.naturalWidth), y: at(e.clientY, r.top, r.height, img.naturalHeight) };
 }
 function previewCanvas(img) {
   if (!img.pixels) {
@@ -4234,6 +4240,7 @@ function openColorPicker(input) {
     pop.querySelector('.chint').hidden = true;
     document.body.classList.remove('cdropping');
     document.removeEventListener('mousemove', pop.hover, true);
+    document.removeEventListener('mouseout', pop.away, true);
     if (loupe) loupe.remove();
     loupe = null;
     hexChip.style.background = now();
@@ -4255,6 +4262,11 @@ function openColorPicker(input) {
     drawLoupe(loupe, img, p, e, hex);
     hexChip.style.background = hex;
   };
+  pop.away = function(e) {
+    if (e.relatedTarget) return;
+    if (loupe) loupe.hidden = true;
+    hexChip.style.background = now();
+  };
   drop.addEventListener('click', function() {
     if (pop.dropping) { pop.stopDropping(); return; }
     pop.dropping = true;
@@ -4262,10 +4274,16 @@ function openColorPicker(input) {
     pop.querySelector('.chint').hidden = false;
     document.body.classList.add('cdropping');
     document.addEventListener('mousemove', pop.hover, true);
+    document.addEventListener('mouseout', pop.away, true);
+    // Over the picture, as in a narrow window, the picker moves above its color box.
+    var tile = $('edit-tile').getBoundingClientRect(), box = pop.getBoundingClientRect(), at = input.colorSwatch.getBoundingClientRect();
+    if (box.left < tile.right && box.right > tile.left && box.top < tile.bottom && box.bottom > tile.top && at.top - box.height - 6 >= 0) {
+      pop.style.top = (at.top - box.height - 6 + window.scrollY) + 'px';
+    }
   });
   pop.outside = function(e) {
     if (pop.dropping && !drop.contains(e.target)) {
-      var img = previewPicture(), p = img && e.target === img && previewPixel(img, e), hex = p && previewColor(img, p);
+      var img = previewPicture(), p = e.button === 0 && img && e.target === img && previewPixel(img, e), hex = p && previewColor(img, p);
       pop.stopDropping();
       if (hex) {
         // A pick, not a click away: the picker stays open on the new color.
@@ -4274,6 +4292,8 @@ function openColorPicker(input) {
         show(hex);
         return;
       }
+      // A near miss on the tile only stops the dropper.
+      if ($('edit-tile').contains(e.target)) return;
     }
     if (!pop.contains(e.target) && !input.colorSwatch.contains(e.target)) closeColorPicker(true);
   };
