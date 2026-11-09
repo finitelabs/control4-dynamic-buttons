@@ -2921,17 +2921,17 @@ function deviceLink(id) {
   return (gLinks[id] = {
     id: id,
     open: async function() {
-      var engine = gSocket && gSocket.io && gSocket.io.engine;
+      var socket = Kit.socket(), engine = socket && socket.io && socket.io.engine;
       if (!engine) return false;
       if (ev && engineId === engine.id) return true;
-      if (ev && gSocket.off) gSocket.off(ev, onEvent);
+      if (ev && socket.off) socket.off(ev, onEvent);
       ev = null;
       var sub = await api('GET', '/api/v1/items/' + id + '/datatoui?SubscriptionClient=' + engine.id + '&coerce=false');
       if (!sub || !sub.subscriptionId) return false;
       ev = String(sub.subscriptionId);
       engineId = engine.id;
-      gSocket.on(ev, onEvent);
-      gSocket.emit('startSubscription', ev);
+      socket.on(ev, onEvent);
+      socket.emit('startSubscription', ev);
       return true;
     },
     send: function(cmd, params) { return sendCommandTo(id, cmd, params); },

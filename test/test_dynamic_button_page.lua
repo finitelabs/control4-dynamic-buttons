@@ -503,16 +503,17 @@ T.truthy(
   has("async function applyLooks(link, name, items, replace, say)")
 )
 T.truthy(
-  "another button answers on a subscription of its own on the same socket",
-  has("'/api/v1/items/' + id + '/datatoui?SubscriptionClient=' + engine.id")
-    and has("gSocket.emit('startSubscription', ev);")
+  "another button answers on a subscription of its own on the kit's socket",
+  has("var socket = Kit.socket(), engine = socket && socket.io && socket.io.engine;")
+    and has("'/api/v1/items/' + id + '/datatoui?SubscriptionClient=' + engine.id")
+    and has("socket.emit('startSubscription', ev);")
 )
 T.truthy(
   "which stays for the socket's life and is used again, since Director documents no way to end one",
   has("if (ev && engineId === engine.id) return true;") and has("if (gLinks[id]) return gLinks[id];")
 )
-T.truthy("and a stale one is let go of by its own handler alone", has("gSocket.off(ev, onEvent)"))
-T.falsy("never every handler on the event", has("gSocket.off(ev);") or has("gSocket.off(ev) "))
+T.truthy("and a stale one is let go of by its own handler alone", has("socket.off(ev, onEvent)"))
+T.falsy("never every handler on the event", has("socket.off(ev);") or has("socket.off(ev) "))
 T.truthy(
   "and its commands go through the one sender",
   has("send: function(cmd, params) { return sendCommandTo(id, cmd, params); }")
