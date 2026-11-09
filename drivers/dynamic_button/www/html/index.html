@@ -152,6 +152,8 @@
   .prev .perr { font-size: 12px; font-weight: 600; color: var(--danger); overflow-wrap: anywhere; }
   .prev .pub { font-size: 11px; color: var(--text-muted); border-top: 1px dashed #e2e8f0; margin-top: 9px; padding-top: 8px; }
   .lookrow .sub.bad { color: var(--danger); white-space: normal; }
+  /* The on and off colors a look's link's device gives its LEDs. */
+  .lookrow .sub .lsw { display: inline-block; width: 9px; height: 9px; margin-left: 4px; border-radius: 2px; border: 1px solid var(--border); vertical-align: -1px; }
   .varbrowser { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; min-width: 0; }
   .vartree { max-height: 220px; overflow-y: auto; margin-top: 6px; }
   .troom { padding: 8px 4px 2px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
@@ -3764,12 +3766,27 @@ function badgeLines(l) {
   return '<div class="sub" title="' + esc(l.badgeText) + '">Badge ' + esc(l.badgeText) + '</div>' +
     (l.badgeError ? '<div class="sub bad" title="' + esc(l.badgeError) + '">' + esc(friendlyError(l.badgeError, l.custom.badge.text, l.badgeText)) + '</div>' : '');
 }
-// Under By Link: what the look's link must be, and what it last was.
+// Under By Link: what the look's link must be, what it last was, and its device's LED colors.
 function linkLines(l) {
   if (!byLink()) return '';
   var now = !l.linkBound ? 'not bound' : l.linkState === 'on' ? 'on' : l.linkState === 'off' ? 'off' : 'bound, no state yet';
   var text = 'Show while its link is ' + whileOf(l) + ' · Link ' + now;
-  return '<div class="sub" title="' + esc(text) + '">' + esc(text) + '</div>';
+  return '<div class="sub" title="' + esc(text + linkColorsText(l)) + '">' + esc(text) + linkSwatches(l) + '</div>';
+}
+// The driver sends only six hex digits, but a color goes into a style, so it's checked again here.
+function linkColor(l, which) {
+  var c = l.linkBound && l.linkColors && l.linkColors[which];
+  return typeof c === 'string' && /^[0-9a-f]{6}$/i.test(c) ? '#' + c.toLowerCase() : null;
+}
+function linkColorsText(l) {
+  var on = linkColor(l, 'on'), off = linkColor(l, 'off');
+  return (on ? ' · On color ' + on : '') + (off ? ' · Off color ' + off : '');
+}
+function linkSwatches(l) {
+  return ['on', 'off'].map(function(which) {
+    var c = linkColor(l, which);
+    return c ? '<span class="lsw" style="background:' + c + '" title="' + which.charAt(0).toUpperCase() + which.slice(1) + ' color ' + c + '"></span>' : '';
+  }).join('');
 }
 function whenLines(l) {
   if (!byValue()) return '';
@@ -4225,9 +4242,9 @@ function initTabs() {
       if (look) { look.showWhen = d[1]; look.showWhenText = demoRendered(d[1]); }
     });
     // Under By Link: Full and Charging follow a charger's plug, and Low has no link.
-    [['Full', 'off', true, 'off'], ['Low', 'on', false, null], ['Charging', 'on', true, 'off']].forEach(function(d) {
+    [['Full', 'off', true, 'off', { on: '16a34a', off: '000000' }], ['Low', 'on', false, null, null], ['Charging', 'on', true, 'off', { on: '109eff', off: '000000' }]].forEach(function(d) {
       var look = gState.looks.find(function(l) { return l.name === d[0]; });
-      if (look) Object.assign(look, { showWhile: d[1], linkBound: d[2], linkState: d[3] });
+      if (look) Object.assign(look, { showWhile: d[1], linkBound: d[2], linkState: d[3], linkColors: d[4] });
     });
     gState.defaultLook = 1;
     gState.properties = [

@@ -25,6 +25,9 @@ ByLink.__index = ByLink
 --- restart shows the look the links called for before their devices next report.
 local STATES_PERSIST_KEY = "LinkStates"
 
+--- Each link's LED colors as its device last gave them, and the device that gave them, by look id.
+local COLORS_PERSIST_KEY = "LinkColors"
+
 --- The look the links last showed. Kept so a hold from programming outlasts a restart.
 local APPLIED_PERSIST_KEY = "ByLinkApplied"
 
@@ -36,6 +39,14 @@ function ByLink.isOn(state)
     return nil
   end
   return toboolean(state)
+end
+
+--- A BUTTON_COLORS color: six hex digits, as "0000ff". Some devices put a # before them.
+--- @param color any
+--- @return string|nil hex The color in lowercase, without the #; nil when it isn't one.
+function ByLink.color(color)
+  local hex = type(color) == "string" and color:match("^#?(%x%x%x%x%x%x)$")
+  return hex and hex:lower() or nil
 end
 
 --- Creates a new instance of the ByLink class.
@@ -69,16 +80,24 @@ function ByLink:_saveStates(states)
 end
 
 --- @private
+--- @param kept any A link's kept state or colors.
+--- @param id integer
+--- @return boolean fromBound The device bound to the link now is the one that reported them.
+function ByLink:_fromBound(kept, id)
+  if type(kept) ~= "table" then
+    return false
+  end
+  local provider = tonumber(self._provider(id)) or 0
+  return provider ~= 0 and tonumber(kept.device) == provider
+end
+
+--- @private
 --- @param states table<string, { on: boolean, device: integer }>
 --- @param id integer
 --- @return boolean|nil on The link's last state, when the device bound to it now reported it.
 function ByLink:_trusted(states, id)
   local state = states[tostring(id)]
-  if type(state) ~= "table" or type(state.on) ~= "boolean" then
-    return nil
-  end
-  local provider = tonumber(self._provider(id)) or 0
-  if provider == 0 or tonumber(state.device) ~= provider then
+  if type(state) ~= "table" or type(state.on) ~= "boolean" or not self:_fromBound(state, id) then
     return nil
   end
   return state.on
@@ -112,7 +131,47 @@ function ByLink:report(id, on, device)
   end
 end
 
---- Forget a look's link's state: the link is gone.
+--- @private
+--- @return table<string, { on?: string, off?: string, device: integer }> colors Each link's last colors, by look id.
+function ByLink:_colors()
+  local colors = self._store:get(COLORS_PERSIST_KEY)
+  return type(colors) == "table" and colors or {}
+end
+
+--- A look's link's LED colors. Colors another device gave, before the link was bound to the one bound now, don't
+--- count.
+--- @param id integer
+--- @return { on?: string, off?: string }|nil colors Each as six lowercase hex digits; nil when the device bound now
+--- hasn't given them.
+function ByLink:colors(id)
+  local kept = self:_colors()[tostring(id)]
+  if not self:_fromBound(kept, id) then
+    return nil
+  end
+  return { on = kept.on, off = kept.off }
+end
+
+--- A look's link gave its LED colors: keep them with the device that gave them. They change no look.
+--- @param id integer
+--- @param on string|nil The on color, as ByLink.color reads it.
+--- @param off string|nil The off color.
+--- @param device integer The device bound to the link, which sent them.
+function ByLink:reportColors(id, on, off, device)
+  local colors = self:_colors()
+  local key = tostring(id)
+  local kept = colors[key]
+  if type(kept) == "table" and kept.on == on and kept.off == off and tonumber(kept.device) == device then
+    return
+  end
+  colors[key] = { on = on, off = off, device = device }
+  self._store:set(COLORS_PERSIST_KEY, colors)
+  if self._active then
+    -- The Button tab shows each link's colors under By Link.
+    self._changed()
+  end
+end
+
+--- Forget a look's link's state and colors: the link is gone.
 --- @param id integer|string
 function ByLink:forget(id)
   local states = self:_states()
@@ -120,6 +179,11 @@ function ByLink:forget(id)
   if states[key] ~= nil then
     states[key] = nil
     self:_saveStates(states)
+  end
+  local colors = self:_colors()
+  if colors[key] ~= nil then
+    colors[key] = nil
+    self._store:set(COLORS_PERSIST_KEY, next(colors) and colors or nil)
   end
 end
 
@@ -164,10 +228,11 @@ function ByLink:stop()
   self._store:set(APPLIED_PERSIST_KEY, nil)
 end
 
---- Stop, and forget every link's state: the driver was reset.
+--- Stop, and forget every link's state and colors: the driver was reset.
 function ByLink:reset()
   self:stop()
   self._store:set(STATES_PERSIST_KEY, nil)
+  self._store:set(COLORS_PERSIST_KEY, nil)
 end
 
 --- A look was deleted.

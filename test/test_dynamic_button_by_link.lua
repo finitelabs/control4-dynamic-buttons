@@ -1,8 +1,8 @@
 --- Look Control's By Link under the C4 shim: each look's Button Link reports its LED state with MATCH_LED_STATE, and
 --- the first look whose link is bound and on or off as its Show while says shows. One link and separate links, every
 --- STATE form, the default look, a press and the device's reply, a hold from programming, a Director restart and a
---- driver update, a timed look, an unbound link, a link removed with its look, Copy To and Import, Reset Driver and a
---- lapsed license.
+--- driver update, REQUEST_BUTTON_COLORS on a bind, at start and after a rename and the BUTTON_COLORS kept from it, a
+--- timed look, an unbound link, a link removed with its look, Copy To and Import, Reset Driver and a lapsed license.
 ---
 --- Run from the driver root:
 ---   make test
@@ -100,6 +100,30 @@ end
 --- @param id integer
 local function showLook(id)
   EC.Show_Look({ Look = Looks.label(tabLook(id)) })
+end
+
+--- @return { binding: integer, params: table, type: string }[] asked Each REQUEST_BUTTON_COLORS sent since the mark.
+local function asked()
+  local found = {}
+  for _, message in ipairs(H.proxy) do
+    if message.command == "REQUEST_BUTTON_COLORS" then
+      table.insert(found, { binding = message.binding, params = message.params, type = message.message or "COMMAND" })
+    end
+  end
+  return found
+end
+
+--- The device bound to a look's link gives its LED colors, as it answers REQUEST_BUTTON_COLORS.
+--- @param id integer
+--- @param on any
+--- @param off any
+--- @param extra table|nil Other parameters a device sends with them.
+local function giveColors(id, on, off, extra)
+  local params = { ON_COLOR = on, OFF_COLOR = off }
+  for name, value in pairs(extra or {}) do
+    params[name] = value
+  end
+  ReceivedFromProxy(linkOf(id), "BUTTON_COLORS", params)
 end
 
 local clock = 1000000
@@ -351,6 +375,82 @@ T.eq("programming shows another", shown(), "Bulb off")
 setLookControl("By Link")
 T.eq("and By Link again shows the look the links call for", shown(), "Bulb on")
 
+T.section("A link bound asks its device for its state and colors")
+local porch = addLook("Porch")
+H.mark()
+OnBindingChanged(linkOf(porch), "BUTTON_LINK", false, LIGHT, LIGHT_TOGGLE)
+T.eq("an unbound link asks nothing", asked(), {})
+C4:Bind(LIGHT, LIGHT_TOGGLE, H.DEVICE_ID, linkOf(porch), "BUTTON_LINK")
+OnBindingChanged(linkOf(porch), "BUTTON_LINK", true, LIGHT, LIGHT_TOGGLE)
+T.eq(
+  "bound, it sends REQUEST_BUTTON_COLORS on the link, as a command",
+  asked(),
+  { { binding = linkOf(porch), params = {}, type = "COMMAND" } }
+)
+H.mark()
+giveColors(porch, "0000FF", "#000000", { BUTTON_ID = "1", TEXT = "Porch", IMAGE_ON = "on.png" })
+T.eq("the device's BUTTON_COLORS are kept", tabLook(porch).linkColors, { on = "0000ff", off = "000000" })
+T.eq(
+  "with the device that gave them, and nothing else it sent",
+  (persist:get("LinkColors") or {})[tostring(porch)],
+  { on = "0000ff", off = "000000", device = LIGHT }
+)
+T.eq("they change no look's picture", H.lastIcon(), nil)
+T.eq("and fire nothing", H.fired, {})
+giveColors(porch, "blue", "")
+T.eq("colors it can't read are ignored", tabLook(porch).linkColors, { on = "0000ff", off = "000000" })
+setLookControl("Manual")
+T.eq("only By Link's tab shows them", tabLook(porch).linkColors, nil)
+setLookControl("By Link")
+C4:Unbind(H.DEVICE_ID, linkOf(porch))
+C4:Bind(OTHER_LIGHT, LIGHT_TOGGLE, H.DEVICE_ID, linkOf(porch), "BUTTON_LINK")
+H.mark()
+OnBindingChanged(linkOf(porch), "BUTTON_LINK", true, OTHER_LIGHT, LIGHT_TOGGLE)
+T.eq("bound to another light, it asks that light", #asked(), 1)
+T.eq("and the first light's colors don't count", tabLook(porch).linkColors, nil)
+giveColors(porch, "ff0000", "111111")
+T.eq("until the light bound now gives its own", tabLook(porch).linkColors, { on = "ff0000", off = "111111" })
+
+T.section("The driver's start asks every bound link")
+local sentWith = {}
+local sendToProxy = C4.SendToProxy
+C4.SendToProxy = function(self, binding, command, ...)
+  if command == "REQUEST_BUTTON_COLORS" then
+    sentWith[binding] = ShimDynamicBindings()[binding] ~= nil and C4:GetBoundProviderDevice(H.DEVICE_ID, binding) ~= 0
+  end
+  return sendToProxy(self, binding, command, ...)
+end
+H.mark()
+H.restart()
+C4.SendToProxy = sendToProxy
+local startAsked = {}
+for _, request in ipairs(asked()) do
+  table.insert(startAsked, request.binding)
+end
+table.sort(startAsked)
+local boundLinks = { linkOf(bulbOff), linkOf(bulbOn), linkOf(porch) }
+table.sort(boundLinks)
+T.eq("each bound link's device once, and not the look with nothing bound", startAsked, boundLinks)
+T.eq(
+  "after the links are back and bound",
+  { sentWith[linkOf(bulbOff)], sentWith[linkOf(bulbOn)], sentWith[linkOf(porch)] },
+  { true, true, true }
+)
+T.eq("the colors are kept through a restart", tabLook(porch).linkColors, { on = "ff0000", off = "111111" })
+
+T.section("A rename binds the link again and asks again")
+H.mark()
+save(porch, "Front porch")
+T.eq("a renamed look's link asks its device", asked(), { { binding = linkOf(porch), params = {}, type = "COMMAND" } })
+H.mark()
+save(porch, "Front porch")
+T.eq("a save that keeps the name asks nothing", asked(), {})
+save(away, "Away from home", { isDefault = true })
+T.eq("nor does a rename with nothing bound", asked(), {})
+save(away, "Away", { isDefault = true })
+H.tab("_DELETE_LOOK", { id = porch })
+T.eq("a deleted look's link's colors are forgotten", persist:get("LinkColors"), nil)
+
 T.section("A timed look")
 local bell = addLook("Doorbell", { timerAfter = 30 })
 led(bulbOn, true)
@@ -420,6 +520,8 @@ T.truthy(
 T.truthy("the default look's row shows under By Link too", has("$('fld-default').hidden = !following();"))
 T.truthy("each look's row gives its link's state under By Link", has("refreshLines(l) + whenLines(l) + linkLines(l)"))
 T.truthy("or that it isn't bound", has("!l.linkBound ? 'not bound'"))
+T.truthy("with its device's on and off colors beside it", has("esc(text) + linkSwatches(l) + '</div>'"))
+T.truthy("each only as six hex digits", has("/^[0-9a-f]{6}$/i.test(c) ? '#' + c.toLowerCase() : null"))
 T.truthy("By Link is how the page knows", has("function byLink() { return gState.lookControl === 'By Link'; }"))
 T.truthy("the timer goes back to the links", has("byLink() ? 'back to the links' : timerTarget(l)"))
 T.truthy("the demo offers By Link", has("['On Select', 'Manual', 'By Value', 'By Link']"))
@@ -440,9 +542,29 @@ DC_X = nil
 gate:_set(true)
 T.eq("a license back shows what the links call for", shown(), "Bulb off")
 
+T.section("The docs")
+local docsFile = assert(io.open(H.DRIVER:gsub("driver%.lua$", "www/documentation/index.md"), "r"))
+local docs = docsFile:read("*a"):gsub("%s+", " ")
+docsFile:close()
+T.truthy(
+  "say the button asks for each device's state when a link is bound and at start",
+  docs:find(
+    "asks each device for its state and its LED colors when a look's link is bound and when the driver",
+    1,
+    true
+  )
+)
+T.truthy(
+  "and keep the rule for a device that hasn't reported",
+  docs:find("hasn't reported yet, never matches", 1, true)
+)
+
 T.section("Reset Driver")
+giveColors(bulbOn, "00ff00", "000000")
+T.truthy("a link's colors kept", persist:get("LinkColors"))
 EC.Reset_Driver({ ["Are You Sure?"] = "Yes" })
 T.eq("forgets every link's state", persist:get("LinkStates"), nil)
+T.eq("and its colors", persist:get("LinkColors"), nil)
 T.eq("and Look Control goes back to Manual", Properties["Look Control"], "Manual")
 
 T.finish()

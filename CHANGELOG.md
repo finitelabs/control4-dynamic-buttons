@@ -42,7 +42,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   link of the look it shows, as a keypad button does
 - Added `By Link` to Look Control: each look gets a Show while setting, and the
   button shows the first look whose Button Link is on or off as it says, so the
-  button follows the device bound to the link whatever changes it
+  button follows the device bound to the link whatever changes it, and asks the
+  device for its state as soon as a link is bound and when the driver starts
 - Added an event for each look, named for the look, that fires when it becomes
   the shown look
 - Added three icon packs with the same 100 subjects in each: Classic Device and

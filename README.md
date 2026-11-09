@@ -563,14 +563,16 @@ look stays.
 
 A press taps the shown look's link, and the look changes only once the device
 reports back. A light changed from anywhere else changes the button the same
-way.
+way. The button asks each device for its state and its LED colors when a look's
+link is bound and when the driver starts, so a device that answers shows the
+right look at once.
 
 <img alt="Button tab - By Link" src="./images/ui-by-link.png" width="640"/>
 
 1. **Look Control** - `By Link` shows the rows below.
-1. **Link** - each look's Show while, and its link's last state, or `not bound`.
-   A look with nothing bound, or whose device hasn't reported yet, never
-   matches.
+1. **Link** - each look's Show while, and its link's last state, or `not bound`,
+   with the on and off colors its device gives the link, once it has. A look
+   with nothing bound, or whose device hasn't reported yet, never matches.
 1. **Default** - marks the look that shows when no look matches.
 1. **Show while** - `its link is on` or `its link is off`. Moving a look in the
    list changes which look is checked first.
@@ -809,7 +811,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   link of the look it shows, as a keypad button does
 - Added `By Link` to Look Control: each look gets a Show while setting, and the
   button shows the first look whose Button Link is on or off as it says, so the
-  button follows the device bound to the link whatever changes it
+  button follows the device bound to the link whatever changes it, and asks the
+  device for its state as soon as a link is bound and when the driver starts
 - Added an event for each look, named for the look, that fires when it becomes
   the shown look
 - Added three icon packs with the same 100 subjects in each: Classic Device and

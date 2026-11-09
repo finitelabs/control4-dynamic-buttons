@@ -202,9 +202,22 @@ local function boundLink(id)
   return nil
 end
 
---- A look's Button Link was bound or unbound.
-local function linkBindingChanged()
+--- Ask the device bound to a Button Link for its LED colors and state, as a keypad button's consumer does. It answers
+--- on the link with BUTTON_COLORS and MATCH_LED_STATE.
+--- @param bindingId integer
+local function requestLinkColors(bindingId)
+  C4:SendToProxy(bindingId, "REQUEST_BUTTON_COLORS", {})
+end
+
+--- A look's Button Link was bound or unbound. A device bound to it is asked for its state at once.
+--- @param idBinding integer
+--- @param _strClass string
+--- @param bIsBound boolean
+local function linkBindingChanged(idBinding, _strClass, bIsBound)
   byLink:bindingChanged()
+  if bIsBound then
+    requestLinkColors(idBinding)
+  end
 end
 
 --- Give each look its Button Link connection, named and renamed with the look, and remove the links of looks that
@@ -215,9 +228,14 @@ local function syncLookLinks()
   for _, look in ipairs(looks:list()) do
     local key = tostring(look.id)
     kept[key] = true
+    local before = bindings:getDynamicBinding(LOOK_LINKS, key)
     local link = bindings:getOrAddDynamicBinding(LOOK_LINKS, key, "CONTROL", false, Looks.label(look), "BUTTON_LINK")
     if link then
       OBC[link.bindingId] = linkBindingChanged
+      -- A rename re-adds the link and binds it again, which no binding change reports.
+      if before and before.displayName ~= link.displayName and boundLink(look.id) then
+        requestLinkColors(link.bindingId)
+      end
     end
   end
   local gone = {}
@@ -328,11 +346,12 @@ local function tabState()
     if live then
       badgeNow, badgeError = LiveBadges.read(live.text)
     end
-    local linkState, linkBound
+    local linkState, linkBound, linkColors
     if linked then
       local on = byLink:state(look.id)
       linkState = on ~= nil and (on and "on" or "off") or nil
       linkBound = boundLink(look.id) ~= nil
+      linkColors = byLink:colors(look.id)
     end
     table.insert(list, {
       id = look.id,
@@ -358,6 +377,7 @@ local function tabState()
       badgeText = live and Expressions.render(live.text, "string") or nil,
       linkState = linkState,
       linkBound = linkBound,
+      linkColors = linkColors,
     })
   end
   local properties = {}
@@ -760,6 +780,13 @@ function OnDriverLateInit()
   follow:start(lookControl() == "By Value")
   byLink:start(lookControl() == "By Link")
   lookTimer:restore()
+  -- Director reattached the links before late init, which their binding handlers weren't there to hear.
+  for _, look in ipairs(looks:list()) do
+    local link = boundLink(look.id)
+    if link then
+      requestLinkColors(link.bindingId)
+    end
+  end
 end
 
 --#ifdef DRIVERCENTRAL
@@ -1361,26 +1388,57 @@ function RFP.SELECT(idBinding)
   end
 end
 
---- A device bound to a look's Button Link tells its LED state, as it tells a keypad button's: when the link is bound
---- and whenever the state changes. Kept for By Link, which picks the look from it.
+--- The look whose Button Link a message came in on.
+--- @param idBinding integer
+--- @return integer|nil id The look's id, nil when the binding is no look's link.
+--- @return integer device The device bound to the link, which sent the message; 0 for none.
+local function linkSender(idBinding)
+  for key, link in pairs(bindings:getDynamicBindings(LOOK_LINKS)) do
+    if link.bindingId == tointeger(idBinding) then
+      return tonumber(key), tointeger(C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId)) or 0
+    end
+  end
+  return nil, 0
+end
+
+--- A device bound to a look's Button Link tells its LED state, as it tells a keypad button's: when asked, and whenever
+--- the state changes. Kept for By Link, which picks the look from it.
 --- @param idBinding integer
 --- @param _strCommand string
 --- @param tParams table
 function RFP.MATCH_LED_STATE(idBinding, _strCommand, tParams)
   log:trace("RFP.MATCH_LED_STATE(%s, %s)", idBinding, tParams)
-  for key, link in pairs(bindings:getDynamicBindings(LOOK_LINKS)) do
-    if link.bindingId == tointeger(idBinding) then
-      local on = ByLink.isOn(Select(tParams, "STATE"))
-      if on == nil then
-        -- A link's text or color update carries no state.
-        log:debug("Look %s's Button Link sent no state", key)
-        return
-      end
-      log:debug("Look %s's Button Link is %s", key, on and "on" or "off")
-      byLink:report(tonumber(key), on, tointeger(C4:GetBoundProviderDevice(C4:GetDeviceID(), link.bindingId)) or 0)
-      return
-    end
+  local id, device = linkSender(idBinding)
+  if not id then
+    return
   end
+  local on = ByLink.isOn(Select(tParams, "STATE"))
+  if on == nil then
+    -- A link's text or color update carries no state.
+    log:debug("Look %s's Button Link sent no state", id)
+    return
+  end
+  log:debug("Look %s's Button Link is %s", id, on and "on" or "off")
+  byLink:report(id, on, device)
+end
+
+--- A device bound to a look's Button Link gives its LED's on and off colors, as it gives a keypad button's: when asked,
+--- and whenever they change. Kept for the Button tab, which shows them under By Link; they change no look.
+--- @param idBinding integer
+--- @param _strCommand string
+--- @param tParams table
+function RFP.BUTTON_COLORS(idBinding, _strCommand, tParams)
+  log:trace("RFP.BUTTON_COLORS(%s, %s)", idBinding, tParams)
+  local id, device = linkSender(idBinding)
+  if not id then
+    return
+  end
+  local on, off = ByLink.color(Select(tParams, "ON_COLOR")), ByLink.color(Select(tParams, "OFF_COLOR"))
+  if not (on or off) then
+    log:debug("Look %s's Button Link sent no colors", id)
+    return
+  end
+  byLink:reportColors(id, on, off, device)
 end
 
 --- @param paramName string
@@ -1530,7 +1588,7 @@ end
 
 -- Open while stopped: _GET_STATE/_SET_DRIVER do only what Composer's Properties tab can, _GET_PICTURE shows a kept
 -- picture, _GET_BUTTONS names this driver's items; a copy acts through the other button's own gated commands.
--- MATCH_LED_STATE keeps each link's state, which By Link acts on only while licensed.
+-- MATCH_LED_STATE and BUTTON_COLORS keep each link's state and colors, which By Link acts on only while licensed.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
 EC.Next_Look = whileLicensed(EC.Next_Look)
