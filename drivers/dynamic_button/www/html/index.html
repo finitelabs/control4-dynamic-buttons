@@ -17,6 +17,11 @@
   @media (max-width: 680px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 
   .banner { margin-bottom: 12px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.online { background: #dcfce7; color: #15803d; }
+  .pill.pending { background: #fef3c7; color: #b45309; }
   .pill.info { background: #f1f5f9; color: #475569; }
 
   /* As a tile in the Control4 app: a dark card, the picture, the name under it. */
@@ -42,14 +47,12 @@
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .btn.sm { padding: 3px 9px; font-size: 11px; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .empty { font-style: italic; text-align: inherit; padding: 0; font-size: inherit; }
-  .note, .card .note { color: var(--text-muted); font-size: 11px; margin: 8px 0 0; }
+  .empty { color: var(--text-muted); font-style: italic; padding: 6px 0; }
+  .note { color: var(--text-muted); font-size: 11px; margin-top: 8px; }
 
   .field { display: flex; flex-direction: column; gap: 4px; }
-  label { margin-bottom: 0; }
   .field label, .flabel { font-size: 11px; color: var(--text-muted); font-weight: 500; }
-  input[type="number"] { margin-bottom: 0; }
-  select, input[type="text"], input[type="search"] { margin-bottom: 0; width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
+  select, input[type="text"], input[type="search"] { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
   /* The browser's own arrow sits where it likes, so every select draws this one. It comes after the rule above, whose background shorthand would reset it. */
   select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 6px; padding-right: 28px; text-overflow: ellipsis; }
   /* The page's own color picker: a swatch button over each color input, which only holds the value. */
@@ -153,9 +156,7 @@
   .tvar.used .vname::after { content: " \2713"; color: var(--success); }
   .tvar:hover .ins { visibility: visible; }
   .tloading { padding: 4px 22px; font-size: 11px; color: var(--text-muted); font-style: italic; }
-  .pgroup:first-of-type { margin-top: 0; }
   .props-note { margin: -2px 0 12px; }
-  #props .fields { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
   input[type="text"]:disabled { background: var(--surface-hover); color: var(--text-muted); }
   .editgrid { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; }
   @media (max-width: 680px) { .editgrid { grid-template-columns: minmax(0, 1fr); } }
@@ -662,16 +663,31 @@ const PACK_ICONS = [{"id":"classic-device:battery-0","category":"Battery","label
 // C4 REST API client
 // ============================================================
 <!-- #embed ../../../../src/lib/ui/page.js -->
+var sendCommand = Kit.sendCommand, api = Kit.api, gApiHost = Kit.apiHost, gDriverId = Kit.driverId;
 
 // Another Dynamic Button's commands, through the same broker-friendly body.
 function sendCommandTo(id, cmd, params) {
-  if (String(id) === String(gDriverId)) return sendCommand(cmd, params);
-  return api('POST', '/api/v1/items/' + id + '/commands', { command: cmd, tParams: { DATA: encodeParams(params) }, async: false });
+  return api('POST', '/api/v1/items/' + id + '/commands', { command: cmd, tParams: { DATA: Kit.encodeParams(params) }, async: false });
 }
 
 function refresh() { return sendCommand('_GET_STATE'); }
 
 var gLive = false;
+
+// Each command a datatoui event carries, with its parameters by name.
+function eachDeviceCommand(evt, fn) {
+  (Array.isArray(evt) ? evt : [evt]).forEach(function(item) {
+    var dc = item && item.data ? item.data.devicecommand : null;
+    if (!dc || dc.command === 'LUA_OUTPUT') return;
+    var params = {};
+    if (dc.params && dc.params.param) {
+      (Array.isArray(dc.params.param) ? dc.params.param : [dc.params.param]).forEach(function(p) {
+        if (p && p.name) params[p.name] = (p.value && p.value.static !== undefined) ? p.value.static : (p.value || '');
+      });
+    }
+    fn(dc.command, params);
+  });
+}
 
 // A drop, or a link that never comes up, is shown as a banner; a healthy link is not.
 function setConn(ok) { $('conn-bar').hidden = ok; }
@@ -716,14 +732,18 @@ function handleDriverData(cmd, params) {
   } catch (e) { console.error('handleDriverData error:', cmd, e); }
 }
 var DRIVER_HANDLERS = {};
-['STATE', 'ERROR', 'PROPERTY_ERROR', 'SHOWN', 'ICONIFY', 'PICTURE', 'PICTURE_STORED', 'FETCHED', 'BUTTONS',
-  'EVAL_RESULT', 'DEVICES_DATA', 'DEVICE_VARIABLES_DATA'].forEach(function(cmd) {
+// Every command the driver sends; test_dynamic_button_page.lua checks the list against driver.lua.
+['BUTTONS', 'DEVICE_VARIABLES_DATA', 'DEVICES_DATA', 'ERROR', 'EVAL_RESULT', 'FETCHED', 'ICONIFY', 'IMAGE_STORED', 'PICTURE',
+  'PICTURE_STORED', 'PROPERTY_ERROR', 'SAVED', 'SHOWN', 'STATE'].forEach(function(cmd) {
   DRIVER_HANDLERS[cmd] = function(params) { handleDriverData(cmd, params); };
 });
 
 // ============================================================
 // Helpers
 // ============================================================
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 function $(id) { return document.getElementById(id); }
 function showError(msg) {
   var el = $('err');
@@ -1349,20 +1369,20 @@ function propOptions(choices, value) {
 }
 
 function renderProps() {
-  showProperties(gState.properties.filter(function(p) { return PROPS_ELSEWHERE.indexOf(p.name) < 0; }));
+  Kit.showProperties(gState.properties.filter(function(p) { return PROPS_ELSEWHERE.indexOf(p.name) < 0; }));
 }
 
 // Look Control, from the Shown now card.
-function setProperty(el) {
-  var name = el.dataset.prop || 'Look Control', value = el.value;
+function setLookControl(el) {
+  var value = el.value;
   el.blur();
-  command('_SET_PROPERTY', { property: name, value: value }, function() {
-    var p = gState.properties.find(function(x) { return x.name === name; });
+  command('_SET_PROPERTY', { property: 'Look Control', value: value }, function() {
+    var p = gState.properties.find(function(x) { return x.name === 'Look Control'; });
     if (p) p.value = value;
-    if (name === 'Look Control') gState.lookControl = value;
+    gState.lookControl = value;
   });
 }
-$('control-mode').addEventListener('change', function(e) { setProperty(e.target); });
+$('control-mode').addEventListener('change', function(e) { setLookControl(e.target); });
 
 // How the list and the editor name a look's picture: an icon by its id, a picture of the button's own by its name.
 function iconName(icon) {
@@ -3914,10 +3934,6 @@ function demoEval(text) {
 }
 
 // ============================================================
-// Tabs
-// ============================================================
-
-// ============================================================
 // Color picker: the dropper in Edge's own picker, which Composer embeds, reads the wrong place in
 // Composer's window, so every color input gets this picker instead
 // ============================================================
@@ -4222,8 +4238,8 @@ document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
 // Boot
 // ============================================================
 (function boot() {
-  initTabs(closeEditor);
-  initPropertiesCard($('props'));
+  Kit.initTabs(closeEditor);
+  Kit.initPropertiesCard($('props'));
   $('nav-meta').textContent = 'Dynamic Button' + (gDriverId ? ' \u00b7 device ' + gDriverId : '');
   // Composer's browser takes a moment to load the font, so it starts before the first badge needs it.
   badgeFont();
@@ -4232,7 +4248,7 @@ document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
   renderPacks();
   renderStyles();
   renderLicenses();
-  if (demoMode(null)) {
+  if (Kit.demoMode(null)) {
     // No controller API (opened outside Composer): example looks so the page can be tried.
     var demo = [
       ['Full', 'mdi:battery', 'Rounded Square', '#16A34A'],
@@ -4280,7 +4296,7 @@ document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
     return;
   }
   renderList();
-  connectDriver({
+  Kit.connectDriver({
     handlers: DRIVER_HANDLERS,
     onConnect: refresh,
     onLink: function(up) { gLive = up; setConn(up); }

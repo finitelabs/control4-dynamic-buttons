@@ -33,7 +33,28 @@ T.truthy(
   "whose base64 is wrapped, so the broker never meets a long unbroken run",
   kit:find('.replace(/.{76}/g, "$&\\n")', 1, true) ~= nil
 )
-T.truthy("and so is a command to another Dynamic Button", has("tParams: { DATA: encodeParams(params) }"))
+T.truthy("and so is a command to another Dynamic Button", has("tParams: { DATA: Kit.encodeParams(params) }"))
+
+T.section("Every command the driver sends reaches the page")
+local dfile = assert(io.open(H.DRIVER, "r"))
+local driverSource = dfile:read("*a")
+dfile:close()
+local list = page:match("// Every command the driver sends[^\n]*\n%[(.-)%]%.forEach") or ""
+local missing = {}
+local seen = {}
+for _, sender in ipairs({ "uiRespond", "reply", "SendDataToUI", "sendPieces" }) do
+  for command in driverSource:gmatch(sender .. '%("([A-Z_]+)"') do
+    if not seen[command] then
+      seen[command] = true
+      if not list:find("'" .. command .. "'", 1, true) then
+        missing[#missing + 1] = command
+      end
+    end
+  end
+end
+T.truthy("the page lists them", list ~= "")
+T.eq("and none is missing, so none waits out a timeout", missing, {})
+T.truthy("another Dynamic Button's events keep the page's own reader", has("function eachDeviceCommand(evt, fn)"))
 
 T.section("Chunks")
 T.eq("the page's chunk size is the driver's", tonumber(page:match("maxChunk: (%d+)")), Images.MAX_CHUNK)
