@@ -1129,11 +1129,23 @@ function UIR._ADD_WEB_PICTURE(tParams)
     :next(nil, Pictures.reportError("Keeping a picture that refreshes"))
 end
 
+--- The look By Value or By Link calls for now: a deleted shown look gives way to it, not to another first.
+--- @return integer|nil id
+local function followed()
+  local mode = lookControl()
+  if mode == "By Value" then
+    return follow:decide()
+  elseif mode == "By Link" then
+    return byLink:decide()
+  end
+  return nil
+end
+
 --- @param tParams table
 function UIR._DELETE_LOOK(tParams)
   log:trace("UIR._DELETE_LOOK()")
   local before = button:shown()
-  local removed = button:deleteLook(tabParams(tParams).id)
+  local removed = button:deleteLook(tabParams(tParams).id, followed)
   if not removed then
     return pushError("no such look")
   end

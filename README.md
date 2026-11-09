@@ -154,7 +154,8 @@ the button's looks.
 1. **Delete** - deletes the look, its picture, its `Shown` event with the
    programming on it, and its Button Link, after a second press on
    `Confirm Delete`. Deleting the shown look shows the first remaining look with
-   a picture, or the driver's own icon when none has one.
+   a picture, or the driver's own icon when none has one. Under `By Value` or
+   `By Link`, the look the values or the links call for shows instead.
 1. **Add Look** - opens the editor for a new look. A button has up to eight
    looks.
 
@@ -440,8 +441,9 @@ Button tab. To run something different for each look:
 Renaming a look renames its event and keeps its programming. Deleting a look
 deletes its event and the programming on it. The shown look stays through a
 Director restart and a driver update, and no event fires when the driver starts,
-unless a look's timer ran out while the driver was stopped: the timer's look
-then shows as the driver starts, and its events fire.
+unless the look changes then: a look's timer ran out while the driver was
+stopped, or the values or the links call for another look than before. That look
+shows as the driver starts, and its events fire.
 
 ### Timed Looks
 

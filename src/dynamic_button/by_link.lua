@@ -1,7 +1,9 @@
 -- Look Control's By Link: each look's Button Link tells the button its LED state, as a keypad button's
 -- does, and the first look whose link is bound and on or off as its Show while says is the one shown,
 -- and otherwise the default look. The look changes only when a device reports, so a press waits for it.
--- A state counts only while the device that reported it is the one bound to the link.
+-- A device reports each of its links bound to the button in turn, so the links pick a look once they all
+-- have. A state, and the colors a device gives its LEDs, count only while the device that reported them is
+-- the one bound to the link.
 
 local log = require("lib.logging")
 local Looks = require("dynamic_button.looks")
@@ -18,6 +20,7 @@ require("lib.utils")
 --- @field _active boolean Look Control is By Link.
 --- @field _matched integer|nil The look the links call for.
 --- @field _showFailed table<integer, string> Why a matched look couldn't show, by look id, so it logs once.
+--- @field _reported boolean A report changed a link's state since the links last picked.
 local ByLink = {}
 ByLink.__index = ByLink
 
@@ -30,6 +33,12 @@ local COLORS_PERSIST_KEY = "LinkColors"
 
 --- The look the links last showed. Kept so a hold from programming outlasts a restart.
 local APPLIED_PERSIST_KEY = "ByLinkApplied"
+
+local EVALUATE_TIMER = "ByLinkEvaluate"
+
+--- How soon after a link's report the links pick a look, in milliseconds: a light's reports for each of its links
+--- arrive together, and picking after the first would show a look that only the others' old states call for.
+local EVALUATE_MS = 50
 
 --- Whether a MATCH_LED_STATE's STATE says the LED is on. Devices send a boolean, a number or text.
 --- @param state any
@@ -63,6 +72,7 @@ function ByLink:new(opts)
   instance._active = false
   instance._matched = nil
   instance._showFailed = {}
+  instance._reported = false
   return instance
 end
 
@@ -112,7 +122,7 @@ function ByLink:state(id)
 end
 
 --- A look's link reported its LED state: keep it with the device that reported it, and under By Link
---- see which look the links call for.
+--- see which look the links call for once the device's other reports are in.
 --- @param id integer
 --- @param on boolean
 --- @param device integer The device bound to the link, which sent the state.
@@ -125,10 +135,18 @@ function ByLink:report(id, on, device)
     states[key] = { on = on, device = device }
     self:_saveStates(states)
   end
-  if self._active and not self:evaluate() and changed then
-    -- The Button tab shows each link's state under By Link.
-    self._changed()
+  if not self._active then
+    return
   end
+  self._reported = self._reported or changed
+  SetTimer(EVALUATE_TIMER, EVALUATE_MS, function()
+    local reported = self._reported
+    self._reported = false
+    if not self:evaluate() and reported then
+      -- The Button tab shows each link's state under By Link.
+      self._changed()
+    end
+  end)
 end
 
 --- @private
@@ -222,6 +240,8 @@ end
 --- Stop following and forget what the links called for. The links' states are kept: they are what
 --- the devices last said.
 function ByLink:stop()
+  CancelTimer(EVALUATE_TIMER)
+  self._reported = false
   self._active = false
   self._matched = nil
   self._showFailed = {}
@@ -256,6 +276,15 @@ end
 function ByLink:release()
   self._store:set(APPLIED_PERSIST_KEY, nil)
   self:evaluate()
+end
+
+--- The look the links call for now, while they may pick one.
+--- @return integer|nil id
+function ByLink:decide()
+  if not (self._active and self._allowed()) then
+    return nil
+  end
+  return self:_decide()
 end
 
 --- @private

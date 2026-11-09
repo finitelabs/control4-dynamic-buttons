@@ -240,11 +240,12 @@ function Button:imageArrived(id, png, source)
   return true, false
 end
 
---- Delete a look and its pictures. If it was shown, the first other ready look shows, or the
---- driver's own icon when that look can't be shown.
+--- Delete a look and its pictures. If it was shown, the look `preferred` names shows, or else the
+--- first other ready look, or the driver's own icon when that look can't be shown.
 --- @param id integer
+--- @param preferred? fun(): integer|nil The look to show in its place, asked once it's gone (optional).
 --- @return Look|nil removed
-function Button:deleteLook(id)
+function Button:deleteLook(id, preferred)
   local look = self.looks:get(id)
   if not look then
     return nil
@@ -255,7 +256,8 @@ function Button:deleteLook(id)
   self.images:unserve(self.deviceId, look.id)
   self.looks:delete(look.id)
   if wasShown then
-    local replacement = self:_fallback(look.id)
+    local wanted = preferred and self.looks:get(preferred())
+    local replacement = wanted and wanted.image and wanted or self:_fallback(look.id)
     if not (replacement and self:show(replacement.id)) then
       self:_showDefault()
     end

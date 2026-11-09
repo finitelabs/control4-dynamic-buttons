@@ -491,7 +491,7 @@ docsFile:close()
 T.truthy(
   "say a time that ran out while the driver was stopped fires as it starts",
   docs:find(
-    "no event fires when the driver starts, unless a look's timer ran out while the driver was stopped",
+    "no event fires when the driver starts, unless the look changes then: a look's timer ran out while the driver was stopped",
     1,
     true
   )

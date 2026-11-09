@@ -93,6 +93,8 @@ end
 function Follow:start(active)
   self._active = active
   if not active then
+    -- Look Control can change while the driver is stopped: a hold kept from then would outlive By Value.
+    self._store:set(APPLIED_PERSIST_KEY, nil)
     return
   end
   self._booting = true
@@ -162,6 +164,16 @@ end
 --- @param id integer|string
 function Follow:deviceRemoved(id)
   self._engine:handleDeviceRemoved(tonumber(id) or -1)
+end
+
+--- The look the values call for now, while they may pick one and none waits for a variable.
+--- @return integer|nil id
+function Follow:decide()
+  if not (self._active and self._allowed()) then
+    return nil
+  end
+  local matched, holding = self:_decide()
+  return not holding and matched or nil
 end
 
 --- @private

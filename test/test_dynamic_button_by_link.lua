@@ -40,11 +40,12 @@ local function bind(id, lightLink)
   C4:Bind(LIGHT, lightLink, H.DEVICE_ID, linkOf(id), "BUTTON_LINK")
 end
 
---- The light tells a look's link its LED state.
+--- The light tells a look's link its LED state, and the links pick a look once its reports are in.
 --- @param id integer
 --- @param state any
 local function led(id, state)
   ReceivedFromProxy(linkOf(id), "MATCH_LED_STATE", { STATE = state })
+  ExpireTimer("ByLinkEvaluate")
 end
 
 --- @return string name The shown look, as the Look variable names it.
@@ -253,6 +254,19 @@ T.eq("until a look matches", shown(), "Bulb on")
 led(bulbOn, false)
 T.eq("and back", shown(), "Away")
 
+T.section("A light reports each of its links in turn")
+led(bulbOn, true)
+led(bulbOff, false)
+T.eq("the light on", shown(), "Bulb on")
+H.mark()
+ReceivedFromProxy(linkOf(bulbOn), "MATCH_LED_STATE", { STATE = false })
+ReceivedFromProxy(linkOf(bulbOff), "MATCH_LED_STATE", { STATE = true })
+T.eq("the look waits for the light's reports to settle", shown(), "Bulb on")
+ExpireTimer("ByLinkEvaluate")
+T.eq("then the look they call for shows", shown(), "Bulb off")
+T.eq("without passing through the default look", H.fired, { "Look Changed", "Bulb off Shown" })
+led(bulbOff, false)
+
 T.section("An unbound link never matches")
 led(bulbOn, true)
 T.eq("bound, it matches", shown(), "Bulb on")
@@ -331,8 +345,10 @@ T.eq("until they call for another", shown(), "Away")
 
 T.section("A deleted look")
 led(bulbOn, true)
+H.mark()
 H.tab("_DELETE_LOOK", { id = bulbOn })
 T.eq("the next look that matches, or the default, shows", shown(), "Away")
+T.eq("without passing through the first look", H.fired, { "Look Changed", "Away Shown" })
 bulbOn = addLook("Bulb on")
 bind(bulbOn, LIGHT_ON)
 led(bulbOn, true)
