@@ -267,7 +267,9 @@ The Support Code is entered in Composer's "Properties" tab only.
 
 Every color box opens a picker with the look's own colors and your recent colors
 as swatches, a hex box, and hue, saturation and lightness sliders. The picture
-changes as you pick, and `Esc` puts the color back.
+changes as you pick, and `Esc` puts the color back. To take a color from the
+picture itself, click the dropper beside the hex box, then click that spot on
+the preview. A magnifier shows the spot and its color as you point.
 
 ### Icon
 
