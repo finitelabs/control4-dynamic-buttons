@@ -19,6 +19,8 @@ JSON = require("JSON")
 local log = require("lib.logging")
 local persist = require("lib.persist")
 local values = require("lib.values")
+local pageParams = require("lib.ui.page-params")
+local tabProperties = require("lib.ui.tab-properties")
 local conditionals = require("lib.conditionals")
 local events = require("lib.events")
 local bindings = require("lib.bindings")
@@ -300,41 +302,6 @@ local function registerLookIs(items, saved)
   }, testLookIs)
 end
 
---- The driver.xml properties the Button tab shows, read once.
---- @type table[]|nil
-local tabPropertiesCache = nil
-
---- @return table[] properties Each property the Button tab shows, in driver.xml order: its name,
---- the label above it as its group, whether it is read-only, and a list's choices. Passwords stay in
---- Composer. Log Level is a DYNAMIC_LIST whose choices the logger gives at each render.
-local function tabProperties()
-  if tabPropertiesCache then
-    return tabPropertiesCache
-  end
-  tabPropertiesCache = {}
-  local group = ""
-  for xml in XMLgCapture(C4:GetDriverConfigInfo("config") or "", "property") do
-    local kind = XMLCapture(xml, "type")
-    if kind == "LABEL" then
-      group = XMLCapture(xml, "default") or ""
-    elseif
-      (kind == "LIST" or kind == "STRING" or (kind == "DYNAMIC_LIST" and XMLCapture(xml, "name") == "Log Level"))
-      and XMLCapture(xml, "password") ~= "true"
-    then
-      local property =
-        { name = XMLCapture(xml, "name"), group = group, readonly = XMLCapture(xml, "readonly") == "true" }
-      if kind == "LIST" then
-        property.choices = {}
-        for item in XMLgCapture(xml, "item") do
-          table.insert(property.choices, item)
-        end
-      end
-      table.insert(tabPropertiesCache, property)
-    end
-  end
-  return tabPropertiesCache
-end
-
 --- @return table state What the Button tab shows.
 local function tabState()
   local list = {}
@@ -380,16 +347,6 @@ local function tabState()
       linkColors = linkColors,
     })
   end
-  local properties = {}
-  for _, property in ipairs(tabProperties()) do
-    table.insert(properties, {
-      name = property.name,
-      group = property.group,
-      readonly = property.readonly,
-      choices = property.name == "Log Level" and log:getLogLevelNames() or property.choices,
-      value = Properties[property.name] or "",
-    })
-  end
   local own = {}
   for _, picture in ipairs(pictures:list()) do
     local entry = {
@@ -409,7 +366,7 @@ local function tabState()
   end
   local shown = button:shown()
   return {
-    properties = properties,
+    properties = tabProperties:list(),
     looks = list,
     pictures = own,
     shown = shown and shown.id or nil,
@@ -550,8 +507,7 @@ end
 --- @return table params The Button tab's parameters, base64 JSON in DATA.
 local function tabParams(tParams)
   local ok, params = pcall(function()
-    -- The tab wraps its base64 in lines for the controller's broker.
-    return JSON:decode(C4:Base64Decode((tostring(Select(tParams, "DATA") or "e30="):gsub("[\r\n]", ""))))
+    return pageParams({ DATA = tostring(Select(tParams, "DATA") or "e30=") })
   end)
   if ok and type(params) == "table" then
     return params
@@ -944,20 +900,18 @@ end
 
 --- Set one of the driver's properties, as Composer's Properties tab would.
 --- @param tParams table
-function UIR._SET_DRIVER(tParams)
+function UIR._SET_PROPERTY(tParams)
   local params = tabParams(tParams)
-  local name, value = params.property, params.value
-  log:trace("UIR._SET_DRIVER(%s)", name)
-  for _, property in ipairs(tabProperties()) do
-    if property.name == name and not property.readonly and type(value) == "string" then
-      -- The wrapper turns away a value its list lacks, then runs the property's handler.
-      holdingTab(function()
-        UpdateProperty(name, value, true)
-      end)
-      return pushState()
-    end
+  log:trace("UIR._SET_PROPERTY(%s)", params.property)
+  local err
+  holdingTab(function()
+    err = tabProperties:set(params.property, params.value)
+  end)
+  if err then
+    log:warn("Button tab: %s", err)
+    return reply("PROPERTY_ERROR", { payload = JSON:encode({ property = params.property, error = err }) })
   end
-  return pushError("the tab cannot set " .. tostring(name))
+  return pushState()
 end
 
 --- Create a look, or change one when an id is given. Its picture follows in _PUT_IMAGE.
@@ -1606,7 +1560,7 @@ followAllowed = function()
   return drivercentral:licensed()
 end
 
--- Open while stopped: _GET_STATE/_SET_DRIVER do only what Composer's Properties tab can, _GET_PICTURE shows a kept
+-- Open while stopped: _GET_STATE/_SET_PROPERTY do only what Composer's Properties tab can, _GET_PICTURE shows a kept
 -- picture, _GET_BUTTONS names this driver's items; a copy acts through the other button's own gated commands.
 -- MATCH_LED_STATE and BUTTON_COLORS keep each link's state and colors, which By Link acts on only while licensed.
 RFP.SELECT = whileLicensed(RFP.SELECT)

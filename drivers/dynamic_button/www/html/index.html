@@ -6,43 +6,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Button</title>
 <style>
-  :root {
-    --bg: #f5f5f7; --surface: #ffffff; --surface-hover: #f0f0f2;
-    --border: #d1d5db; --text: #1a1a1a; --text-muted: #6b7280;
-    --accent: #2563eb; --accent-hover: #1d4ed8; --danger: #dc2626;
-    --success: #16a34a; --warning: #d97706;
-    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-    --radius: 6px; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08);
-    --tile: #1c1c1e; --tile-text: #ffffff;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  [hidden] { display: none !important; }
-  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
-
-  .nav { display: none; align-items: center; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 16px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 5; }
-  .nav.multi { display: flex; }
-  .nav-tab { padding: 10px 18px; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500; cursor: pointer; }
-  .nav-tab:hover { color: var(--text); }
-  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .nav-meta { margin-left: auto; min-width: 0; color: var(--text-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .panel { display: none; padding: 16px; width: 100%; }
-  .panel.active { display: block; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
-  .card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+<!-- #embed ../../../../src/lib/ui/style.css -->
+  :root { --mono: ui-monospace, SFMono-Regular, Menlo, monospace; --tile: #1c1c1e; --tile-text: #ffffff; }
+  .nav-meta { min-width: 0; }
+  .panel { width: 100%; }
+  .card h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .card h3 .count { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-muted); }
   .card h3 .pill { text-transform: none; letter-spacing: 0; }
   .cols { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; align-items: start; }
   @media (max-width: 680px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 
-  .banner { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 12px; font-size: 12px; }
-  .banner.warn { background: #fef3c7; border-color: #fcd34d; color: #92400e; font-weight: 500; }
-  .banner.err { background: #fee2e2; border-color: #fca5a5; color: #991b1b; font-weight: 500; }
-
-  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .pill.online { background: #dcfce7; color: #15803d; }
-  .pill.pending { background: #fef3c7; color: #b45309; }
+  .banner { margin-bottom: 12px; }
   .pill.info { background: #f1f5f9; color: #475569; }
 
   /* As a tile in the Control4 app: a dark card, the picture, the name under it. */
@@ -61,20 +35,21 @@
   .lookrow .sub { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lookrow .acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 
-  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border: none; border-radius: var(--radius); font-size: 12px; font-family: var(--font); cursor: pointer; font-weight: 500; white-space: nowrap; }
-  .btn-primary { background: var(--accent); color: #fff; } .btn-primary:hover { background: var(--accent-hover); }
+  .btn { white-space: nowrap; }
   .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); } .btn-secondary:hover { background: var(--surface-hover); }
   .btn.danger { color: var(--danger); background: var(--surface); border: 1px solid #f0c4c4; }
   .btn.danger:hover { background: #fef2f2; border-color: #ef9a9a; }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .btn.sm { padding: 3px 9px; font-size: 11px; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .empty { color: var(--text-muted); font-style: italic; padding: 6px 0; }
-  .note { color: var(--text-muted); font-size: 11px; margin-top: 8px; }
+  .empty { font-style: italic; text-align: inherit; padding: 0; font-size: inherit; }
+  .note, .card .note { color: var(--text-muted); font-size: 11px; margin: 8px 0 0; }
 
   .field { display: flex; flex-direction: column; gap: 4px; }
+  label { margin-bottom: 0; }
   .field label, .flabel { font-size: 11px; color: var(--text-muted); font-weight: 500; }
-  select, input[type="text"], input[type="search"] { width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
+  input[type="number"] { margin-bottom: 0; }
+  select, input[type="text"], input[type="search"] { margin-bottom: 0; width: 100%; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: var(--font); }
   /* The browser's own arrow sits where it likes, so every select draws this one. It comes after the rule above, whose background shorthand would reset it. */
   select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 6px; padding-right: 28px; text-overflow: ellipsis; }
   /* The page's own color picker: a swatch button over each color input, which only holds the value. */
@@ -178,7 +153,6 @@
   .tvar.used .vname::after { content: " \2713"; color: var(--success); }
   .tvar:hover .ins { visibility: visible; }
   .tloading { padding: 4px 22px; font-size: 11px; color: var(--text-muted); font-style: italic; }
-  .pgroup { font-size: 11px; font-weight: 600; color: var(--text); margin: 12px 0 6px; }
   .pgroup:first-of-type { margin-top: 0; }
   .props-note { margin: -2px 0 12px; }
   #props .fields { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
@@ -273,11 +247,12 @@
   .lic-list { margin-top: 4px; padding-left: 18px; color: var(--text-muted); font-size: 11px; }
   .lic-copy { margin-top: 8px; font-size: 11px; color: var(--text-muted); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #conn-warn { margin: 0 0 12px; }
 </style>
 </head>
 <body>
 <div class="nav" id="nav">
-  <div class="nav-tab active" data-panel="panel-button">Button</div>
+  <div class="nav-tab active" data-panel="button">Button</div>
   <span class="nav-meta" id="nav-meta">Dynamic Button</span>
 </div>
 <div class="panel active" id="panel-button">
@@ -686,91 +661,17 @@ const PACK_ICONS = [{"id":"classic-device:battery-0","category":"Battery","label
 // ============================================================
 // C4 REST API client
 // ============================================================
-var gApiHost, gDriverId, gApiToken;
-(function() {
-  var p = {};
-  window.location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m, k, v) { p[k] = decodeURIComponent(v); });
-  gApiHost = p.apihost; gDriverId = p.driverid; gApiToken = p.apitoken;
-})();
+<!-- #embed ../../../../src/lib/ui/page.js -->
 
-function api(method, path, body) {
-  if (!gApiHost) return Promise.resolve(null);
-  var opts = { method: method, headers: { 'Authorization': 'Bearer ' + gApiToken, 'Content-Type': 'application/json' } };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch('https://' + gApiHost + path, opts).then(function(r) { return r.json(); }).catch(function(e) {
-    console.error('API error:', method, path, e);
-    return null;
-  });
-}
-
-// A command's REST reply says only that the controller took it: the driver answers over the socket.
-// The controller's broker takes time that grows with the square of the longest unbroken run of
-// characters in a command. A newline ends a run, and the driver takes the newlines out again.
-function sendCommand(cmd, params) { return sendCommandTo(gDriverId, cmd, params); }
+// Another Dynamic Button's commands, through the same broker-friendly body.
 function sendCommandTo(id, cmd, params) {
-  return api('POST', '/api/v1/items/' + id + '/commands', {
-    command: cmd,
-    tParams: { DATA: btoa(unescape(encodeURIComponent(JSON.stringify(params || {})))).replace(/.{76}/g, '$&\n') },
-    async: false
-  });
+  if (String(id) === String(gDriverId)) return sendCommand(cmd, params);
+  return api('POST', '/api/v1/items/' + id + '/commands', { command: cmd, tParams: { DATA: encodeParams(params) }, async: false });
 }
 
 function refresh() { return sendCommand('_GET_STATE'); }
 
-// Driver -> page over socket.io. The datatoui subscription is keyed to the socket's engine id,
-// so every connect, a reconnect after a Director restart too, needs a fresh one.
-var gSocket = null, gLive = false;
-async function initSocket() {
-  try {
-    if (gSocket) { try { gSocket.disconnect(); } catch (e) {} gSocket = null; }
-    var jwt = 'JWT=' + gApiToken;
-    if (!window.io) {
-      var res = await fetch('https://' + gApiHost + '/socket.io/socket.io.js?' + jwt, { headers: { 'Authorization': 'Bearer ' + gApiToken } });
-      eval.call(window, await res.text());
-    }
-    var sock = gSocket = window.io.connect('https://' + gApiHost, { forceNew: true, query: jwt, transports: ['polling', 'websocket'] });
-    var round = 0; // bumped by each connect and drop, so a retry from an earlier one stops
-    var subscribe = async function(mine) {
-      if (mine !== round) return;
-      var sub = await api('GET', '/api/v1/items/' + gDriverId + '/datatoui?SubscriptionClient=' + sock.io.engine.id + '&coerce=false');
-      if (mine !== round) return;
-      if (!sub || !sub.subscriptionId) { setTimeout(function() { subscribe(mine); }, 5000); return; }
-      var ev = String(sub.subscriptionId);
-      if (sock.off) sock.off(ev);
-      sock.on(ev, function(evt) { if (mine === round) handleSocketEvent(evt); });
-      sock.emit('startSubscription', ev);
-      refresh();
-    };
-    sock.on('connect', function() { subscribe(++round); });
-    sock.on('disconnect', function() { round++; gLive = false; setConn(false); });
-  } catch (e) {
-    console.error('Socket init error:', e);
-    setConn(false);
-    setTimeout(initSocket, 10000);
-  }
-}
-
-function handleSocketEvent(evt) {
-  eachDeviceCommand(evt, function(cmd, params) {
-    gLive = true;
-    setConn(true);
-    handleDriverData(cmd, params);
-  });
-}
-// Each command a datatoui event carries, with its parameters by name.
-function eachDeviceCommand(evt, fn) {
-  (Array.isArray(evt) ? evt : [evt]).forEach(function(item) {
-    var dc = item && item.data ? item.data.devicecommand : null;
-    if (!dc || dc.command === 'LUA_OUTPUT') return;
-    var params = {};
-    if (dc.params && dc.params.param) {
-      (Array.isArray(dc.params.param) ? dc.params.param : [dc.params.param]).forEach(function(p) {
-        if (p && p.name) params[p.name] = (p.value && p.value.static !== undefined) ? p.value.static : (p.value || '');
-      });
-    }
-    fn(dc.command, params);
-  });
-}
+var gLive = false;
 
 // A drop, or a link that never comes up, is shown as a banner; a healthy link is not.
 function setConn(ok) { $('conn-bar').hidden = ok; }
@@ -814,13 +715,15 @@ function handleDriverData(cmd, params) {
     if (gWaiters[cmd]) gWaiters[cmd](params);
   } catch (e) { console.error('handleDriverData error:', cmd, e); }
 }
+var DRIVER_HANDLERS = {};
+['STATE', 'ERROR', 'PROPERTY_ERROR', 'SHOWN', 'ICONIFY', 'PICTURE', 'PICTURE_STORED', 'FETCHED', 'BUTTONS',
+  'EVAL_RESULT', 'DEVICES_DATA', 'DEVICE_VARIABLES_DATA'].forEach(function(cmd) {
+  DRIVER_HANDLERS[cmd] = function(params) { handleDriverData(cmd, params); };
+});
 
 // ============================================================
 // Helpers
 // ============================================================
-function esc(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 function $(id) { return document.getElementById(id); }
 function showError(msg) {
   var el = $('err');
@@ -1445,42 +1348,20 @@ function propOptions(choices, value) {
   return choices.map(function(c) { return '<option' + (c === value ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
 }
 
-function propField(p, i) {
-  var id = 'prop-' + i, attrs = ' id="' + id + '" data-prop="' + esc(p.name) + '"';
-  var control = p.choices && !p.readonly
-    ? '<select' + attrs + '>' + propOptions(p.choices, p.value) + '</select>'
-    // A long status runs past its field, so the full text is its tooltip.
-    : '<input type="text"' + attrs + ' value="' + esc(p.value) + '" title="' + esc(p.value) + '"' + (p.readonly ? ' disabled' : '') + '>';
-  return '<div class="field"><label for="' + id + '">' + esc(p.name) + '</label>' + control + '</div>';
-}
-
 function renderProps() {
-  var el = $('props');
-  // A push must not swap a control out from under the one being edited; the next push catches up.
-  if (el.contains(document.activeElement)) return;
-  var groups = [];
-  gState.properties.forEach(function(p, i) {
-    if (PROPS_ELSEWHERE.indexOf(p.name) >= 0) return;
-    var g = groups[groups.length - 1];
-    if (!g || g.name !== p.group) groups.push(g = { name: p.group, html: [] });
-    g.html.push(propField(p, i));
-  });
-  $('props-card').hidden = !groups.length;
-  el.innerHTML = groups.map(function(g) {
-    return (g.name ? '<div class="pgroup">' + esc(g.name) + '</div>' : '') + '<div class="fields">' + g.html.join('') + '</div>';
-  }).join('');
+  showProperties(gState.properties.filter(function(p) { return PROPS_ELSEWHERE.indexOf(p.name) < 0; }));
 }
 
+// Look Control, from the Shown now card.
 function setProperty(el) {
-  var name = el.dataset.prop, value = el.value;
+  var name = el.dataset.prop || 'Look Control', value = el.value;
   el.blur();
-  command('_SET_DRIVER', { property: name, value: value }, function() {
+  command('_SET_PROPERTY', { property: name, value: value }, function() {
     var p = gState.properties.find(function(x) { return x.name === name; });
     if (p) p.value = value;
     if (name === 'Look Control') gState.lookControl = value;
   });
 }
-$('props').addEventListener('change', function(e) { if (e.target.dataset.prop) setProperty(e.target); });
 $('control-mode').addEventListener('change', function(e) { setProperty(e.target); });
 
 // How the list and the editor name a look's picture: an icon by its id, a picture of the button's own by its name.
@@ -4035,12 +3916,6 @@ function demoEval(text) {
 // ============================================================
 // Tabs
 // ============================================================
-// A new tab is one more .nav-tab naming its panel.
-function showTab(tab) {
-  closeEditor();
-  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.toggle('active', t === tab); });
-  document.querySelectorAll('.panel').forEach(function(p) { p.classList.toggle('active', p.id === tab.dataset.panel); });
-}
 
 // ============================================================
 // Color picker: the dropper in Edge's own picker, which Composer embeds, reads the wrong place in
@@ -4342,17 +4217,13 @@ function attachColorPicker(input) {
 }
 document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
 
-function initTabs() {
-  var tabs = document.querySelectorAll('.nav-tab');
-  $('nav').classList.toggle('multi', tabs.length > 1);
-  tabs.forEach(function(tab) { tab.addEventListener('click', function() { showTab(tab); }); });
-}
 
 // ============================================================
 // Boot
 // ============================================================
 (function boot() {
-  initTabs();
+  initTabs(closeEditor);
+  initPropertiesCard($('props'));
   $('nav-meta').textContent = 'Dynamic Button' + (gDriverId ? ' \u00b7 device ' + gDriverId : '');
   // Composer's browser takes a moment to load the font, so it starts before the first badge needs it.
   badgeFont();
@@ -4361,9 +4232,8 @@ function initTabs() {
   renderPacks();
   renderStyles();
   renderLicenses();
-  if (!gApiHost) {
+  if (demoMode(null)) {
     // No controller API (opened outside Composer): example looks so the page can be tried.
-    $('conn-warn').hidden = false;
     var demo = [
       ['Full', 'mdi:battery', 'Rounded Square', '#16A34A'],
       ['Low', 'mdi:battery-20', 'Rounded Square', '#DC2626'],
@@ -4410,7 +4280,11 @@ function initTabs() {
     return;
   }
   renderList();
-  initSocket();
+  connectDriver({
+    handlers: DRIVER_HANDLERS,
+    onConnect: refresh,
+    onLink: function(up) { gLive = up; setConn(up); }
+  });
   setTimeout(function() { if (!gLive) setConn(false); }, 10000);
 })();
 </script>

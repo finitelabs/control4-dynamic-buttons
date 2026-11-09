@@ -147,9 +147,9 @@ T.eq(
   JSON:decode(H.tab("_GET_BUTTONS"))._command,
   "BUTTONS"
 )
-H.tab("_SET_DRIVER", { property = "Log Level", value = "4 - Debug" })
+H.tab("_SET_PROPERTY", { property = "Log Level", value = "4 - Debug" })
 T.eq("and still sets a property, as Composer's Properties tab can", Properties["Log Level"], "4 - Debug")
-H.tab("_SET_DRIVER", { property = "Log Level", value = "3 - Info" })
+H.tab("_SET_PROPERTY", { property = "Log Level", value = "3 - Info" })
 tick(10)
 T.eq("ten more reads leave it stopped", gate:licensed(), false)
 T.eq("with the proxy told nothing more", #H.proxy, 0)

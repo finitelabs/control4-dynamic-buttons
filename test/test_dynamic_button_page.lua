@@ -14,6 +14,12 @@ local Looks = require("dynamic_button.looks")
 local file = assert(io.open(H.DRIVER:gsub("driver%.lua$", "www/html/index.html"), "r"))
 local page = file:read("*a")
 file:close()
+file = assert(io.open(H.DRIVER:gsub("drivers/dynamic_button/driver%.lua$", "src/lib/ui/page.js"), "r"))
+local kit = file:read("*a")
+file:close()
+file = assert(io.open(H.DRIVER:gsub("drivers/dynamic_button/driver%.lua$", "src/lib/ui/style.css"), "r"))
+local style = file:read("*a")
+file:close()
 
 --- @param text string
 --- @return boolean present The page's source has that text.
@@ -22,10 +28,12 @@ local function has(text)
 end
 
 T.section("Commands")
+T.truthy("the page sends through lib/ui", has("<!-- #embed ../../../../src/lib/ui/page.js -->"))
 T.truthy(
-  "each command's base64 is wrapped, so the broker never meets a long unbroken run",
-  has("DATA: btoa(unescape(encodeURIComponent(JSON.stringify(params || {})))).replace(/.{76}/g, '$&\\n')")
+  "whose base64 is wrapped, so the broker never meets a long unbroken run",
+  kit:find('.replace(/.{76}/g, "$&\\n")', 1, true) ~= nil
 )
+T.truthy("and so is a command to another Dynamic Button", has("tParams: { DATA: encodeParams(params) }"))
 
 T.section("Chunks")
 T.eq("the page's chunk size is the driver's", tonumber(page:match("maxChunk: (%d+)")), Images.MAX_CHUNK)
@@ -33,12 +41,12 @@ T.eq("and so is its fallback", tonumber(page:match("gState%.maxChunk || (%d+)"))
 
 T.section("How often it asks for the state")
 T.falsy("no poll", has("setInterval(refresh"))
-local boot = page:match("initSocket%(%);(.-)%}%)%(%);")
+local boot = page:match("connectDriver%((.-)%}%);")
 T.truthy("the boot code is found", boot)
-T.falsy("and boot leaves asking to the socket's connect", boot:find("refresh", 1, true))
+T.truthy("and boot leaves asking to each connect", boot and boot:find("onConnect: refresh", 1, true))
 
 local _, refreshes = page:gsub("refresh%(%)", "")
-T.eq("and nothing else asks that way, so no refresh follows IMAGE_STORED", refreshes, 2)
+T.eq("and nothing else asks that way, so no refresh follows IMAGE_STORED", refreshes, 1)
 
 T.section("Answers come over the socket")
 T.falsy("nothing reads an answer from a REST reply", has("applyReply") or has("replyOf"))
@@ -158,7 +166,7 @@ local arrow = page:find("\n  select { appearance: none; -webkit-appearance: none
 T.truthy("the browser's own is off, after the shared rule's background", shared and arrow and arrow > shared)
 local arrowRule = arrow and page:sub(arrow, page:find("\n", arrow + 1, true)) or ""
 T.truthy("it's a chevron in the page's muted color", arrowRule:find("stroke='%236b7280'", 1, true))
-T.eq("the muted color is still that", page:match("%-%-text%-muted: (#%x+);"), "#6b7280")
+T.eq("the muted color, from lib/ui's style.css, is still that", style:match("%-%-text%-muted: (#%x+);"), "#6b7280")
 T.truthy(
   "the same distance in from the edge everywhere",
   arrowRule:find("background-position: right 10px center;", 1, true)
