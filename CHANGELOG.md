@@ -41,7 +41,3 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   Changed event, an event for each look and a Look Is conditional
 - Added Duplicate, Copy To, Export and Import for looks
 - Added the driver's properties to the Button tab
-  <!-- #ifdef DRIVERCENTRAL -->
-- Added a DriverCentral license check. Without an active license the button
-  shows the driver's own icon after five minutes and its looks can't change.
-  <!-- #endif -->
