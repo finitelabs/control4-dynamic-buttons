@@ -787,7 +787,6 @@ function Light.new(id, opts)
 end
 
 --- @param link integer
---- @param link integer
 --- @return boolean on The link's LED: every link's, the Off link's too, is on while the light is.
 function Light:led(link)
   return self.on

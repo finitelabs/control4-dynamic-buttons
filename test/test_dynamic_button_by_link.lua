@@ -231,27 +231,27 @@ led(bulbOff, true)
 T.eq("then the light's reply moves it", shown(), "Bulb on")
 
 T.section("Separate links")
--- As the docs set them up: "Bulb on" on the light's Off link, "Bulb off" on its On link. The light reports its own
--- state on both.
+-- Wired as the docs set them up, "Bulb on" on the light's Off link and "Bulb off" on its On link. The driver never
+-- sees which of the light's links a look is on: what counts is that the light reports its own state on both.
 bind(bulbOn, LIGHT_OFF)
 bind(bulbOff, LIGHT_ON)
 led(bulbOn, true)
 led(bulbOff, true)
-T.eq("the light on: the look on its Off link shows", shown(), "Bulb on")
+T.eq("the light on, reported on both links: the look shown while its link is on shows", shown(), "Bulb on")
 H.mark()
 H.press()
 T.eq(
-  "and a press taps the Off link",
+  "and a press taps the shown look's link",
   H.proxy[1] and { H.proxy[1].binding, H.proxy[1].command },
   { linkOf(bulbOn), "DO_PUSH" }
 )
 led(bulbOn, false)
 led(bulbOff, false)
-T.eq("the light off: the look on its On link shows", shown(), "Bulb off")
+T.eq("the light off, reported on both links: the look shown while its link is off shows", shown(), "Bulb off")
 H.mark()
 H.press()
 T.eq(
-  "and a press taps the On link",
+  "and a press taps that look's link",
   H.proxy[1] and { H.proxy[1].binding, H.proxy[1].command },
   { linkOf(bulbOff), "DO_PUSH" }
 )
