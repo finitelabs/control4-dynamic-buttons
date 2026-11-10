@@ -497,7 +497,8 @@ set as the default shows, and with no default the shown look stays.
    [syntax below](#show-when-syntax). Moving a look in the list changes which
    expression is checked first.
 1. **Syntax help** - opens a summary of the syntax beside the expression.
-1. **Browse Variables** - opens the list of the project's devices, by room.
+1. **Browse Variables** - opens the list of the project's devices, by room, and
+   its agents.
 1. **Variables** - select a device to see its variables and their current
    values, and select a variable to put it in the expression at the cursor. A
    check mark shows the ones the expression already reads.

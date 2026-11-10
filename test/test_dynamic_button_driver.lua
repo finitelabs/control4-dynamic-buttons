@@ -53,19 +53,19 @@ T.eq("and served where the address points", H.served()["1.png"], H.png("Charged"
 T.eq("the Look variable names it", Variables["Look"], "Charged")
 T.eq("so does Shown Look", Properties["Shown Look"], "Charged")
 T.eq("Look Changed fires once, then the look's own event", H.fired, { "Look Changed", "Charged Shown" })
-T.eq("the tab hears the picture was kept", H.lastUi("IMAGE_STORED").look, "1")
+T.eq("the tab hears the picture was kept", H.lastUi("IMAGE_STORED").look, 1)
 T.eq("and its state shows the look shown", H.state().shown, 1)
 T.eq("Look Is lists it", select(2, lookIs()), "Charged (1)")
 
 T.section("A command's answer carries the state")
-local saved = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("Spare")))
+local saved = H.tab("_SAVE_LOOK", H.lookFields("Spare"))
 T.eq("a save answers SAVED", saved._command, "SAVED")
-T.eq("with the new look's id", saved.look, "2")
-T.eq("and the state", #JSON:decode(saved.state).looks, 2)
+T.eq("with the new look's id", saved.look, 2)
+T.eq("and the state", #saved.state.looks, 2)
 local b64 = C4:Base64Encode(H.png("Spare"))
-local stored = JSON:decode(H.tab("_PUT_IMAGE", { look = 2, upload = "r", index = 1, count = 1, data = b64 }))
+local stored = H.tab("_PUT_IMAGE", { look = 2, upload = "r", index = 1, count = 1, data = b64 })
 T.eq("the last chunk answers IMAGE_STORED", stored._command, "IMAGE_STORED")
-T.eq("with the state showing the picture", JSON:decode(stored.state).looks[2].hasImage, true)
+T.eq("with the state showing the picture", stored.state.looks[2].hasImage, true)
 local function statePushes()
   local n = 0
   for _, sent in ipairs(H.ui) do
@@ -91,10 +91,10 @@ for i = 2, count do
     { look = 2, upload = "s", index = i, count = count, data = spare:sub((i - 1) * size + 1, i * size) }
   )
 end
-T.eq("the last chunk answers IMAGE_STORED", JSON:decode(last)._command, "IMAGE_STORED")
+T.eq("the last chunk answers IMAGE_STORED", last._command, "IMAGE_STORED")
 T.eq("and the whole picture sends the socket one message", #H.ui, 1)
 T.eq("IMAGE_STORED, with the state", { H.ui[1].command, statePushes() }, { "IMAGE_STORED", 1 })
-local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("spare")))
+local refused = H.tab("_SAVE_LOOK", H.lookFields("spare"))
 T.eq(
   "a refusal answers ERROR",
   { refused._command, refused.message },
@@ -267,11 +267,7 @@ T.contains(
 )
 local answer = H.lastUi("ICONIFY")
 T.eq("the tab gets the answer back", answer.request, "7")
-T.eq(
-  "as JSON, decoded and encoded again rather than a Lua table's name",
-  JSON:decode(answer.body),
-  { icons = { "mdi:battery" }, total = 1 }
-)
+T.eq("as the object Iconify sent", answer.body, { icons = { "mdi:battery" }, total = 1 })
 H.tab("_ICONIFY", { request = "8", kind = "search", value = "battery", prefixes = "tabler,lucide" })
 T.contains("a search can name some of the packs", H.fetched[2], "&prefixes=tabler,lucide&")
 H.mark()
@@ -337,7 +333,7 @@ H.restart()
 T.eq("it is kept across a Director restart", styledLook().custom, styledCustom)
 H.update()
 T.eq("and a driver update", styledLook().custom, styledCustom)
-local refused = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("Styled", { id = styledId, custom = { size = 20 } })))
+local refused = H.tab("_SAVE_LOOK", H.lookFields("Styled", { id = styledId, custom = { size = 20 } }))
 T.eq(
   "a customization the driver refuses is answered with why",
   refused.message,
@@ -350,10 +346,10 @@ T.section("The tab hears only which look is shown")
 local oneId, twoId = H.addLook("One"), H.addLook("Two")
 H.mark()
 EC.Show_Look({ Look = "One (" .. oneId .. ")" })
-T.eq("Show Look sends it one small message", H.ui, { { command = "SHOWN", params = { shown = tostring(oneId) } } })
+T.eq("Show Look sends it one small message", H.ui, { { command = "SHOWN", params = { shown = oneId } } })
 H.mark()
-local showAnswer = JSON:decode(H.tab("_SHOW_LOOK", { id = twoId }))
-T.eq("so does the tab's own Show", H.ui, { { command = "SHOWN", params = { shown = tostring(twoId) } } })
+local showAnswer = H.tab("_SHOW_LOOK", { id = twoId })
+T.eq("so does the tab's own Show", H.ui, { { command = "SHOWN", params = { shown = twoId } } })
 T.eq("which answers the same", { showAnswer._command, showAnswer.state }, { "SHOWN", nil })
 H.tab("_DELETE_LOOK", { id = oneId })
 H.tab("_DELETE_LOOK", { id = twoId })
@@ -364,12 +360,16 @@ T.section("A command's DATA can be wrapped")
 local function wrappedData(fields, separator)
   return (C4:Base64Encode(JSON:encode(fields)):gsub(string.rep(".", 76), "%0" .. separator))
 end
-local wrapped = JSON:decode(UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped"), "\n") }))
-T.eq("a save with newlines in its DATA is taken", wrapped._command, "SAVED")
-local crlf = JSON:decode(UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped CRLF"), "\r\n") }))
-T.eq("and so is one with CRLF", crlf._command, "SAVED")
-H.tab("_DELETE_LOOK", { id = tonumber(wrapped.look) })
-H.tab("_DELETE_LOOK", { id = tonumber(crlf.look) })
+H.mark()
+UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped"), "\n") })
+local wrapped = H.lastUi("SAVED")
+T.truthy("a save with newlines in its DATA is taken", wrapped)
+H.mark()
+UIR._SAVE_LOOK({ DATA = wrappedData(H.lookFields("Wrapped CRLF"), "\r\n") })
+local crlf = H.lastUi("SAVED")
+T.truthy("and so is one with CRLF", crlf)
+H.tab("_DELETE_LOOK", { id = wrapped.look })
+H.tab("_DELETE_LOOK", { id = crlf.look })
 
 T.section("Reset Driver")
 H.addLook("Full")

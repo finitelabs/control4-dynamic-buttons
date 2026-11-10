@@ -484,7 +484,7 @@ T.eq(
   '"Show when": compile error: [string "return __p >="]:1: unexpected symbol near \'<eof>\''
 )
 T.eq("a variable inside a string still reads", guardWhy({ showWhen = '"PARAM{100,1}" == "x"' }), nil)
-T.eq("a comparison of two variables reads", Looks.compileError("PARAM{100,1} >= PARAM{100,2} and true"), nil)
+T.eq("a comparison of two variables reads", guardWhy({ showWhen = "PARAM{100,1} >= PARAM{100,2} and true" }), nil)
 T.eq(
   "without the ids, any device's variable is kept",
   select(2, looks:add(H.lookFields("Unguarded", { showWhen = "PARAM{4242,1} == 1" }))),

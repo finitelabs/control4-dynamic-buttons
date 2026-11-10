@@ -270,16 +270,6 @@ function Looks.readsOwn(text, own, mode)
   return false
 end
 
---- Whether a Show when reads as an expression. Its variables stand in as names, so their values,
---- which change, play no part.
---- @param text string
---- @return string|nil err The compiler's message, as the expressions engine words it.
-function Looks.compileError(text)
-  local source = text:gsub("PARAM%s*{%s*.-%s*,%s*.-%s*}", "__p")
-  local _, err = (loadstring or load)("return " .. source)
-  return err and ("compile error: " .. err) or nil
-end
-
 --- A look's badge, when it reads a variable.
 --- @param look Look
 --- @return LookBadge|nil badge The look's badge, if its text holds a variable.
@@ -512,7 +502,7 @@ function Looks:_check(fields, exceptId)
     return nil, Looks.OWN_VARIABLES
   end
   if showWhen ~= "" then
-    local compileErr = Looks.compileError(showWhen)
+    local compileErr = Expressions.compileError(showWhen)
     if compileErr then
       return nil, '"Show when": ' .. compileErr
     end

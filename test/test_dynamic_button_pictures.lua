@@ -267,19 +267,21 @@ local function upload(data, fields)
   end
 end
 
---- The pieces of a message to the tab, joined: its base64 without line breaks, and the longest line.
+--- The pieces of a message to the tab, joined: its base64 without the spaces that break it, the longest run of
+--- characters the broker meets in a message as sent, and how many pieces there were.
 local function pieces(command)
   local parts, longest, count = {}, 0, nil
   for _, m in ipairs(H.ui) do
     if m.command == command then
-      count = tonumber(m.params.count)
-      parts[tonumber(m.params.index)] = m.params.data
-      for line in (m.params.data .. "\n"):gmatch("([^\n]*)\n") do
-        longest = math.max(longest, #line)
+      count = m.params.count
+      parts[m.params.index] = m.params.data
+      -- Space, newline, comma, quote, `/` and `=` end a run.
+      for run in m.json:gmatch('[^%s,"/=]+') do
+        longest = math.max(longest, #run)
       end
     end
   end
-  return C4:Base64Decode((table.concat(parts):gsub("\n", ""))), longest, count
+  return C4:Base64Decode((table.concat(parts):gsub("%s", ""))), longest, count
 end
 
 T.section("The Button tab sends a picture")

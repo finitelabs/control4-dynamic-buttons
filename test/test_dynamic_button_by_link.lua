@@ -67,7 +67,7 @@ end
 local function save(id, name, extra)
   local fields = H.lookFields(name, extra)
   fields.id = id
-  return JSON:decode(H.tab("_SAVE_LOOK", fields))
+  return H.tab("_SAVE_LOOK", fields)
 end
 
 --- Add a look with its picture.

@@ -19,8 +19,11 @@ JSON = require("JSON")
 local log = require("lib.logging")
 local persist = require("lib.persist")
 local values = require("lib.values")
+local page = require("lib.ui.page")
 local pageParams = require("lib.ui.page-params")
 local tabProperties = require("lib.ui.tab-properties")
+local uiDevices = require("lib.ui.devices")
+local expressionTab = require("lib.ui.expression-tab")
 local conditionals = require("lib.conditionals")
 local events = require("lib.events")
 local bindings = require("lib.bindings")
@@ -123,6 +126,10 @@ local byLink
 local followAllowed = function()
   return true
 end
+
+--- Wraps the kit's Button tab commands that read the project: the license gate, in a DriverCentral build.
+--- @type (fun(handler: function): function)|nil
+local tabGate = nil
 
 --- The Look Is conditional's list as last registered.
 --- @type string|nil
@@ -380,26 +387,14 @@ local function tabState()
   }
 end
 
---- Send the Button tab one message over its socket.
---- @param command string
---- @param data table<string, string>
---- @return string json
-local function uiRespond(command, data)
-  local reply = TableDeepCopy(data)
-  C4:SendDataToUI(command, data)
-  reply._command = command
-  return JSON:encode(reply)
-end
-
---- @return string json
+--- Send the Button tab its state.
 local function pushState()
-  return uiRespond("STATE", { state = JSON:encode(tabState()) })
+  page.send("STATE", { state = tabState() })
 end
 
 --- Tell the Button tab which look is shown, when nothing else in its state changed.
---- @return string json
 local function pushShown()
-  return uiRespond("SHOWN", { shown = tostring(button:shown().id) })
+  page.send("SHOWN", { shown = button:shown().id })
 end
 
 --- Show a look the driver picks itself, and tell programming and the Button tab.
@@ -469,50 +464,37 @@ end
 
 --- Answer the Button tab with the state included.
 --- @param command string
---- @param data table<string, string>
---- @return string json
+--- @param data table
 local function reply(command, data)
-  data.state = JSON:encode(tabState())
-  return uiRespond(command, data)
+  data.state = tabState()
+  page.send(command, data)
 end
 
 --- @param message string
---- @return string json
 local function pushError(message)
   log:warn("Button tab: %s", message)
-  return reply("ERROR", { message = message })
+  reply("ERROR", { message = message })
 end
 
 --- The most base64 characters in one message to the Button tab.
 local PIECE = 48 * 1024
 
---- Send the Button tab data in pieces of base64, each wrapped in lines for the controller's broker,
---- whose time grows with the longest unbroken run of characters in a message.
+--- Send the Button tab data in pieces of base64, each broken by a space every 76 characters for the controller's
+--- broker, whose time grows with the longest unbroken run of characters in a message. A newline would go as `\n`
+--- in the message's JSON, which breaks no run.
 --- @param command string
---- @param fields table<string, string> What each piece carries besides its data.
+--- @param fields table What each piece carries besides its data.
 --- @param data string
 local function sendPieces(command, fields, data)
   local b64 = C4:Base64Encode(data)
   local count = math.max(1, math.ceil(#b64 / PIECE))
   for i = 1, count do
     local piece = TableDeepCopy(fields)
-    piece.index = tostring(i)
-    piece.count = tostring(count)
-    piece.data = (b64:sub((i - 1) * PIECE + 1, i * PIECE):gsub(string.rep(".", 76), "%0\n"))
-    C4:SendDataToUI(command, piece)
+    piece.index = i
+    piece.count = count
+    piece.data = (b64:sub((i - 1) * PIECE + 1, i * PIECE):gsub(string.rep(".", 76), "%0 "))
+    page.send(command, piece)
   end
-end
-
---- @param tParams table
---- @return table params The Button tab's parameters, base64 JSON in DATA.
-local function tabParams(tParams)
-  local ok, params = pcall(function()
-    return pageParams({ DATA = tostring(Select(tParams, "DATA") or "e30=") })
-  end)
-  if ok and type(params) == "table" then
-    return params
-  end
-  return {}
 end
 
 --------------------------------------------------------------------------------
@@ -898,27 +880,11 @@ function UIR._GET_STATE()
   return pushState()
 end
 
---- Set one of the driver's properties, as Composer's Properties tab would.
---- @param tParams table
-function UIR._SET_PROPERTY(tParams)
-  local params = tabParams(tParams)
-  log:trace("UIR._SET_PROPERTY(%s)", params.property)
-  local err
-  holdingTab(function()
-    err = tabProperties:set(params.property, params.value)
-  end)
-  if err then
-    log:warn("Button tab: %s", err)
-    return reply("PROPERTY_ERROR", { payload = JSON:encode({ property = params.property, error = err }) })
-  end
-  return pushState()
-end
-
 --- Create a look, or change one when an id is given. Its picture follows in _PUT_IMAGE.
 --- @param tParams table
 function UIR._SAVE_LOOK(tParams)
   log:trace("UIR._SAVE_LOOK()")
-  local params = tabParams(tParams)
+  local params = pageParams(tParams)
   local id = tonumber(params.id)
   local before = button:shown()
   local look, err
@@ -969,13 +935,13 @@ function UIR._SAVE_LOOK(tParams)
       badges:check()
     end
   end
-  return reply("SAVED", { look = tostring(look.id) })
+  return reply("SAVED", { look = look.id })
 end
 
 --- One chunk of a look's picture.
 --- @param tParams table
 function UIR._PUT_IMAGE(tParams)
-  local params = tabParams(tParams)
+  local params = pageParams(tParams)
   local look = looks:get(params.look)
   if not look then
     return pushError("the picture's look is gone")
@@ -996,13 +962,13 @@ function UIR._PUT_IMAGE(tParams)
   announceShown(before and before.id or nil)
   follow:evaluate()
   byLink:evaluate()
-  return reply("IMAGE_STORED", { look = tostring(look.id) })
+  return reply("IMAGE_STORED", { look = look.id })
 end
 
 --- One chunk of a picture for the button's own list. The last one keeps it and answers with its id.
 --- @param tParams table
 function UIR._PUT_PICTURE(tParams)
-  local params = tabParams(tParams)
+  local params = pageParams(tParams)
   local data, err = images:accept("picture", params.upload, params.index, params.count, params.data, function(whole)
     if not Pictures.kindOf(whole) then
       return "picture is not a PNG, JPEG or SVG"
@@ -1026,11 +992,11 @@ end
 --- One of the button's own pictures, for the Button tab to draw.
 --- @param tParams table
 function UIR._GET_PICTURE(tParams)
-  local id = tostring(tabParams(tParams).id or "")
+  local id = tostring(pageParams(tParams).id or "")
   local picture = pictures:get(id)
   local data = picture and pictures:load(id)
   if not data then
-    return uiRespond("PICTURE", { id = id, error = "the picture is gone" })
+    return page.send("PICTURE", { id = id, error = "the picture is gone" })
   end
   sendPieces("PICTURE", { id = id, kind = picture.kind }, data)
 end
@@ -1040,18 +1006,18 @@ end
 --- @param tParams table
 function UIR._FETCH_PICTURE(tParams)
   log:trace("UIR._FETCH_PICTURE()")
-  local params = tabParams(tParams)
+  local params = pageParams(tParams)
   local request = tostring(params.request or "")
   local address, err = Pictures.checkAddress(params.url)
   if not address then
-    return uiRespond("FETCHED", { request = request, error = err })
+    return page.send("FETCHED", { request = request, error = err })
   end
   Pictures.fetch(address)
     :next(function(body)
       sendPieces("FETCHED", { request = request }, body)
     end, function(refused)
       log:warn("Fetching a picture failed: %s", refused)
-      C4:SendDataToUI("FETCHED", { request = request, error = refused })
+      page.send("FETCHED", { request = request, error = refused })
     end)
     :next(nil, Pictures.reportError("Sending a fetched picture to the Button tab"))
 end
@@ -1061,21 +1027,21 @@ end
 --- @param tParams table
 function UIR._ADD_WEB_PICTURE(tParams)
   log:trace("UIR._ADD_WEB_PICTURE()")
-  local params = tabParams(tParams)
+  local params = pageParams(tParams)
   local request = tostring(params.request or "")
   local address, err = Pictures.checkAddress(params.url)
   if address and not Pictures.checkEvery(params.every) then
     address, err = nil, "A picture refreshes every minute, 5 minutes, 15 minutes or hour."
   end
   if not address then
-    return uiRespond("PICTURE_STORED", { request = request, error = err })
+    return page.send("PICTURE_STORED", { request = request, error = err })
   end
   Pictures.fetch(address)
     :next(function(body)
       local picture, refused = pictures:addWeb(body, address, params.every)
       if not picture then
         -- A refusal of what was fetched stops a copy with its own reason.
-        C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused })
+        page.send("PICTURE_STORED", { request = request, error = refused })
         return
       end
       refresher:noteFetched(picture.id)
@@ -1083,7 +1049,7 @@ function UIR._ADD_WEB_PICTURE(tParams)
       reply("PICTURE_STORED", { request = request, picture = picture.id })
     end, function(refused)
       -- Marked only when the fetch brought nothing, so a copy leaves out just this look.
-      C4:SendDataToUI("PICTURE_STORED", { request = request, error = refused, unfetched = "true" })
+      page.send("PICTURE_STORED", { request = request, error = refused, unfetched = true })
     end)
     :next(nil, Pictures.reportError("Keeping a picture that refreshes"))
 end
@@ -1104,7 +1070,7 @@ end
 function UIR._DELETE_LOOK(tParams)
   log:trace("UIR._DELETE_LOOK()")
   local before = button:shown()
-  local removed = button:deleteLook(tabParams(tParams).id, followed)
+  local removed = button:deleteLook(pageParams(tParams).id, followed)
   if not removed then
     return pushError("no such look")
   end
@@ -1126,7 +1092,7 @@ end
 --- @param tParams table
 function UIR._ORDER_LOOKS(tParams)
   log:trace("UIR._ORDER_LOOKS()")
-  local ok, err = looks:reorder(tabParams(tParams).ids)
+  local ok, err = looks:reorder(pageParams(tParams).ids)
   if not ok then
     return pushError(err or "the order was not saved")
   end
@@ -1141,38 +1107,13 @@ function UIR._SHOW_LOOK(tParams)
   log:trace("UIR._SHOW_LOOK()")
   byLink:flush()
   local before = button:shown()
-  local ok, err = button:show(tabParams(tParams).id)
+  local ok, err = button:show(pageParams(tParams).id)
   if not ok then
     return pushError(err or "the look was not shown")
   end
   lookTimer:start(button:shown().id, before and before.id or nil)
   announceShown(before and before.id or nil)
   return pushShown()
-end
-
---- The devices a Show when can read. This button's own Look variable sends it no change events, and
---- a look following the look shown could only chase itself, so the button isn't offered.
-function UIR._GET_DEVICES()
-  log:trace("UIR._GET_DEVICES()")
-  local own = tointeger(C4:GetDeviceID())
-  local devices = {}
-  for _, device in ipairs(Expressions.devices()) do
-    if device.id ~= own then
-      table.insert(devices, device)
-    end
-  end
-  table.sort(devices, function(a, b)
-    local roomA, roomB = tostring(a.roomName):lower(), tostring(b.roomName):lower()
-    if roomA ~= roomB then
-      return roomA < roomB
-    end
-    local nameA, nameB = tostring(a.name):lower(), tostring(b.name):lower()
-    if nameA ~= nameB then
-      return nameA < nameB
-    end
-    return a.id < b.id
-  end)
-  return uiRespond("DEVICES_DATA", { devices = JSON:encode(devices) })
 end
 
 --- The other Dynamic Buttons in the project, by room and name, for Copy To, and this one's own name
@@ -1203,78 +1144,32 @@ function UIR._GET_BUTTONS()
     end
     return a.id < b.id
   end)
-  return uiRespond("BUTTONS", { buttons = JSON:encode(buttons), self = JSON:encode(self) })
-end
-
---- @param text string
---- @param bytes integer
---- @return string cut At most that many bytes, on a whole character: a UTF-8 lead byte left on its own isn't valid text.
-local function cutText(text, bytes)
-  if #text <= bytes then
-    return text
-  end
-  return (text:sub(1, bytes):gsub("[\192-\255][\128-\191]*$", ""))
-end
-
---- One device's variables, with a value short enough to show beside its name.
---- @param tParams table
-function UIR._GET_DEVICE_VARIABLES(tParams)
-  log:trace("UIR._GET_DEVICE_VARIABLES()")
-  local deviceId = tonumber(tabParams(tParams).deviceId)
-  local variables = deviceId and Expressions.deviceVariables(deviceId) or {}
-  for _, variable in ipairs(variables) do
-    variable.value = cutText(tostring(variable.value == nil and "" or variable.value), 60)
-  end
-  return uiRespond("DEVICE_VARIABLES_DATA", { deviceId = tostring(deviceId or ""), variables = JSON:encode(variables) })
-end
-
---- Try a Show when without saving it, for the editor's preview.
---- @param tParams table
-function UIR._EVAL_EXPRESSION(tParams)
-  log:trace("UIR._EVAL_EXPRESSION()")
-  local params = tabParams(tParams)
-  local mode = params.mode == "string" and "string" or "condition"
-  local expression = tostring(params.expression or ""):sub(1, Looks.MAX_SHOW_WHEN)
-  -- What a save refuses holds Save in the tab: the other errors depend on values, which change.
-  local hold
-  if Looks.readsOwn(expression, ownIds(), mode) then
-    hold = Looks.OWN_VARIABLES
-  elseif mode == "condition" then
-    hold = Looks.compileError(expression)
-  end
-  local evaluation = hold and { rendered = Expressions.render(expression, mode) }
-    or Expressions.evaluate(mode, expression)
-  -- One JSON string: the socket turns a text that reads as a number or a boolean into one.
-  return uiRespond("EVAL_RESULT", {
-    data = JSON:encode({
-      id = tostring(params.id or ""),
-      fitted = mode == "string" and evaluation.result and LiveBadges.fit(evaluation.result) or nil,
-      rendered = evaluation.rendered or "",
-      substituted = cutText(evaluation.substituted or "", Looks.MAX_SHOW_WHEN),
-      result = evaluation.result ~= nil and tostring(evaluation.result) or "",
-      error = hold or evaluation.error or "",
-      hold = hold and "yes" or nil,
-    }),
-  })
+  page.send("BUTTONS", { buttons = buttons, self = self })
 end
 
 --- Fetch from Iconify for a Button tab that can't reach it; only the offered packs.
 --- @param tParams table
 function UIR._ICONIFY(tParams)
   log:trace("UIR._ICONIFY()")
-  local params = tabParams(tParams)
+  local params = pageParams(tParams)
   local request = tostring(params.request or "")
   local url, err = Iconify.url(params.kind, params.value, params.prefixes)
   if not url then
-    return uiRespond("ICONIFY", { request = request, error = err })
+    return page.send("ICONIFY", { request = request, error = err })
   end
   http:get(url):next(function(response)
-    -- The HTTP library decodes a JSON reply, as Iconify's are: encode it again for the tab.
+    -- The HTTP library decodes a JSON reply by its content type, as Iconify's are.
     local body = response.body
-    body = type(body) == "table" and JSON:encode(body) or tostring(body or "")
-    C4:SendDataToUI("ICONIFY", { request = request, body = body })
+    if type(body) ~= "table" then
+      local ok, decoded = pcall(JSON.decode, JSON, tostring(body or ""))
+      body = ok and type(decoded) == "table" and decoded or nil
+    end
+    if not body then
+      return page.send("ICONIFY", { request = request, error = "Iconify's answer is not JSON" })
+    end
+    page.send("ICONIFY", { request = request, body = body })
   end, function(failure)
-    C4:SendDataToUI("ICONIFY", { request = request, error = tostring(Select(failure, "error") or failure) })
+    page.send("ICONIFY", { request = request, error = tostring(Select(failure, "error") or failure) })
   end)
 end
 
@@ -1560,8 +1455,9 @@ followAllowed = function()
   return drivercentral:licensed()
 end
 
--- Open while stopped: _GET_STATE/_SET_PROPERTY do only what Composer's Properties tab can, _GET_PICTURE shows a kept
--- picture, _GET_BUTTONS names this driver's items; a copy acts through the other button's own gated commands.
+-- Open while stopped: _GET_STATE and the properties card do only what Composer's Properties tab can, _GET_PICTURE
+-- shows a kept picture, _GET_BUTTONS names this driver's items; a copy acts through the other button's own gated
+-- commands.
 -- MATCH_LED_STATE and BUTTON_COLORS keep each link's state and colors, which By Link acts on only while licensed.
 RFP.SELECT = whileLicensed(RFP.SELECT)
 EC.Show_Look = whileLicensed(EC.Show_Look)
@@ -1576,6 +1472,12 @@ EC.Set_Web_Address = whileLicensed(EC.Set_Web_Address)
 GCPL.Set_Web_Address = whileLicensed(GCPL.Set_Web_Address, function()
   return {}
 end)
+
+--- What a held Button tab command answers while stopped.
+local function refusedWhileStopped()
+  return pushError(UNLICENSED_REFUSAL)
+end
+
 for _, name in ipairs({
   "_SAVE_LOOK",
   "_PUT_IMAGE",
@@ -1583,24 +1485,50 @@ for _, name in ipairs({
   "_DELETE_LOOK",
   "_ORDER_LOOKS",
   "_SHOW_LOOK",
-  "_GET_DEVICES",
-  "_GET_DEVICE_VARIABLES",
-  "_EVAL_EXPRESSION",
 }) do
-  UIR[name] = whileLicensed(UIR[name], function()
-    return pushError(UNLICENSED_REFUSAL)
-  end)
+  UIR[name] = whileLicensed(UIR[name], refusedWhileStopped)
+end
+-- The variable browser and the expression preview read the project, so they wait for a license too.
+tabGate = function(handler)
+  return whileLicensed(handler, refusedWhileStopped)
 end
 UIR._ICONIFY = whileLicensed(UIR._ICONIFY, function(tParams)
-  return uiRespond("ICONIFY", { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
+  page.send("ICONIFY", { request = tostring(pageParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
 end)
 UIR._FETCH_PICTURE = whileLicensed(UIR._FETCH_PICTURE, function(tParams)
-  return uiRespond("FETCHED", { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
+  page.send("FETCHED", { request = tostring(pageParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
 end)
 UIR._ADD_WEB_PICTURE = whileLicensed(UIR._ADD_WEB_PICTURE, function(tParams)
-  return uiRespond(
-    "PICTURE_STORED",
-    { request = tostring(tabParams(tParams).request or ""), error = UNLICENSED_REFUSAL }
-  )
+  page.send("PICTURE_STORED", { request = tostring(pageParams(tParams).request or ""), error = UNLICENSED_REFUSAL })
 end)
 --#endif
+
+--------------------------------------------------------------------------------
+-- Button tab: the kit's commands
+--------------------------------------------------------------------------------
+
+-- The properties card: every property the tab sets runs a handler that pushes the state, so no push follows here.
+tabProperties:serve()
+
+-- This button isn't offered: its own Look variable sends it no change events, and a look following the look shown
+-- could only chase itself.
+uiDevices.serve({ exclude = { tointeger(C4:GetDeviceID()) }, valueBytes = 60, wrap = tabGate })
+
+-- Show when's and the badge's preview. What a save refuses whatever the values holds Save in the tab.
+expressionTab.serve({
+  modes = { "condition", "string" },
+  maxLength = Looks.MAX_SHOW_WHEN,
+  hold = function(expression, mode)
+    if Looks.readsOwn(expression, ownIds(), mode) then
+      return Looks.OWN_VARIABLES
+    end
+    if mode == "condition" then
+      return Expressions.compileError(expression)
+    end
+    return nil
+  end,
+  extra = function(evaluation, mode)
+    return { fitted = mode == "string" and evaluation.result and LiveBadges.fit(tostring(evaluation.result)) or nil }
+  end,
+  wrap = tabGate,
+})

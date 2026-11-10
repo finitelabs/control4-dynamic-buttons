@@ -1263,7 +1263,7 @@ local function tabHeard()
     if message.command == "SHOWN" then
       return model:name(model:keyOfId(tonumber(message.params.shown))), true
     elseif message.params.state then
-      return model:name(model:keyOfId(JSON:decode(message.params.state).shown)), true
+      return model:name(model:keyOfId(message.params.state.shown)), true
     end
   end
   return nil, false
