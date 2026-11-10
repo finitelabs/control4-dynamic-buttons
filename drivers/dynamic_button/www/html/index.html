@@ -532,7 +532,6 @@ const PACK_ICONS = [{"id":"classic-device:battery-0","category":"Battery","label
 <!-- #embed ../../../../src/lib/ui/page.js -->
 <!-- #embed ../../../../src/lib/ui/variables.js -->
 <!-- #embed ../../../../src/lib/ui/expressions.js -->
-<!-- #embed ../../../../src/lib/ui/expressions-demo.js -->
 
 function refresh() { return Kit.sendCommand('_GET_STATE'); }
 
@@ -3386,17 +3385,15 @@ var DEMO_VARIABLES = { 9001: [
   { id: 2, deviceId: 9001, section: 'Device', order: 1, name: 'STATE', type: 'STRING', value: 'Charging' }
 ] };
 
-// What the driver adds to a demo preview: Save held on a Show when that doesn't read, and a badge's text as it fits.
-var DEMO_PREVIEW = {
-  hold: function(expression, mode, answer) { return mode === 'condition' && /^compile error: /.test(answer.error) ? answer.error : ''; },
-  extra: function(answer, mode) { return mode === 'string' && !answer.error ? { fitted: demoFit(answer.result) } : {}; }
+// The previews the demo looks' Show when and the badge get, as the driver answers them.
+var DEMO_BATTERY = '[Demo Room > Sample Battery > ';
+var DEMO_PREVIEWS = {
+  'PARAM{9001,1} >= 80': { rendered: DEMO_BATTERY + 'LEVEL] >= 80', substituted: '62 >= 80', result: 'false' },
+  'PARAM{9001,1} < 20': { rendered: DEMO_BATTERY + 'LEVEL] < 20', substituted: '62 < 20', result: 'false' },
+  'PARAM{9001,2} == "Charging" and PARAM{9001,1} < 100': { result: 'true', substituted: 'Charging == "Charging" and 62 < 100',
+    rendered: DEMO_BATTERY + 'STATE] == "Charging" and ' + DEMO_BATTERY + 'LEVEL] < 100' },
+  'PARAM{9001,1}%': { rendered: DEMO_BATTERY + 'LEVEL]%', substituted: '62%', result: '62%', fitted: '62%' }
 };
-// A badge's text as the driver fits it: a long one rounds its number, then is cut.
-function demoFit(text) {
-  text = Kit.str(text).trim();
-  var fitted = Array.from(text).length <= BADGE_MAX ? text : text.replace(/-?\d+\.\d+/, function(n) { return String(Math.round(Number(n))); });
-  return Array.from(fitted).slice(0, BADGE_MAX).join('');
-}
 
 // ============================================================
 // Color picker: the dropper in Edge's own picker, which Composer embeds, reads the wrong place in
@@ -3714,10 +3711,13 @@ document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
   renderStyles();
   renderLicenses();
   Kit.devices.demo(DEMO_DEVICES, DEMO_VARIABLES);
-  Kit.expressionDemo(DEMO_DEVICES, DEMO_VARIABLES, DEMO_PREVIEW);
   // Outside Composer, example looks stand in for the driver's: its state is theirs, as the page has changed them.
-  if (Kit.demoMode(function(command) {
+  if (Kit.demoMode(function(command, params) {
     if (command === '_GET_STATE') Kit.deliver('STATE', { state: JSON.parse(JSON.stringify(gState)) });
+    if (command === '_EVAL_EXPRESSION') {
+      var preview = DEMO_PREVIEWS[params.expression] || { error: 'Opened outside Composer, only the demo looks preview.' };
+      Kit.deliver('EVAL_RESULT', Object.assign({ id: params.id, rendered: '', substituted: '', result: '', error: '' }, preview));
+    }
   })) {
     var demo = [
       ['Full', 'mdi:battery', 'Rounded Square', '#16A34A'],
@@ -3729,11 +3729,9 @@ document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
     }).filter(function(l) { return l.icon; });
     gState.shown = gState.looks.length ? 1 : null;
     gState.lookControl = 'On Select';
-    var battery = '[Demo Room > Sample Battery > ';
-    [['Full', 'PARAM{9001,1} >= 80', battery + 'LEVEL] >= 80'], ['Low', 'PARAM{9001,1} < 20', battery + 'LEVEL] < 20'],
-      ['Charging', 'PARAM{9001,2} == "Charging" and PARAM{9001,1} < 100', battery + 'STATE] == "Charging" and ' + battery + 'LEVEL] < 100']].forEach(function(d) {
+    [['Full', 'PARAM{9001,1} >= 80'], ['Low', 'PARAM{9001,1} < 20'], ['Charging', 'PARAM{9001,2} == "Charging" and PARAM{9001,1} < 100']].forEach(function(d) {
       var look = gState.looks.find(function(l) { return l.name === d[0]; });
-      if (look) { look.showWhen = d[1]; look.showWhenText = d[2]; }
+      if (look) { look.showWhen = d[1]; look.showWhenText = DEMO_PREVIEWS[d[1]].rendered; }
     });
     // Under By Link: Full and Charging follow a charger's plug, and Low has no link.
     [['Full', 'off', true, 'off', { on: '16a34a', off: '000000' }], ['Low', 'on', false, null, null], ['Charging', 'on', true, 'off', { on: '109eff', off: '000000' }]].forEach(function(d) {

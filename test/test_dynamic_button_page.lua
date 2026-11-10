@@ -34,7 +34,7 @@ T.truthy(
   kit:find('.replace(/.{76}/g, "$&\\n")', 1, true) ~= nil
 )
 T.truthy("and so is a command to another Dynamic Button, on the kit's link", has("var link = Kit.follow(id)"))
-for _, component in ipairs({ "variables.js", "expressions.js", "expressions-demo.js" }) do
+for _, component in ipairs({ "variables.js", "expressions.js" }) do
   T.truthy("it embeds the kit's " .. component, has("<!-- #embed ../../../../src/lib/ui/" .. component .. " -->"))
 end
 
@@ -144,7 +144,7 @@ T.falsy(
 T.truthy(
   "outside Composer, the kit's demo answers stand in",
   has("Kit.devices.demo(DEMO_DEVICES, DEMO_VARIABLES);")
-    and has("Kit.expressionDemo(DEMO_DEVICES, DEMO_VARIABLES, DEMO_PREVIEW);")
+    and has("Kit.deliver('EVAL_RESULT', Object.assign({ id: params.id")
 )
 T.truthy("and the demo state comes as the driver's would", has("if (command === '_GET_STATE') Kit.deliver('STATE'"))
 local script = page:sub(page:find("/* #end-icon-packs */", 1, true) or 1)
