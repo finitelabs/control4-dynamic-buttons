@@ -342,7 +342,7 @@ saveLook(high, "High", "PARAM{100,1001} >=")
 T.truthy(
   "one that doesn't read as an expression isn't kept",
   (H.lastUi("ERROR") or {}).message
-    == '"Show when": compile error: [string "return __p >="]:1: unexpected symbol near \'<eof>\''
+    == '"Show when": compile error: [string "return __p[1] >="]:1: unexpected symbol near \'<eof>\''
 )
 for i = #logged, 1, -1 do
   logged[i] = nil
