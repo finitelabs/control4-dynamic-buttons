@@ -145,6 +145,10 @@ T.truthy(
     and has("Kit.expressionDemo(DEMO_DEVICES, DEMO_VARIABLES, DEMO_PREVIEW);")
 )
 T.truthy("and the demo state comes as the driver's would", has("if (command === '_GET_STATE') Kit.deliver('STATE'"))
+local script = page:sub(page:find("/* #end-icon-packs */", 1, true) or 1)
+for _, name in ipairs({ "esc", "sendCommand", "waitFor", "friendlyError", "gApiHost", "gDriverId" }) do
+  T.falsy("nor uses its own " .. name .. ", which the kit has", script:find("%f[%w_.$]" .. name .. "%f[^%w_$]"))
+end
 
 T.section("Which look is shown")
 T.truthy("the page takes the small message", has("SHOWN: onShown,"))

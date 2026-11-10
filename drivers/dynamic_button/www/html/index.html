@@ -3153,7 +3153,7 @@ async function readLooksFile(file) {
 function renderImportPanel() {
   var im = gImport;
   $('im-file').innerHTML = '<b>' + Kit.esc(im.fileName) + '</b> &middot; ' + Kit.esc(plural(im.items.length, 'look')) + (im.from ? ', exported from ' + Kit.esc(im.from) : '');
-  $('im-skipped').innerHTML = im.skipped.length ? 'Left out: ' + im.skipped.map(esc).join('; ') + '.' : '';
+  $('im-skipped').innerHTML = im.skipped.length ? 'Left out: ' + im.skipped.map(Kit.esc).join('; ') + '.' : '';
   $('im-skipped').hidden = !im.skipped.length;
   $('im-looks').innerHTML = im.items.map(function(it, i) {
     var reach = [];
