@@ -3,25 +3,27 @@
 ## Overview
 
 Add buttons to Navigator whose picture you design. Each **Dynamic Button** is
-one button in a room's Navigator menus. It shows one of its looks: an included
-icon or icon pack picture, an icon from a free icon library, or a picture of
-your own, with an optional badge that can show a live value. Control4
-programming changes which look the button shows, and pressing the button runs
-the programming you attach to it.
+one button in a room's Navigator menus, showing one of its looks: an included
+icon, an icon from a free icon library, or a picture of your own, with an
+optional badge that can show a live value. Control4 programming, other devices'
+variables or a bound device change which look shows, and pressing the button
+runs the programming you attach to it.
+
+The looks are designed in the driver's own Composer tab, and its included icons
+work with no internet connection.
 
 ## Features
 
 - A Navigator button with up to eight looks, each drawn from an icon in the
-  colors and tile shape you pick
+  colors and tile shape you pick, with an optional badge showing a live value
 - Hundreds of included icons that work with no internet, and a search across
-  more than a dozen free icon packs
+  more than a dozen free icon libraries
+- Icon packs that match the OS 3 and X4 looks, with on, off and alert pictures
+  where a subject has states
 - Your own pictures: an uploaded file, pasted SVG, or a picture from a web
   address, kept as fetched or refreshed on a schedule
-- Three icon packs: Classic Device and Classic Tile, which match the OS 3 look,
-  and Modern, which matches the X4 look
-- Look Control: each press shows the next look, the look follows other devices'
-  variables or the device a look's Button Link is bound to, or only programming
-  changes it
+- The look follows each press, other devices' variables or the device a look's
+  Button Link is bound to, or only programming changes it
 - A timer on any look that goes back to the look before it, or on to another,
   after a set time
 - Looks copied to other Dynamic Buttons in the project, or exported to a file
@@ -32,3 +34,5 @@ the programming you attach to it.
 ## System requirements
 
 - Control4 OS 3.3.1+
+- Internet access on the controller for the icon library search and pictures
+  from a web address
