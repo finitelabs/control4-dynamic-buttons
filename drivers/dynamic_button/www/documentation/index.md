@@ -666,13 +666,14 @@ for two looks named "On" and "Off":
 - **One link** - bind both looks to the device's Toggle link. Set "On" to show
   while its link is on, and "Off" while its link is off. A press toggles the
   device, and the button follows.
-- **Separate links** - bind "Off" to the device's On/Top link and "On" to its
-  Off/Bottom link, and set both to show while their link is off. The On/Top link
-  is off while the device is off, and the Off/Bottom link is off while it's on,
-  as a keypad's LEDs show. A press taps the link of the look shown, so it
-  switches the device, and the button follows. Bound the other way round, each
-  to the link for its own state, the button still shows the right look, but a
-  press repeats what the device is already doing.
+- **Separate links** - bind "On" to the device's Off/Bottom link and set it to
+  show while its link is on, and bind "Off" to its On/Top link and set it to
+  show while its link is off. A light reports whether it's on on every link, the
+  Off/Bottom link too, so "On" shows while the light is on and "Off" while it's
+  off. A press taps the link of the look shown, so it switches the device, and
+  the button follows. Bound the other way round, each to the link for its own
+  state, the button still shows the right look, but a press repeats what the
+  device is already doing.
 
 Show Look, Next Look, Previous Look and the Button tab's `Show` button still
 work. The look they show stays until the links call for a different look, or

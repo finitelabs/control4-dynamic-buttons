@@ -787,11 +787,9 @@ function Light.new(id, opts)
 end
 
 --- @param link integer
---- @return boolean on The link's LED: the On and Toggle links' are on while the light is, the Off link's while it isn't.
+--- @param link integer
+--- @return boolean on The link's LED: every link's, the Off link's too, is on while the light is.
 function Light:led(link)
-  if link == LIGHT_OFF then
-    return not self.on
-  end
   return self.on
 end
 
@@ -1083,7 +1081,7 @@ local LINKS = {
     switchOn = true,
   },
   separate = {
-    showWhile = { A = "off", B = "off", C = "off" },
+    showWhile = { A = "on", B = "off", C = "off" },
     light = lamp,
     links = { A = LIGHT_OFF, B = LIGHT_ON, C = LIGHT_ON },
     switchOn = true,

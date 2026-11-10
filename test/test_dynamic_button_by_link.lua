@@ -231,15 +231,37 @@ led(bulbOff, true)
 T.eq("then the light's reply moves it", shown(), "Bulb on")
 
 T.section("Separate links")
+-- As the docs set them up: "Bulb on" on the light's Off link, "Bulb off" on its On link. The light reports its own
+-- state on both.
+bind(bulbOn, LIGHT_OFF)
+bind(bulbOff, LIGHT_ON)
+led(bulbOn, true)
+led(bulbOff, true)
+T.eq("the light on: the look on its Off link shows", shown(), "Bulb on")
+H.mark()
+H.press()
+T.eq(
+  "and a press taps the Off link",
+  H.proxy[1] and { H.proxy[1].binding, H.proxy[1].command },
+  { linkOf(bulbOn), "DO_PUSH" }
+)
+led(bulbOn, false)
+led(bulbOff, false)
+T.eq("the light off: the look on its On link shows", shown(), "Bulb off")
+H.mark()
+H.press()
+T.eq(
+  "and a press taps the On link",
+  H.proxy[1] and { H.proxy[1].binding, H.proxy[1].command },
+  { linkOf(bulbOff), "DO_PUSH" }
+)
+-- The sections below report each link on its own, as any device with Button Links may.
 bind(bulbOn, LIGHT_ON)
 bind(bulbOff, LIGHT_OFF)
 save(bulbOff, "Bulb off", { showWhile = "on" })
-led(bulbOn, true)
-led(bulbOff, false)
-T.eq("the light on: its On link is on", shown(), "Bulb on")
 led(bulbOn, false)
 led(bulbOff, true)
-T.eq("the light off: its Off link is on", shown(), "Bulb off")
+T.eq("each link on its own", shown(), "Bulb off")
 
 T.section("No look matches")
 local away = addLook("Away")
