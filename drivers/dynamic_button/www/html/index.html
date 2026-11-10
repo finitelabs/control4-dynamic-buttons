@@ -45,7 +45,7 @@
   .cpop .cchip:focus-visible, .cpop .cchip.on { outline: 2px solid var(--accent); outline-offset: 1px; }
   .cpop .chex { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
   .cpop .chex span { width: 28px; height: 28px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.18); flex: none; }
-  .cpop .chex input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); }
+  .cpop .chex input { flex: 1; min-width: 0; font-family: var(--mono); }
   .cpop .cslider { display: grid; grid-template-columns: 14px minmax(0, 1fr) 34px; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 11px; color: var(--text-muted); }
   .cpop .cslider input { -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.15); margin: 0; }
   .cpop .cslider input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #374151; box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; }
@@ -103,9 +103,9 @@
   .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; }
   .linkbtn:hover { text-decoration: underline; }
   .packs { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-  .packs summary { cursor: pointer; padding: 4px 10px; font-size: 12px; list-style: none; }
+  /* Drawn as a select: the kit's arrow at its right. */
+  .packs summary { cursor: pointer; padding: 4px 26px 4px 10px; font-size: 12px; list-style: none; background: var(--chevron) no-repeat right 9px center / 10px 6px; }
   .packs summary::-webkit-details-marker { display: none; }
-  .packs summary::after { content: " \25BE"; color: var(--text-muted); }
   .packlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px 12px; padding: 6px 10px 8px; border-top: 1px solid var(--border); }
   .packlist .all { grid-column: 1 / -1; display: flex; gap: 8px; margin-bottom: 4px; }
   .customize { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
@@ -1199,14 +1199,13 @@ function propOptions(choices, value) {
 }
 
 function renderProps() {
-  Kit.showProperties(gState.properties.filter(function(p) { return PROPS_ELSEWHERE.indexOf(p.name) < 0; }));
+  Kit.showProperties(gState.properties);
 }
 
-// The card's own list, which the kit shows whole: the page shows it again without those.
+// The card's own list, which also gives Look Control its choices.
 function onProperties(data) {
   if (Array.isArray(data.properties)) gState.properties = data.properties;
   renderControl();
-  renderProps();
 }
 
 // Look Control, from the Shown now card.
@@ -3543,7 +3542,7 @@ function openColorPicker(input) {
     }).join('') + '</div>';
   };
   pop.innerHTML = chips('This look', pictureColors()) + chips('Recent', recentColors()) +
-    '<div class="chex"><span></span><input type="text" maxlength="7" spellcheck="false" aria-label="Hex color">' +
+    '<div class="chex"><span></span><input type="text" class="sm" maxlength="7" spellcheck="false" aria-label="Hex color">' +
     '<button type="button" class="cdrop" aria-pressed="false" title="Pick a color from the picture" aria-label="Pick a color from the picture">' + DROPPER_ICON + '</button></div>' +
     '<div class="chint" hidden>Click the picture to pick a color.</div>' +
     ['H', 'S', 'L'].map(function(k) {
@@ -3705,7 +3704,7 @@ document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
 // ============================================================
 (function boot() {
   Kit.initTabs(closeEditor);
-  Kit.initPropertiesCard($('props'));
+  Kit.initPropertiesCard($('props'), { exclude: PROPS_ELSEWHERE });
   $('nav-meta').textContent = 'Dynamic Button' + (Kit.driverId ? ' \u00b7 device ' + Kit.driverId : '');
   // Composer's browser takes a moment to load the font, so it starts before the first badge needs it.
   badgeFont();

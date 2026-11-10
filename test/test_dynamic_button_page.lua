@@ -71,8 +71,10 @@ T.truthy(
   has("Kit.expressionEditor($('f-when')") and has("Kit.expressionEditor($('c-badge')")
 )
 T.truthy("the properties card's driver side is served", driverSource:find("tabProperties:serve()", 1, true))
-T.truthy("and the card is on the page", has("Kit.initPropertiesCard($('props'))"))
-T.truthy("which shows it without what the Shown now card has", has("PROPERTIES: onProperties,"))
+T.truthy(
+  "and the card is on the page, without what the Shown now card has",
+  has("Kit.initPropertiesCard($('props'), { exclude: PROPS_ELSEWHERE });")
+)
 
 T.section("Chunks")
 T.eq("the page's chunk size is the driver's", tonumber(page:match("maxChunk: (%d+)")), Images.MAX_CHUNK)
