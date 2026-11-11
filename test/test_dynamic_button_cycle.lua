@@ -58,11 +58,7 @@ H.press()
 T.eq("a press shows the next look", shown(), "Green")
 T.eq("on the button", H.lastIcon().params.icon_description, "Green")
 T.eq("and fires Look Changed and the look's own event", H.fired, { "Look Changed", "Green Shown" })
-T.eq(
-  "the tab hears the new look, and nothing else",
-  H.ui,
-  { { command = "SHOWN", params = { shown = tostring(green) } } }
-)
+T.eq("the tab hears the new look, and nothing else", H.ui, { { command = "SHOWN", params = { shown = green } } })
 H.press()
 H.press()
 T.eq("each press steps on", shown(), "Off")

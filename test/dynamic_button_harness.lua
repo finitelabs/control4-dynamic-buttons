@@ -3,6 +3,8 @@
 
 require("c4_shim")
 
+local JSON = require("JSON")
+
 local H = {}
 
 local HERE = debug.getinfo(1, "S").source:match("^@(.*)/") or "."
@@ -73,8 +75,16 @@ function C4:SendToProxy(idBinding, strCommand, tParams, strMessage, allowEmpty)
   })
   H.sentTypes[strCommand .. " " .. tostring(strMessage)] = true
 end
+-- Each message goes as one parameter, `json`, as lib.ui.page sends it. It is kept decoded, and the text as sent is
+-- the entry's `json`, which a comparison of entries leaves out.
 function C4:SendDataToUI(strCommand, tParams)
-  table.insert(H.ui, { command = strCommand, params = tParams })
+  local keys = 0
+  for _ in pairs(tParams or {}) do
+    keys = keys + 1
+  end
+  assert(keys == 1 and type(tParams.json) == "string", strCommand .. " goes to the tab as one json parameter")
+  local entry = { command = strCommand, params = JSON:decode(tParams.json) }
+  table.insert(H.ui, setmetatable(entry, { __index = { json = tParams.json } }))
 end
 function C4:FireEvent(name)
   table.insert(H.fired, name)
@@ -298,7 +308,7 @@ end
 function H.state()
   for i = #H.ui, 1, -1 do
     if H.ui[i].params.state then
-      return JSON:decode(H.ui[i].params.state)
+      return H.ui[i].params.state
     end
   end
   return nil
@@ -307,8 +317,19 @@ end
 --- Call a Button tab request with its parameters as the tab sends them, base64 JSON in DATA.
 --- @param command string
 --- @param params table|nil
+--- @return table|nil reply The last message the call sent the tab, its command in `_command`; nil when it sent none.
 function H.tab(command, params)
-  return UIR[command]({ DATA = (C4:Base64Encode(JSON:encode(params or {})):gsub(string.rep(".", 76), "%0\n")) })
+  local before = #H.ui
+  UIR[command]({ DATA = (C4:Base64Encode(JSON:encode(params or {})):gsub(string.rep(".", 76), "%0\n")) })
+  if #H.ui == before then
+    return nil
+  end
+  local last = H.ui[#H.ui]
+  local reply = { _command = last.command }
+  for key, value in pairs(last.params) do
+    reply[key] = value
+  end
+  return reply
 end
 
 --- A small stand-in PNG; only its signature is checked.

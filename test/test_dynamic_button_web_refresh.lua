@@ -526,7 +526,7 @@ T.section("Only a fetch that brought nothing is marked as one")
 answer = { code = 404, headers = {}, body = "" }
 local missed = addWeb(ADDRESS, 300)
 T.contains("a failed fetch says why", missed.error, "404")
-T.eq("and is marked, so a copy leaves out only its look", missed.unfetched, "true")
+T.eq("and is marked, so a copy leaves out only its look", missed.unfetched, true)
 answer = { headers = { ["Content-Type"] = "image/jpeg" }, body = JPEG_A }
 T.eq("an address refused isn't", addWeb("ftp://camera.local/a.jpg", 300).unfetched, nil)
 T.eq("nor a refresh refused", addWeb(ADDRESS, 30).unfetched, nil)
@@ -534,7 +534,7 @@ answer = { headers = { ["Content-Type"] = "image/gif" }, body = "GIF89a......" }
 T.eq("nor a fetched picture the button won't keep", addWeb(ADDRESS, 300).unfetched, nil)
 answer = { headers = { ["Content-Type"] = "image/jpeg" }, body = JPEG_A }
 local most = Pictures.MAX
-Pictures.MAX = #JSON:decode(JSON:decode(H.tab("_GET_STATE")).state).pictures
+Pictures.MAX = #H.tab("_GET_STATE").state.pictures
 local full = addWeb(ADDRESS, 300)
 Pictures.MAX = most
 T.contains("nor a button already full", full.error, "at most")

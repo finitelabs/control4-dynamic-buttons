@@ -67,7 +67,7 @@ end
 local function save(id, name, extra)
   local fields = H.lookFields(name, extra)
   fields.id = id
-  return JSON:decode(H.tab("_SAVE_LOOK", fields))
+  return H.tab("_SAVE_LOOK", fields)
 end
 
 --- Add a look with its picture.
@@ -589,7 +589,7 @@ T.truthy(
 
 T.section("The Button tab")
 T.truthy("By Link has its note", has([['By Link': 'The first look whose link matches its "Show while" shows.']]))
-T.truthy("the Show while row starts hidden", has('<div class="frow" id="fld-while" hidden>'))
+T.truthy("the Show while row starts hidden", has('<div class="kit-form-row" id="fld-while" hidden>'))
 T.truthy("and only By Link shows it", has("$('fld-while').hidden = !byLink();"))
 T.truthy(
   "which offers on and off",

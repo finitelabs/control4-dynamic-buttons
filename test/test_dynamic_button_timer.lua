@@ -74,7 +74,7 @@ end
 local function save(id, name, extra)
   local fields = H.lookFields(name, extra)
   fields.id = id
-  return JSON:decode(H.tab("_SAVE_LOOK", fields))
+  return H.tab("_SAVE_LOOK", fields)
 end
 
 --- @param id integer
@@ -132,7 +132,7 @@ T.eq("a refused save leaves the timer as it was", stateLook(ringing).timerAfter,
 save(ringing, "Ringing", { timerShow = visitor })
 T.eq("without a time, the look stays", stateLook(ringing).timerAfter, nil)
 T.eq("and names no look", stateLook(ringing).timerShow, nil)
-local added = JSON:decode(H.tab("_SAVE_LOOK", H.lookFields("Away", { timerAfter = 60, timerShow = quiet })))
+local added = H.tab("_SAVE_LOOK", H.lookFields("Away", { timerAfter = 60, timerShow = quiet }))
 T.eq("a new look can have one", stateLook(tonumber(added.look)).timerShow, quiet)
 H.tab("_DELETE_LOOK", { id = tonumber(added.look) })
 
@@ -148,7 +148,7 @@ timeUp()
 T.eq("once it's up, the look before shows", shown(), "Visitor")
 T.eq("on the button", H.lastIcon().params.icon_description, "Visitor")
 T.eq("firing Look Changed and the look's own event", H.fired, { "Look Changed", "Visitor Shown" })
-T.eq("and the tab hears it", H.lastUi("SHOWN"), { shown = tostring(visitor) })
+T.eq("and the tab hears it", H.lastUi("SHOWN"), { shown = visitor })
 T.eq("the timer is done", timerSet(), nil)
 T.eq("and its time forgotten", persist:get("LookTimer").due, nil)
 showLook(quiet)

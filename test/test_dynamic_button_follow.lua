@@ -73,14 +73,12 @@ local function setLookControl(mode)
   OnPropertyChanged("Look Control")
 end
 
---- @return string name The shown look, as the Look variable names it.
---- The preview's last answer, sent as one JSON string so the socket can't turn text into a number.
---- @return table|nil result
+--- @return table|nil result The preview's last answer.
 local function evalResult()
-  local pushed = H.lastUi("EVAL_RESULT")
-  return pushed and JSON:decode(pushed.data) or nil
+  return H.lastUi("EVAL_RESULT")
 end
 
+--- @return string name The shown look, as the Look variable names it.
 local function shown()
   return Variables["Look"]
 end
@@ -161,7 +159,7 @@ T.eq("entering By Value shows the match at once", shown(), "High")
 T.eq("and watches what the looks read", listens["100:1001"], 1)
 T.truthy("Look Changed fires", H.fired[1] == "Look Changed")
 T.eq("then the look's own event", H.fired[2], "High Shown")
-T.eq("and the tab hears the small message", H.lastUi("SHOWN").shown, tostring(high))
+T.eq("and the tab hears the small message", H.lastUi("SHOWN").shown, high)
 H.tab("_GET_STATE")
 T.eq("the state says By Value", H.state().lookControl, "By Value")
 T.eq("and which look matched", H.state().matched, high)
@@ -344,7 +342,7 @@ saveLook(high, "High", "PARAM{100,1001} >=")
 T.truthy(
   "one that doesn't read as an expression isn't kept",
   (H.lastUi("ERROR") or {}).message
-    == '"Show when": compile error: [string "return __p >="]:1: unexpected symbol near \'<eof>\''
+    == '"Show when": compile error: [string "return __p[1] >="]:1: unexpected symbol near \'<eof>\''
 )
 for i = #logged, 1, -1 do
   logged[i] = nil
@@ -456,7 +454,7 @@ T.eq("as does By Value set after such a start", shown(), "High")
 
 T.section("The device browser")
 H.tab("_GET_DEVICES")
-local devices = JSON:decode(H.lastUi("DEVICES_DATA").devices)
+local devices = H.lastUi("DEVICES_DATA").devices
 local offered = {}
 for _, device in ipairs(devices) do
   offered[device.id] = true
@@ -471,7 +469,7 @@ ShimSetDevices({
 })
 H.tab("_GET_DEVICES")
 local sorted = {}
-for _, device in ipairs(JSON:decode(H.lastUi("DEVICES_DATA").devices)) do
+for _, device in ipairs(H.lastUi("DEVICES_DATA").devices) do
   table.insert(sorted, device.name)
 end
 T.eq("rooms and names sort whatever their case", sorted, { "amp", "Thermostat", "TV" })
@@ -481,25 +479,24 @@ setDevices()
 H.tab("_GET_DEVICE_VARIABLES", { deviceId = BATTERY })
 local answer = H.lastUi("DEVICE_VARIABLES_DATA")
 T.eq("names the device it answers for", answer.deviceId, tostring(BATTERY))
-local variables = JSON:decode(answer.variables)
+local variables = answer.variables
 T.eq("lists its variables", #variables, 2)
 T.eq("with a value short enough to show", #variables[2].value, 60)
 state = string.rep("v", 59) .. "\195\169"
 setDevices()
 H.tab("_GET_DEVICE_VARIABLES", { deviceId = BATTERY })
-variables = JSON:decode(H.lastUi("DEVICE_VARIABLES_DATA").variables)
+variables = H.lastUi("DEVICE_VARIABLES_DATA").variables
 T.eq("cut on a whole character", variables[2].value, string.rep("v", 59))
 state = "caf\195\169"
 setDevices()
 H.tab("_GET_DEVICE_VARIABLES", { deviceId = BATTERY })
-variables = JSON:decode(H.lastUi("DEVICE_VARIABLES_DATA").variables)
+variables = H.lastUi("DEVICE_VARIABLES_DATA").variables
 T.eq("a short value keeps its last character", variables[2].value, "caf\195\169")
 state = "Idle"
 setDevices()
 
 T.section("The preview")
 H.tab("_EVAL_EXPRESSION", { id = "7", expression = LEVEL .. " >= 80" })
-T.eq("is one JSON string", type(H.lastUi("EVAL_RESULT").data), "string")
 local preview = evalResult()
 T.eq("answers its request", preview.id, "7")
 T.eq("with the result", preview.result, "true")
@@ -522,16 +519,16 @@ T.eq("which doesn't hold Save: the variable may come", preview.hold, nil)
 local OWN = "A look can't follow this button's own variables."
 H.tab("_EVAL_EXPRESSION", { id = "10", expression = "PARAM{" .. H.DEVICE_ID .. ",1} == 'x'" })
 preview = evalResult()
-T.eq("this button's own variable holds Save, in a plain sentence", { preview.error, preview.hold }, { OWN, "yes" })
+T.eq("this button's own variable holds Save, in a plain sentence", { preview.error, preview.hold }, { OWN, true })
 H.tab("_EVAL_EXPRESSION", { id = "14", expression = LEVEL .. " > 3 -- was PARAM{" .. H.DEVICE_ID .. ",1} == 'x'" })
 T.eq("but not one in a comment, which isn't read", evalResult().hold, nil)
 H.tab("_EVAL_EXPRESSION", { id = "11", expression = "PARAM{" .. (H.DEVICE_ID + 1) .. ",1} == 1" })
 T.eq("and its proxy's", evalResult().error, OWN)
 H.tab("_EVAL_EXPRESSION", { id = "b12", expression = "PARAM{" .. H.DEVICE_ID .. ",1}", mode = "string" })
-T.eq("a live badge's text too", { evalResult().error, evalResult().hold }, { OWN, "yes" })
+T.eq("a live badge's text too", { evalResult().error, evalResult().hold }, { OWN, true })
 H.tab("_EVAL_EXPRESSION", { id = "13", expression = LEVEL .. " >=" })
 preview = evalResult()
-T.eq("one that doesn't read as an expression holds Save", preview.hold, "yes")
+T.eq("one that doesn't read as an expression holds Save", preview.hold, true)
 T.truthy("as the engine words it", preview.error:find("^compile error: "))
 T.eq("still in names", preview.rendered, "[Garage > Battery > LEVEL] >=")
 H.ui = {}

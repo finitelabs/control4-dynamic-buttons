@@ -14,6 +14,12 @@ local Looks = require("dynamic_button.looks")
 local file = assert(io.open(H.DRIVER:gsub("driver%.lua$", "www/html/index.html"), "r"))
 local page = file:read("*a")
 file:close()
+file = assert(io.open(H.DRIVER:gsub("drivers/dynamic_button/driver%.lua$", "src/lib/ui/page.js"), "r"))
+local kit = file:read("*a")
+file:close()
+file = assert(io.open(H.DRIVER:gsub("drivers/dynamic_button/driver%.lua$", "src/lib/ui/style.css"), "r"))
+local style = file:read("*a")
+file:close()
 
 --- @param text string
 --- @return boolean present The page's source has that text.
@@ -22,9 +28,52 @@ local function has(text)
 end
 
 T.section("Commands")
+T.truthy("the page sends through lib/ui", has("<!-- #embed ../../../../src/lib/ui/page.js -->"))
 T.truthy(
-  "each command's base64 is wrapped, so the broker never meets a long unbroken run",
-  has("DATA: btoa(unescape(encodeURIComponent(JSON.stringify(params || {})))).replace(/.{76}/g, '$&\\n')")
+  "whose base64 is wrapped, so the broker never meets a long unbroken run",
+  kit:find('.replace(/.{76}/g, "$&\\n")', 1, true) ~= nil
+)
+T.truthy("and so is a command to another Dynamic Button, on the kit's link", has("var link = Kit.follow(id)"))
+for _, component in ipairs({ "variables.js", "expressions.js" }) do
+  T.truthy("it embeds the kit's " .. component, has("<!-- #embed ../../../../src/lib/ui/" .. component .. " -->"))
+end
+
+T.section("Every command the driver sends reaches the page")
+local dfile = assert(io.open(H.DRIVER, "r"))
+local driverSource = dfile:read("*a")
+dfile:close()
+local handled = {}
+for command in (page:match("var DRIVER_HANDLERS = {(.-)\n};") or ""):gmatch("\n%s*([A-Z_]+):") do
+  handled[command] = true
+end
+local missing = {}
+local seen = {}
+for _, sender in ipairs({ "page%.send", "reply", "sendPieces" }) do
+  for command in driverSource:gmatch(sender .. '%("([A-Z_]+)"') do
+    if not seen[command] then
+      seen[command] = true
+      if not handled[command] then
+        missing[#missing + 1] = command
+      end
+    end
+  end
+end
+T.truthy("the page lists them", next(handled) ~= nil)
+T.truthy("the driver's sends were read", seen.STATE and seen.ERROR and seen.PICTURE)
+T.eq("and none is missing, so none waits out a timeout", missing, {})
+T.falsy("nothing sends past the kit's one json parameter", driverSource:find("SendDataToUI", 1, true))
+-- The kit's driver modules answer its components, which the page embeds.
+T.truthy("the variable browser's driver side is served", driverSource:find("uiDevices.serve(", 1, true))
+T.truthy("and the browser is on the page", has("Kit.variableBrowser($('var-browser')"))
+T.truthy("the preview's driver side is served", driverSource:find("expressionTab.serve(", 1, true))
+T.truthy(
+  "and both editors are on the page",
+  has("Kit.expressionEditor($('f-when')") and has("Kit.expressionEditor($('c-badge')")
+)
+T.truthy("the properties card's driver side is served", driverSource:find("tabProperties:serve()", 1, true))
+T.truthy(
+  "and the card is on the page, without what the Shown now card has",
+  has("Kit.initPropertiesCard($('props'), { exclude: PROPS_ELSEWHERE });")
 )
 
 T.section("Chunks")
@@ -33,12 +82,12 @@ T.eq("and so is its fallback", tonumber(page:match("gState%.maxChunk || (%d+)"))
 
 T.section("How often it asks for the state")
 T.falsy("no poll", has("setInterval(refresh"))
-local boot = page:match("initSocket%(%);(.-)%}%)%(%);")
+local boot = page:match("connectDriver%((.-)%}%);")
 T.truthy("the boot code is found", boot)
-T.falsy("and boot leaves asking to the socket's connect", boot:find("refresh", 1, true))
+T.truthy("and boot leaves asking to each connect", boot and boot:find("onConnect: refresh", 1, true))
 
-local _, refreshes = page:gsub("refresh%(%)", "")
-T.eq("and nothing else asks that way, so no refresh follows IMAGE_STORED", refreshes, 2)
+local _, refreshes = page:gsub("%f[%w.]refresh%(%)", "")
+T.eq("and nothing else asks that way, so no refresh follows IMAGE_STORED", refreshes, 1)
 
 T.section("Answers come over the socket")
 T.falsy("nothing reads an answer from a REST reply", has("applyReply") or has("replyOf"))
@@ -51,135 +100,62 @@ T.truthy("and the preview's", has('id="fld-when-preview" hidden') and has('id="f
 T.truthy("only By Value shows them", has("$(id).hidden = !byValue();"))
 T.truthy("By Value is how the page knows", has("return gState.lookControl === 'By Value';"))
 T.truthy("the list follows the same rule", has("if (!byValue()) return '';"))
-T.truthy("a variable goes in as a token", has('data-token="PARAM{'))
+T.truthy(
+  "a variable goes in as a token, into the box the list was opened from",
+  has("Kit.variableBrowser($('var-browser'), { target: function() { return $(gVarBox); } });")
+)
 T.truthy("the save sends the expression and the default", has("showWhen: l.showWhen || '', isDefault: !!l.isDefault"))
 T.truthy("a default or match that's gone doesn't carry over", has("{ shown: null, defaultLook: null, matched: null }"))
-T.truthy("an answer to earlier text is dropped", has("if (String(p.id) !== String(gEvalSeq)) return;"))
-T.truthy("from the moment the text changes", has("clearTimeout(gEvalTimer);\n  gEvalSeq++;"))
+T.truthy(
+  "its preview runs only under By Value",
+  has("previewWhen: function(text) { return byValue() && text.trim() !== ''; }")
+)
+T.truthy(
+  "and asks again when By Value comes or goes",
+  has("if (wasHidden === byValue() && gEditor.look) whenEditor.preview(true);")
+)
 
 T.section("Show when's editor")
-T.truthy("a textarea over a colored copy of its text", has('<pre id="when-hl"') and has('id="f-when"'))
+T.truthy("is the kit's", has("var whenEditor = Kit.expressionEditor($('f-when'), {"))
+T.truthy("whose errors name the field", has("label: 'Show when',"))
 T.truthy(
-  "the text itself is transparent",
-  has("background: transparent; color: transparent; caret-color: var(--text);")
+  "with its preview, which keeps the watch line under it",
+  has("preview: $('when-preview'),") and has('<div class="kit-prev-foot" id="when-watch" hidden>')
 )
-T.truthy("and the two stay the same height", has("box.style.height = Math.max(64, box.scrollHeight) + 'px';"))
-T.truthy("what's colored is escaped", has("escMin(text).replace(HL_RE"))
-T.truthy("the help opens beside the label", has('id="when-help-toggle"') and has('id="fld-when-help" hidden'))
-T.truthy("the preview shows its references", has(">References<") and has("With current values"))
-T.truthy("and a plain result", has("isTrue ? 'True' : 'False'"))
-T.truthy("how many it watches", has("'Watching ' + n + ' reference'"))
-T.truthy("and marks what's used in the browser", has("(isUsed ? ' used' : '')") and has('class="ins">Insert'))
-
-T.section("What the sandbox has, the help and the highlighter have")
-local sandboxFile =
-  assert(io.open(H.DRIVER:gsub("drivers/dynamic_button/driver%.lua$", "src/lib/expression-sandbox.lua"), "r"))
-local sandbox = sandboxFile:read("*a")
-sandboxFile:close()
-local help = page:match('id="when%-help">(.-)id="fld%-when%-browser"')
-local names = page:match("var WHEN_NAMES = '([^']*)'")
-local found = 0
-for name in sandbox:match("return {\n    __p = bindings,(.-)\n  }"):gmatch("\n%s+([%w_]+) = ") do
-  found = found + 1
-  T.truthy(name .. " is in the help", help:find("<code>" .. name, 1, true))
-  if name ~= "math" and name ~= "string" then
-    T.truthy(name .. " is colored", ("|" .. names .. "|"):find("|" .. name .. "|", 1, true))
-  end
-end
-T.truthy("the sandbox's names were read", found >= 18)
-T.truthy("the words a condition uses are colored", has("'|and|or|not|true|false)"))
-T.falsy(
-  "names it no longer has aren't",
-  ("|" .. names .. "|"):find("|value|", 1, true) or ("|" .. names .. "|"):find("|map|", 1, true)
+T.truthy("how many it watches", has("watch: $('when-watch'),"))
+T.truthy(
+  "and the help, which opens beside the label",
+  has("help: { toggle: $('when-help-toggle'), panel: $('when-help'), wrap: $('fld-when-help') },")
+    and has('id="fld-when-help" hidden')
 )
+T.truthy(
+  "each look's row says an error as the preview does",
+  has("Kit.esc(Kit.expressionError(l.whenError, l.showWhen, l.showWhenText, 'Show when'))")
+)
+T.truthy("with the engine's text in its title", has('<div class="sub bad" title="\' + Kit.esc(l.whenError) + \'">'))
 
-T.section("Errors in plain sentences")
-T.truthy("the preview says it", has("error.textContent = friendlyError(p.error, $('f-when').value, p.rendered);"))
-T.truthy("with the engine's text in its title", has("error.title = p.error;"))
-T.truthy("each look's row says it", has("esc(friendlyError(l.whenError, l.showWhen, l.showWhenText))"))
-T.truthy("with the engine's text in its title too", has('<div class="sub bad" title="\' + esc(l.whenError) + \'">'))
-T.truthy("what isn't recognized stays as it is", has("if (!m) return text;"))
-T.truthy("the engine's name for a value never shows", has(".replace(/__p(\\[\\d+\\])?/g, 'a variable')"))
-
--- Each mistake as the real engine reports it, and what the page has ready for that text.
-local Expressions = require("lib.expressions")
-ShimSetDevices({
-  [100] = {
-    deviceName = "Battery",
-    roomName = "Garage",
-    variables = {
-      ["1001"] = { name = "LEVEL", value = "62", type = "NUMBER" },
-      ["1002"] = { name = "STATE", value = "Idle", type = "STRING" },
-    },
-  },
-})
-for _, case in ipairs({
-  { "PARAM{100,1001} >=", "unexpected symbol near '<eof>'", "It stops before it's finished" },
-  { "(PARAM{100,1001} > 5", "')' expected near '<eof>'", "It stops before it's finished: " },
-  { "PARAM{100,1001} PARAM{100,1001}", "'<eof>' expected near '__p'", "It reads as finished before " },
-  { '"abc', "unfinished string near", "a closing quote is missing" },
-  { "PARAM{100,1001} = 5", "'<eof>' expected near '='", "Use == to compare, not =." },
-  { "PARAM{100,1002} > 5", "attempt to compare number with string", "This can't compare " },
-  { 'PARAM{100,1001} > "x"', "attempt to compare string with number", "This can't compare " },
-  { "PARAM{100,1002} + 1 > 5", "attempt to perform arithmetic on a string value", "This does math on text" },
-  { "nope(1) > 5", "attempt to call global 'nope' (a nil value)", "There's no function named " },
-  { "nope.level > 5", "attempt to index global 'nope' (a nil value)", "There's nothing named " },
-  {
-    "PARAM{100,1001}",
-    "result is not a boolean (got number)",
-    '"Show when" has to come out true or false: add a comparison.',
-  },
-  { "PARAM{100,NOPE} > 5", "variable NOPE not found on device 100", " has no variable " },
-  { "PARAM{200,1} > 5", "device 200 not found", "There's no device " },
-}) do
-  local reported = Expressions.evaluate("condition", case[1]).error or ""
-  T.truthy(case[2], reported:find(case[2], 1, true))
-  T.truthy("has its sentence", has(case[3]))
-end
-Expressions:new({
-  getExpressions = function()
-    return {}
-  end,
-  recompute = function() end,
-}):handleDeviceRemoved(100)
-local removed = Expressions.evaluate("condition", "PARAM{100,1001} > 5").error or ""
-T.truthy("a device removed says so", removed:find("was removed from the project", 1, true))
-T.truthy("and the page reads it", has("was removed from the project$/"))
-
-T.section("Every command goes through sendCommand, which wraps it")
+T.section("Every command goes through the kit")
 local _, posts = page:gsub("api%('POST'", "")
-T.eq("one place sends commands", posts, 1)
-T.truthy("the preview uses it", has("sendCommand('_EVAL_EXPRESSION'"))
-T.truthy("and the browser", has("sendCommand('_GET_DEVICES')") and has("sendCommand('_GET_DEVICE_VARIABLES'"))
-
-T.section("Every select draws one arrow")
-local shared = page:find('select, input[type="text"], input[type="search"] {', 1, true)
-local arrow = page:find("\n  select { appearance: none; -webkit-appearance: none;", 1, true)
-T.truthy("the browser's own is off, after the shared rule's background", shared and arrow and arrow > shared)
-local arrowRule = arrow and page:sub(arrow, page:find("\n", arrow + 1, true)) or ""
-T.truthy("it's a chevron in the page's muted color", arrowRule:find("stroke='%236b7280'", 1, true))
-T.eq("the muted color is still that", page:match("%-%-text%-muted: (#%x+);"), "#6b7280")
+T.eq("the page posts no command itself", posts, 0)
+T.falsy(
+  "nor keeps a link or banner of its own",
+  has('id="conn-bar"') or has('id="conn-warn"') or has("function setConn(")
+)
 T.truthy(
-  "the same distance in from the edge everywhere",
-  arrowRule:find("background-position: right 10px center;", 1, true)
+  "outside Composer, the kit's demo answers stand in",
+  has("Kit.devices.demo(DEMO_DEVICES, DEMO_VARIABLES);")
+    and has("Kit.deliver('EVAL_RESULT', Object.assign({ id: params.id")
 )
-T.truthy("that doesn't repeat", arrowRule:find("background-repeat: no-repeat;", 1, true))
-T.truthy("and a long choice stops short of it", arrowRule:find("padding-right: 28px;", 1, true))
-T.falsy(
-  "no later rule sets a select's padding",
-  page:find("\n[^\n]*%f[%w]select%f[%W][^\n{]*{[^\n}]*padding:", arrow + #arrowRule, false)
-)
-T.falsy(
-  "or its background",
-  page:find("\n[^\n]*%f[%w]select%f[%W][^\n{]*{[^\n}]*background", arrow + #arrowRule, false)
-)
+T.truthy("and the demo state comes as the driver's would", has("if (command === '_GET_STATE') Kit.deliver('STATE'"))
+local script = page:sub(page:find("/* #end-icon-packs */", 1, true) or 1)
+for _, name in ipairs({ "esc", "sendCommand", "waitFor", "friendlyError", "gApiHost", "gDriverId" }) do
+  T.falsy("nor uses its own " .. name .. ", which the kit has", script:find("%f[%w_.$]" .. name .. "%f[^%w_$]"))
+end
 
 T.section("Which look is shown")
-T.truthy("the page takes the small message", has("if (cmd === 'SHOWN') onShown(params);"))
+T.truthy("the page takes the small message", has("SHOWN: onShown,"))
 
 T.section("The preview's result")
-T.truthy("and a rendered expression the socket turned falsy", has("String(p.rendered == null ? '' : p.rendered)"))
-T.truthy("the box measures again when its width changes", has("}).observe($('f-when'));"))
 T.falsy("nothing reads it as the socket's boolean any more", has("String(p.result) === 'true'"))
 T.truthy(
   "the button that opens the list isn't named like a row's Insert",
@@ -189,24 +165,27 @@ T.truthy(
 T.section("What the driver would refuse holds Save")
 T.truthy(
   "a Show when that doesn't read, or reads this button's own variables, holds Save",
-  has("if (gEditor.whenHold) return '\"Show when\": ' + gEditor.whenHold;")
-    and has("gEditor.whenHold = p.hold ? friendlyError(p.error, $('f-when').value, p.rendered) : '';")
+  has("if (whenEditor.hold) return '\"Show when\": ' + whenEditor.hold;")
 )
 T.truthy(
   "and so does a live badge on this button's own variables",
-  has("if (isLiveText(badge) && gEditor.badgeHold) return 'Badge: ' + gEditor.badgeHold;")
+  has("if (isLiveText(badge) && badgeEditor.hold) return 'Badge: ' + badgeEditor.hold;")
 )
 T.truthy(
   "a refusal reads as the preview does",
-  has("return m ? '\"Show when\": ' + friendlyError(m[1], $('f-when').value) : msg;")
+  has("return m ? '\"Show when\": ' + Kit.expressionError(m[1], whenEditor.value(), '', 'Show when') : msg;")
 )
 T.truthy(
   "a look opens on a fresh preview, not the last look's",
-  has("gEditor.whenHold = '';\n  gEditor.badgeHold = '';\n  showPreviewHint();")
+  has("gEditor.whenResult = null;\n  gEditor.badgeResult = null;\n  whenEditor.setValue(gEditor.look.showWhen || '');")
 )
 T.truthy(
   "a badge too long to be one is marked as it's typed",
-  has("box.classList.toggle('input-error', !live && long);")
+  has("$('c-badge').classList.toggle('input-error', long);")
+)
+T.truthy(
+  "a badge's text is one line that previews while it reads a variable",
+  has("singleLine: true,\n  previewWhen: isLiveText,")
 )
 
 T.section("The editor's sections")
@@ -224,8 +203,6 @@ T.truthy(
   "and it starts where the driver does",
   has(string.format("var BADGE_EVERY = %d;", Looks.DEFAULT_BADGE_EVERY_SECONDS))
 )
-T.truthy("Show when's count reads its own box, whichever box the list last served", has("usedTokens('f-when')"))
-T.truthy("the list marks what its own box reads", has("used = usedTokens(gVarBox)"))
 T.truthy(
   "a push under another Look Control leaves the badge's list open",
   has("if (gVarBox === 'f-when') $('fld-when-browser').hidden = true;")
@@ -238,7 +215,7 @@ T.truthy(
   "the slider's range is the driver's",
   has(string.format('id="c-badge-size" min="%d" max="%d"', Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE))
 )
-for note in page:gmatch('<span class="fnote"') do
+for note in page:gmatch('<span class="kit-form-note"') do
   T.truthy("a note isn't inside its control's row, where it would push the label down: " .. note, false)
 end
 
@@ -250,50 +227,42 @@ for _ in page:gmatch("await loadImage%(svgUrl%(") do
 end
 T.eq("both of drawLook's pictures load that way", loaded, 2)
 
-T.section("The page's own color picker")
+T.section("The color picker")
 local colorInputs = 0
 for _ in page:gmatch('<input type="color"') do
   colorInputs = colorInputs + 1
 end
 T.eq("the look editor has its nine color boxes", colorInputs, 9)
 T.truthy(
-  "each gets the page's picker",
-  has("document.querySelectorAll('input[type=\"color\"]').forEach(attachColorPicker)")
+  "each gets the kit's picker",
+  has("document.querySelectorAll('input[type=\"color\"]').forEach(function(input) {\n  Kit.colorPicker(input, {")
 )
-T.truthy("and Edge's own picker never opens: the input hides", has("input.hidden = true;"))
-T.truthy("and its label opens the page's picker", has("label.htmlFor = btn.id;"))
+T.truthy("keeping the recent colors the page always kept", has("recentKey: 'dynamicButtonRecentColors',"))
 T.truthy(
-  "a value the page sets in code shows on the swatch",
-  has("set: function(v) { INPUT_VALUE.set.call(this, v); paintSwatch(this); }")
+  "offering the look's own colors first",
+  has("offer: function() { return [{ title: 'This look', colors: pictureColors() }]; },")
 )
-T.truthy("Escape puts the color back", has("if (pop.dropping) pop.stopDropping();\n    else closeColorPicker(false);"))
-T.truthy("as the look had it, not as the box's value", has("var was = JSON.parse(pop.before), l = gEditor.look;"))
-T.truthy("and only onto that look, if another is open by then", has("pop.before && gEditor.look === pop.look"))
-T.truthy("recent colors survive a browser that refuses storage", has("try { localStorage.setItem(RECENT_COLORS_KEY"))
+T.truthy(
+  "Escape puts the look back as it was, not as the box's value",
+  has("var was = JSON.parse(gColorBefore.was), l = gEditor.look;")
+)
+T.truthy(
+  "and only onto that look, if another is open by then",
+  has("if (!gColorBefore || gEditor.look !== gColorBefore.look) return;")
+)
+T.truthy("closing the editor closes the picker", has("function closeEditor() {\n  Kit.colorPicker.close(true);"))
 
 T.section("The dropper")
 T.falsy("Edge's own dropper is never used: it reads the wrong place in Composer's window", has("EyeDropper"))
 T.truthy(
   "it reads the preview the page drew",
-  has("function previewPicture() { return $('edit-tile').querySelector('img'); }")
+  has("function previewPicture() { return $('edit-tile').querySelector('img'); }") and has("image: previewPicture,")
 )
-T.truthy(
-  "a pick is the color as the picture shows over its tile",
-  has("return hexOf(tileBackdrop().map(function(v, i) { return d[i] * a + v * (1 - a); }));")
-)
-T.truthy(
-  "a click on the picture picks, and the picker stays open",
-  has("e.preventDefault();\n        pickColor(input, hex);\n        show(hex);\n        return;")
-)
-T.truthy("Escape while picking only stops picking", has("if (pop.dropping) pop.stopDropping();"))
-T.truthy("only a left click picks", has("p = e.button === 0 && img && e.target === img && previewPixel(img, e)"))
-T.truthy("a near miss on the tile only stops the dropper", has("if ($('edit-tile').contains(e.target)) return;"))
+T.truthy("a pick is the color as the picture shows over its tile", has("backdrop: tileBackdrop,"))
 T.truthy(
   "it shows for a look with a picture, even while the preview draws",
-  has("drop.hidden = !(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing);")
+  has("when: function() { return !!(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing); },")
 )
-T.truthy("closing the editor closes the picker", has("function closeEditor() {\n  closeColorPicker(true);"))
-T.truthy("and the picker closing stops it too", has("pop.stopDropping();\n  pop.remove();"))
 
 T.section("Duplicate")
 T.truthy("each look's row has Duplicate", has('data-act="copy"'))
@@ -363,10 +332,6 @@ T.truthy(
 T.truthy("a raster is kept at most 600 px on its long side", has("var MINE_SIDE = 600"))
 T.truthy("as a JPEG when opaque and a PNG otherwise", has("c.toDataURL(opaque ? 'image/jpeg' : 'image/png', 0.9)"))
 T.truthy(
-  "a fetch's request starts with a letter, so it never arrives as a number",
-  has("var request = 'f' + Date.now()")
-)
-T.truthy(
   "a fetched picture is named by its address's last part",
   has("p = await pictureFromBlob(new Blob([bytes]), nameFromUrl(url));")
 )
@@ -385,7 +350,7 @@ T.truthy(
   ) and has("if (l.icon && isPicture(l.icon) && !keptHere) {")
 )
 T.truthy(
-  "a message in pieces drops its line breaks",
+  "a message in pieces drops the spaces that break it",
   has([[p.parts[index - 1] = String(params.data || '').replace(/\s+/g, '');]])
 )
 local keep, save = page:find("await keepPicture(l.icon)", 1, true), page:find("call('_SAVE_LOOK'", 1, true)
@@ -427,7 +392,7 @@ T.truthy(
 )
 T.truthy(
   "the controller fetches it again to keep it",
-  has("sendCommand('_ADD_WEB_PICTURE', { request: request, url: rec.url, every: rec.every });")
+  has("Kit.call('_ADD_WEB_PICTURE', { request: request, url: rec.url, every: rec.every }, 'PICTURE_STORED', 60000)")
 )
 T.truthy(
   "a kept one gone from the button is fetched again, not uploaded",
@@ -437,10 +402,13 @@ T.truthy(
   "opening its look restores Address and Refresh",
   has("$('mi-url').value = opened.url || '';") and has("$('mi-every').value = String(opened.every);")
 )
-T.truthy("the grid tags it with how often", has("tag.textContent = rec.every ? REFRESH_TAGS[rec.every] || '' : 'SVG';"))
+T.truthy(
+  "the grid tags it with how often",
+  has("tag: rec.every ? REFRESH_TAGS[rec.every] || '' : rec.kind === 'svg' ? 'SVG' : ''")
+)
 T.truthy(
   "the picked line says how often and how its last refresh went",
-  has("', refreshed ' + esc(REFRESH_WORDS[every] || '')")
+  has("', refreshed ' + Kit.esc(REFRESH_WORDS[every] || '')")
 )
 T.truthy("the list shows a failed refresh", has("function refreshLines(l) {"))
 T.truthy(
@@ -474,20 +442,10 @@ T.truthy(
   has("async function applyLooks(link, name, items, replace, say)")
 )
 T.truthy(
-  "another button answers on a subscription of its own on the same socket",
-  has("'/api/v1/items/' + id + '/datatoui?SubscriptionClient=' + engine.id")
-    and has("gSocket.emit('startSubscription', ev);")
+  "another button answers on the kit's link, kept and used again by the next copy",
+  has("var link = Kit.follow(id), state = null, failed = null;") and has("if (gLinks[id]) return gLinks[id];")
 )
-T.truthy(
-  "which stays for the socket's life and is used again, since Director documents no way to end one",
-  has("if (ev && engineId === engine.id) return true;") and has("if (gLinks[id]) return gLinks[id];")
-)
-T.truthy("and a stale one is let go of by its own handler alone", has("gSocket.off(ev, onEvent)"))
-T.falsy("never every handler on the event", has("gSocket.off(ev);") or has("gSocket.off(ev) "))
-T.truthy(
-  "and its commands go through the one sender",
-  has("send: function(cmd, params) { return sendCommandTo(id, cmd, params); }")
-)
+T.truthy("and its commands go through it", has("open: link.open, send: link.send, call: link.call"))
 local drawAt = page:find(
   "var dataUrl = await lookDataUrl(Object.assign({}, look, { custom: custom, badgeNow: null }), 300);",
   1,
@@ -545,7 +503,7 @@ T.truthy(
   "each look shows its Show when, live badge text and web address, escaped",
   has("reach.push(['Show when', it.look.showWhen]);")
     and has("reach.push(['Web address', it.picture.url]);")
-    and has("<code>' + esc(r[1]) + '</code>")
+    and has("<code>' + Kit.esc(r[1]) + '</code>")
 )
 
 T.section("A refreshing picture that doesn't fetch costs only its look")
@@ -556,7 +514,7 @@ T.truthy(
 T.truthy("and the result names it", has("'. Left out, ' + (unfetched.length === 1 ? 'its web picture didn’t'"))
 T.truthy(
   "only on the driver's mark of a fetch that brought nothing",
-  has("unfetched: !!every && String(kept.unfetched) === 'true'")
+  has("unfetched: !!every && kept.unfetched === true")
 )
 T.falsy("never on any refusal", has("unfetched: !!every && !link.failure()"))
 T.truthy("Export's note agrees with one picture or many", has("(webs === 1 ? ' that refreshes' : ' that refresh')"))
@@ -628,12 +586,9 @@ T.section("Icon licenses")
 T.truthy("the card is collapsed until it's opened", has('<details class="card" id="lic-card">'))
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
 
-T.section("The preview's answer")
-T.truthy(
-  "arrives as one JSON string, so a badge reading 007 isn't turned into 7",
-  has("if (cmd === 'EVAL_RESULT') onEvalResult(JSON.parse(params.data || '{}'));")
-)
-T.truthy("and its result is compared as the text it is", has("var isTrue = p.result === 'true';"))
+T.section("A badge's answer")
+T.truthy("is the kit's, with the driver's fitted text", has("now = result.error ? '' : Kit.str(result.fitted)"))
+T.truthy("and its error in plain words", has("note.textContent = result.error ? result.message"))
 
 T.section("A sentence names the field in quotes")
 T.truthy("under Look Control", has([['The first look whose "Show when" is true shows.']]))
