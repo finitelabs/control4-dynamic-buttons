@@ -1,4 +1,4 @@
-<p><img src="FACTS-STRIP-URL" alt="" width="1200" height="68" /></p>
+<p><img src="https://drivercentral.io/images/companies/61/Dynamic%20Buttons/facts-strip-2400x136.png?1794365613000" alt="" width="1200" height="68" /></p>
 
 ## Overview
 
