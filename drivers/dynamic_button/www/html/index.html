@@ -9,6 +9,8 @@
 <!-- #embed ../../../../src/lib/ui/style.css -->
 <!-- #embed ../../../../src/lib/ui/variables.css -->
 <!-- #embed ../../../../src/lib/ui/expressions.css -->
+<!-- #embed ../../../../src/lib/ui/color.css -->
+<!-- #embed ../../../../src/lib/ui/pickgrid.css -->
   :root { --tile: #1c1c1e; --tile-text: #ffffff; }
   .card h3 .kit-pill { text-transform: none; letter-spacing: 0; }
   .cols { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; align-items: start; }
@@ -31,45 +33,10 @@
   .lookrow .sub { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lookrow .acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .below { margin-top: 10px; }
 
-  /* The page's own color picker: a swatch button over each color input, which only holds the value. */
-  .cswatch { width: 44px; height: 28px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; flex: none; }
-  .cswatch span { display: block; width: 100%; height: 100%; border-radius: 3px; border: 1px solid rgba(0,0,0,0.12); }
-  .cswatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .cswatch.no-color span { background: linear-gradient(to top right, transparent calc(50% - 1px), #9ca3af calc(50% - 1px), #9ca3af calc(50% + 1px), transparent calc(50% + 1px)), #fff !important; }
-  .cpop { position: absolute; z-index: 50; width: 264px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
-  .cpop .crow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .cpop .clabel { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
-  .cpop .cchip { width: 22px; height: 22px; padding: 0; border-radius: 4px; border: 1px solid rgba(0,0,0,0.18); cursor: pointer; }
-  .cpop .cchip:focus-visible, .cpop .cchip.on { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .cpop .chex { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .cpop .chex span { width: 28px; height: 28px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.18); flex: none; }
-  .cpop .chex input { flex: 1; min-width: 0; font-family: var(--mono); }
-  .cpop .cslider { display: grid; grid-template-columns: 14px minmax(0, 1fr) 34px; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 11px; color: var(--text-muted); }
-  .cpop .cslider input { -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.15); margin: 0; }
-  .cpop .cslider input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #374151; box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; }
-  .cpop .cslider code { text-align: right; font-size: 11px; }
-  .cpop .cdrop { width: 30px; height: 30px; padding: 6px; flex: none; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); cursor: pointer; }
-  .cpop .cdrop[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .cpop .cdrop svg { display: block; width: 100%; height: 100%; }
-  .cpop .chint { margin: -4px 0 10px; font-size: 11px; color: var(--text-muted); }
-  body.cdropping #edit-tile { outline: 2px solid var(--accent); outline-offset: 3px; }
-  body.cdropping #edit-tile img { cursor: crosshair; }
-  .cloupe { position: fixed; z-index: 60; pointer-events: none; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); text-align: center; }
-  .cloupe canvas { display: block; width: 99px; height: 99px; border-radius: 4px; image-rendering: pixelated; }
-  .cloupe code { display: block; margin-top: 3px; font-size: 11px; }
-  .colorrow { display: flex; align-items: center; gap: 8px; }
-  .colorrow code { font-size: 12px; color: var(--text-muted); }
-  .rangerow { display: flex; align-items: center; gap: 8px; min-height: 28px; }
-  .rangerow input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
-  .rangerow code { font-size: 12px; color: var(--text-muted); width: 36px; text-align: right; }
-  /* The look's settings: labels in one column, their controls lined up in the next. */
-  .lookform { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px 14px; align-items: center; }
-  .lookform .frow { display: contents; }
-  .lookform .frow[hidden] { display: none; }
-  .lookform .frow > label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin: 0; }
-  .lookform .fctl { display: flex; align-items: center; gap: 8px; min-height: 30px; min-width: 0; }
+  /* A hidden row stays hidden: the kit's rows are display: contents. */
+  .kit-form-row[hidden] { display: none; }
   #f-name { width: 280px; max-width: 100%; }
   .timerrow { flex-wrap: wrap; }
   .timerrow select { width: auto; }
@@ -77,13 +44,13 @@
   #f-timer-show { max-width: 220px; }
   #f-while { width: auto; }
   .timer-then { margin-left: -6px; color: var(--text); }
-  #fld-glow .rangerow { width: 280px; max-width: 100%; }
+  #fld-glow .kit-range { width: 280px; max-width: 100%; }
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .control label { margin: 0; }
   .control select { width: auto; min-width: 110px; }
   .whenlabel { align-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding-top: 9px; }
   .whenlabel label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin: 0; }
-  .lookform .fctl.whenbox { align-items: flex-start; }
+  .kit-form-ctl.whenbox { align-items: flex-start; }
   .lookrow .sub.bad { color: var(--danger); white-space: normal; }
   /* The on and off colors a look's link's device gives its LEDs. */
   .lookrow .sub .lsw { display: inline-block; width: 9px; height: 9px; margin-left: 4px; border-radius: 2px; border: 1px solid var(--border); vertical-align: -1px; }
@@ -100,64 +67,32 @@
   .pickbar input { flex: 1 1 160px; width: auto; }
   .pickarea { min-width: 0; }
   .picknote { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
-  .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; }
-  .linkbtn:hover { text-decoration: underline; }
   .packs { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
   /* Drawn as a select: the kit's arrow at its right. */
   .packs summary { cursor: pointer; padding: 4px 26px 4px 10px; font-size: 12px; list-style: none; background: var(--chevron) no-repeat right 9px center / 10px 6px; }
   .packs summary::-webkit-details-marker { display: none; }
   .packlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px 12px; padding: 6px 10px 8px; border-top: 1px solid var(--border); }
   .packlist .all { grid-column: 1 / -1; display: flex; gap: 8px; margin-bottom: 4px; }
-  .customize { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
-  .customize > summary { cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
-  #badge-form { margin-top: 10px; }
-  .custom-head { display: flex; justify-content: flex-end; margin: -18px 0 8px; }
-  /* A note sits under its control, on its own grid row, so its label stays level with the control. */
-  .lookform .fnote { grid-column: 2; margin-top: -4px; font-size: 11px; line-height: 1.4; color: var(--text-muted); }
+  /* The reset link sits on the open summary's line. */
+  .custom-head { display: flex; justify-content: flex-end; margin: -28px 0 8px; }
   #badge-ed { flex: 0 1 260px; min-width: 0; }
   #c-every { width: 190px; }
   #c-badge-note.bad { color: var(--danger); }
-  #fld-c-size .rangerow, #fld-c-badge-size .rangerow { width: 280px; max-width: 100%; }
+  #fld-c-size .kit-range, #fld-c-badge-size .kit-range { width: 280px; max-width: 100%; }
   #c-pos code { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
-  .icongrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 6px; max-height: 300px; overflow-y: auto; padding: 2px; }
-  .icon { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); height: 56px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
-  .icon:hover { background: var(--surface-hover); }
-  .icon.on { border-color: var(--accent); box-shadow: 0 0 0 2px #bfdbfe; }
-  .icon img { width: 28px; height: 28px; }
-  .icon.dark { background: #1f2a36; border-color: #1f2a36; }
-  .icon.dark:hover { background: #2b3a4a; }
-  .icon.dark img { width: 40px; height: 40px; }
-  .icon .txt { font-size: 9px; color: var(--text-muted); padding: 2px; word-break: break-all; text-align: center; }
   .picked { font-size: 12px; }
   .picked .lic { color: var(--text-muted); }
-  .lookform .fctl.stack { display: block; }
-  .mi-drop { flex: 1; border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 18px 12px; text-align: center; font-size: 12px; background: var(--surface); }
-  .mi-drop.over { border-color: var(--accent); background: #eff6ff; }
-  .mi-drop .note { margin-top: 6px; }
-  .mi-svg { font-family: var(--mono); font-size: 11.5px; line-height: 1.5; width: 100%; box-sizing: border-box; min-height: 120px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); background: var(--surface); resize: vertical; }
+  .kit-form-ctl.stack { display: block; }
   .mi-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
   .mi-urlrow input { flex: 1 1 200px; width: auto; }
-  .mi-msg { font-size: 11px; color: var(--text-muted); }
-  .mi-msg.bad { color: var(--danger); }
-  .mi-head { font-size: 11px; font-weight: 600; color: var(--text-muted); margin: 2px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
-  .mi-cell { position: relative; overflow: hidden; }
-  .mi-cell img { width: 44px; height: 44px; object-fit: contain; border-radius: 4px; }
-  .mi-tag { position: absolute; right: 3px; bottom: 2px; font-size: 9px; color: var(--text-muted); background: var(--surface); border-radius: 3px; padding: 0 3px; }
-  .status { font-size: 12px; color: var(--text-muted); margin-top: 8px; min-height: 18px; }
-  .status.bad { color: var(--danger); }
   .cp-panel { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
-  .cp-head { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
-  .cp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; }
-  .cp-item { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; font-weight: 400; color: var(--text); padding: 3px 0; cursor: pointer; min-width: 0; }
+  .cp-panel .kit-eyebrow { margin: 12px 0 6px; }
   .cp-item img, .cp-item .noimg { width: 28px; height: 28px; border-radius: 6px; background: var(--tile); flex: none; }
   .cp-item .room { color: var(--text-muted); }
-  .cp-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cp-file { font-size: 12.5px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .cp-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
   .cp-row .note { margin: 0; }
-  .cp-result { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
-  .cp-result:empty { display: none; }
-  .cp-result .bad { color: var(--danger); }
+  .kit-msg .bad { color: var(--danger); }
   .cp-entry { min-width: 0; }
   .cp-code { display: flex; gap: 6px; align-items: baseline; margin: 0 0 4px 52px; font-size: 11px; color: var(--text-muted); min-width: 0; }
   .cp-code > span { white-space: nowrap; }
@@ -196,33 +131,33 @@
       <h3>Looks <span class="count" id="look-count"></span></h3>
       <div class="looks" id="look-list"></div>
       <div class="note" id="delete-note" hidden></div>
-      <div class="actions">
+      <div class="kit-actions below">
         <button class="btn btn-primary" id="add-look" type="button">Add Look</button>
         <button class="btn btn-secondary" id="copy-to" type="button" disabled>Copy To&hellip;</button>
         <button class="btn btn-secondary" id="export-looks" type="button" disabled>Export</button>
         <button class="btn btn-secondary" id="import-looks" type="button">Import&hellip;</button>
         <input type="file" id="import-file" accept=".json,application/json" hidden>
       </div>
-      <div class="cp-result" id="looks-note" role="status" hidden></div>
+      <div class="kit-msg" id="looks-note" role="status" hidden></div>
       <div class="cp-panel" id="copy-panel" hidden>
-        <div class="cp-head">Copy these looks</div>
-        <div class="cp-list" id="cp-looks"></div>
-        <div class="cp-head">To these Dynamic Buttons</div>
-        <div class="cp-list" id="cp-buttons"></div>
+        <div class="kit-eyebrow">Copy these looks</div>
+        <div class="kit-checklist" id="cp-looks"></div>
+        <div class="kit-eyebrow">To these Dynamic Buttons</div>
+        <div class="kit-checklist" id="cp-buttons"></div>
         <div class="cp-row">
           <div class="seg" id="cp-mode"><button type="button" data-mode="add" class="on">Add to their looks</button><button type="button" data-mode="replace">Replace their looks</button></div>
           <span class="note" id="cp-note"></span>
         </div>
         <div class="note" id="cp-confirm" hidden></div>
         <div class="cp-row"><button class="btn btn-primary" id="cp-go" type="button">Copy</button><button class="btn btn-secondary" id="cp-cancel" type="button">Cancel</button></div>
-        <div class="cp-result" id="cp-result" role="status"></div>
+        <div class="kit-msg" id="cp-result" role="status"></div>
       </div>
       <div class="cp-panel" id="import-panel" hidden>
-        <div class="cp-head">Import looks</div>
-        <div class="cp-file"><span id="im-file"></span><button type="button" class="linkbtn" id="im-choose">Choose another file</button></div>
-        <div class="cp-head">Looks in the file</div>
-        <div class="cp-list" id="im-looks"></div>
-        <div class="note cp-result" id="im-skipped" hidden></div>
+        <div class="kit-eyebrow">Import looks</div>
+        <div class="cp-file"><span id="im-file"></span><button type="button" class="btn-link" id="im-choose">Choose another file</button></div>
+        <div class="kit-eyebrow">Looks in the file</div>
+        <div class="kit-checklist" id="im-looks"></div>
+        <div class="note kit-msg" id="im-skipped" hidden></div>
         <label class="check cp-trust"><input type="checkbox" id="im-trust"> Bring Show when, live badge text and web addresses with these looks</label>
         <div class="cp-row">
           <div class="seg" id="im-mode"><button type="button" data-mode="add">Add to this button&rsquo;s looks</button><button type="button" data-mode="replace" class="on">Replace this button&rsquo;s looks</button></div>
@@ -230,7 +165,7 @@
         <div class="note">Show when and badge text name devices by their id in the project the file came from. Check them after importing into another project.</div>
         <div class="note" id="im-confirm" hidden></div>
         <div class="cp-row"><button class="btn btn-primary" id="im-go" type="button">Import</button><button class="btn btn-secondary" id="im-cancel" type="button">Cancel</button></div>
-        <div class="cp-result" id="im-result" role="status"></div>
+        <div class="kit-msg" id="im-result" role="status"></div>
       </div>
     </div>
   </div>
@@ -239,114 +174,113 @@
     <h3 id="editor-title">New look</h3>
     <div class="editgrid">
       <div>
-        <div class="lookform" id="look-form">
-          <div class="frow" id="fld-name">
+        <div class="kit-form" id="look-form">
+          <div class="kit-form-row" id="fld-name">
             <label for="f-name">Name</label>
-            <div class="fctl"><input type="text" id="f-name" maxlength="40" autocomplete="off"></div>
+            <div class="kit-form-ctl"><input type="text" id="f-name" maxlength="40" autocomplete="off"></div>
           </div>
-          <div class="frow" id="fld-shape">
+          <div class="kit-form-row" id="fld-shape">
             <label>Tile shape</label>
-            <div class="fctl"><div class="seg" id="f-shape"></div></div>
+            <div class="kit-form-ctl"><div class="seg" id="f-shape"></div></div>
           </div>
-          <div class="frow" id="fld-icon-color">
+          <div class="kit-form-row" id="fld-icon-color">
             <label for="f-icon-color">Icon color</label>
-            <div class="fctl colorrow"><input type="color" id="f-icon-color" value="#ffffff"><code id="f-icon-color-v"></code></div>
+            <div class="kit-form-ctl kit-color-row"><input type="color" id="f-icon-color" value="#ffffff"><code id="f-icon-color-v"></code></div>
           </div>
-          <div class="frow" id="fld-tile-color">
+          <div class="kit-form-row" id="fld-tile-color">
             <label for="f-tile-color">Tile color</label>
-            <div class="fctl colorrow"><input type="color" id="f-tile-color" value="#109eff"><code id="f-tile-color-v"></code></div>
+            <div class="kit-form-ctl kit-color-row"><input type="color" id="f-tile-color" value="#109eff"><code id="f-tile-color-v"></code></div>
           </div>
-          <div class="frow" id="fld-cycle">
+          <div class="kit-form-row" id="fld-cycle">
             <label for="f-in-cycle">Cycle</label>
-            <div class="fctl"><label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label></div>
+            <div class="kit-form-ctl"><label class="check" title="Off: presses, Next Look and Previous Look pass over this look."><input type="checkbox" id="f-in-cycle" checked> In cycle</label></div>
           </div>
-          <div class="frow" id="fld-timer">
+          <div class="kit-form-row" id="fld-timer">
             <label for="f-timer">Timer</label>
-            <div class="fctl timerrow">
+            <div class="kit-form-ctl timerrow">
               <select id="f-timer"><option value="stay">Stay</option><option value="after">After</option></select>
               <input type="number" id="f-timer-n" min="1" max="86400" step="1" value="10" aria-label="How long" hidden>
               <select id="f-timer-unit" aria-label="Unit" hidden><option value="1">seconds</option><option value="60">minutes</option><option value="3600">hours</option></select>
               <span class="timer-then" id="timer-then" hidden>, show</span>
               <select id="f-timer-show" aria-label="Then show" hidden></select>
             </div>
-            <div class="fnote" id="timer-note" hidden></div>
+            <div class="kit-form-note" id="timer-note" hidden></div>
           </div>
-          <div class="frow" id="fld-while" hidden>
+          <div class="kit-form-row" id="fld-while" hidden>
             <label for="f-while">Show while</label>
-            <div class="fctl"><select id="f-while"><option value="on">its link is on</option><option value="off">its link is off</option></select></div>
+            <div class="kit-form-ctl"><select id="f-while"><option value="on">its link is on</option><option value="off">its link is off</option></select></div>
           </div>
-          <div class="frow" id="fld-when" hidden>
+          <div class="kit-form-row" id="fld-when" hidden>
             <div class="whenlabel">
               <label for="f-when">Show when</label>
               <button type="button" id="when-help-toggle">Syntax help</button>
             </div>
-            <div class="fctl whenbox">
+            <div class="kit-form-ctl whenbox">
               <textarea id="f-when" rows="2" maxlength="2000" placeholder="PARAM{device,variable} > 50"></textarea>
               <button class="btn btn-secondary btn-sm" id="when-insert" type="button">Browse Variables</button>
             </div>
           </div>
-          <div class="frow" id="fld-when-help" hidden>
+          <div class="kit-form-row" id="fld-when-help" hidden>
             <span></span>
             <div id="when-help"></div>
           </div>
-          <div class="frow" id="fld-when-browser" hidden>
+          <div class="kit-form-row" id="fld-when-browser" hidden>
             <span></span>
             <div class="varbrowser" id="var-browser"></div>
           </div>
-          <div class="frow" id="fld-when-preview" hidden>
+          <div class="kit-form-row" id="fld-when-preview" hidden>
             <span></span>
             <div id="when-preview"><div class="kit-prev-foot" id="when-watch" hidden></div></div>
           </div>
-          <div class="frow" id="fld-default" hidden>
+          <div class="kit-form-row" id="fld-default" hidden>
             <label for="f-default">Default look</label>
-            <div class="fctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> <span id="f-default-text">Show this look when no "Show when" is true</span></label></div>
+            <div class="kit-form-ctl"><label class="check" title="Only one look is the default: choosing this one replaces another."><input type="checkbox" id="f-default"> <span id="f-default-text">Show this look when no "Show when" is true</span></label></div>
           </div>
         </div>
-        <div class="lookform picker" id="pick-form">
-          <div class="frow" id="fld-pick">
+        <div class="kit-form picker" id="pick-form">
+          <div class="kit-form-row" id="fld-pick">
             <label for="pk-src">Picture</label>
-            <div class="fctl pickbar">
+            <div class="kit-form-ctl pickbar">
               <select id="pk-src" aria-label="Source"></select>
               <select id="pk-cat" aria-label="Category"></select>
               <input type="search" id="pk-q" placeholder="Search pictures" aria-label="Search pictures">
               <button class="btn btn-secondary" id="o-go" type="button" hidden>Search</button>
             </div>
           </div>
-          <div class="frow" id="fld-mine-how" hidden>
+          <div class="kit-form-row" id="fld-mine-how" hidden>
             <span></span>
-            <div class="fctl"><div class="seg" id="mi-how">
+            <div class="kit-form-ctl"><div class="seg" id="mi-how">
               <button type="button" data-how="upload" class="on">Upload</button>
               <button type="button" data-how="svg">Paste SVG</button>
               <button type="button" data-how="web">Web address</button>
             </div></div>
           </div>
-          <div class="frow" id="fld-mine-upload" hidden>
+          <div class="kit-form-row" id="fld-mine-upload" hidden>
             <span></span>
-            <div class="fctl">
-              <div class="mi-drop" id="mi-drop">Drop a picture here, or <button type="button" class="linkbtn" id="mi-choose">choose a file</button>
+            <div class="kit-form-ctl">
+              <div id="mi-drop">Drop a picture here, or <button type="button" class="btn-link" id="mi-choose">choose a file</button>
                 <div class="note">PNG, JPEG, GIF, WebP or SVG.</div>
               </div>
-              <input type="file" id="mi-file" accept="image/*,.svg" hidden>
             </div>
           </div>
-          <div class="frow" id="fld-mine-svg" hidden>
+          <div class="kit-form-row" id="fld-mine-svg" hidden>
             <span></span>
-            <div class="fctl stack">
-              <textarea class="mi-svg" id="mi-svg" spellcheck="false" autocomplete="off" aria-label="SVG markup" placeholder="&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 24 24&quot;&gt;…&lt;/svg&gt;"></textarea>
+            <div class="kit-form-ctl stack">
+              <textarea class="kit-code" id="mi-svg" spellcheck="false" autocomplete="off" aria-label="SVG markup" placeholder="&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 24 24&quot;&gt;…&lt;/svg&gt;"></textarea>
               <div class="mi-row"><button class="btn btn-secondary btn-sm" id="mi-use-svg" type="button">Use This SVG</button></div>
             </div>
           </div>
-          <div class="frow" id="fld-mine-web" hidden>
+          <div class="kit-form-row" id="fld-mine-web" hidden>
             <label for="mi-url">Address</label>
-            <div class="fctl mi-urlrow">
+            <div class="kit-form-ctl mi-urlrow">
               <input type="text" id="mi-url" placeholder="https://" autocomplete="off" spellcheck="false">
               <button class="btn btn-secondary btn-sm" id="mi-fetch" type="button">Fetch</button>
             </div>
-            <div class="fnote">Fetched by the controller, so an address on the home network works.</div>
+            <div class="kit-form-note">Fetched by the controller, so an address on the home network works.</div>
           </div>
-          <div class="frow" id="fld-mine-every" hidden>
+          <div class="kit-form-row" id="fld-mine-every" hidden>
             <label for="mi-every">Refresh</label>
-            <div class="fctl">
+            <div class="kit-form-ctl">
               <select id="mi-every">
                 <option value="0">Once, when saved</option>
                 <option value="60">Every minute</option>
@@ -355,85 +289,85 @@
                 <option value="3600">Every hour</option>
               </select>
             </div>
-            <div class="fnote">Once: drawn like an upload, with its tile, size and badge. Refreshed: shown as the site sends it, with no tile, size or badge. Each refresh writes to the controller’s storage, so less often is better.</div>
+            <div class="kit-form-note">Once: drawn like an upload, with its tile, size and badge. Refreshed: shown as the site sends it, with no tile, size or badge. Each refresh writes to the controller’s storage, so less often is better.</div>
           </div>
-          <div class="frow" id="fld-mine-msg" hidden>
+          <div class="kit-form-row" id="fld-mine-msg" hidden>
             <span></span>
-            <div class="mi-msg" id="mi-msg" role="status"></div>
+            <div class="kit-msg sm" id="mi-msg" role="status"></div>
           </div>
-          <div class="frow" id="fld-style" hidden>
+          <div class="kit-form-row" id="fld-style" hidden>
             <label>Style</label>
-            <div class="fctl"><div class="seg" id="o-style"></div></div>
+            <div class="kit-form-ctl"><div class="seg" id="o-style"></div></div>
           </div>
-          <div class="frow" id="fld-packs" hidden>
+          <div class="kit-form-row" id="fld-packs" hidden>
             <label>Packs</label>
-            <div class="fctl"><details class="packs" id="o-packs"><summary id="o-packs-sum">All packs</summary><div class="packlist" id="o-packlist"></div></details></div>
+            <div class="kit-form-ctl"><details class="packs" id="o-packs"><summary id="o-packs-sum">All packs</summary><div class="packlist" id="o-packlist"></div></details></div>
           </div>
-          <div class="frow" id="fld-grid">
+          <div class="kit-form-row" id="fld-grid">
             <span></span>
             <div class="pickarea">
               <div id="pick-local">
-                <div class="icongrid" id="pk-grid"></div>
-                <div class="picknote"><span id="pk-note"></span><button type="button" class="linkbtn" id="pk-online" hidden></button></div>
+                <div id="pk-grid"></div>
+                <div class="picknote"><span id="pk-note"></span><button type="button" class="btn-link" id="pk-online" hidden></button></div>
               </div>
               <div id="pick-mine" hidden>
-                <div class="mi-head">This button’s pictures</div>
-                <div class="icongrid" id="mi-grid"></div>
+                <div class="kit-eyebrow">This button’s pictures</div>
+                <div id="mi-grid"></div>
                 <div class="note">Every picture a look on this button uses. Pick one to use it again.</div>
               </div>
               <div id="pick-online" hidden>
-                <div class="icongrid" id="o-grid"></div>
+                <div id="o-grid"></div>
                 <div class="note" id="o-note">Searches only packs that need no credit on each icon.</div>
               </div>
             </div>
           </div>
-          <div class="frow" id="fld-picked">
+          <div class="kit-form-row" id="fld-picked">
             <span></span>
             <div class="picked" id="picked">No icon picked.</div>
           </div>
         </div>
-        <details class="customize" id="customize">
+        <details class="kit-disclosure" id="customize">
           <summary>Customize</summary>
-          <div class="custom-head"><button type="button" class="linkbtn" id="c-reset">Reset to the pack’s look</button></div>
-          <div class="lookform" id="custom-form">
-            <div class="frow" id="fld-c-color">
+          <div class="custom-head"><button type="button" class="btn-link" id="c-reset">Reset to the pack’s look</button></div>
+          <div class="kit-form" id="custom-form">
+            <div class="kit-form-row" id="fld-c-color">
               <label for="c-color">Color</label>
-              <div class="fctl colorrow"><input type="color" id="c-color"><code id="c-color-v"></code></div>
-              <div class="fnote">Its shading stays.</div>
+              <div class="kit-form-ctl kit-color-row"><input type="color" id="c-color"><code id="c-color-v"></code></div>
+              <div class="kit-form-note">Its shading stays.</div>
             </div>
-            <div class="frow" id="fld-c-body">
+            <div class="kit-form-row" id="fld-c-body">
               <label for="c-body">Body</label>
-              <div class="fctl colorrow"><input type="color" id="c-body"><code id="c-body-v"></code></div>
-              <div class="fnote">Tints the metal or plastic.</div>
+              <div class="kit-form-ctl kit-color-row"><input type="color" id="c-body"><code id="c-body-v"></code></div>
+              <div class="kit-form-note">Tints the metal or plastic.</div>
             </div>
-            <div class="frow" id="fld-c-tile">
+            <div class="kit-form-row" id="fld-c-tile">
               <label for="c-tile">Tile</label>
-              <div class="fctl colorrow"><input type="color" id="c-tile"><code id="c-tile-v"></code></div>
+              <div class="kit-form-ctl kit-color-row"><input type="color" id="c-tile"><code id="c-tile-v"></code></div>
             </div>
-            <div class="frow" id="fld-c-symbol">
+            <div class="kit-form-row" id="fld-c-symbol">
               <label for="c-symbol">Symbol</label>
-              <div class="fctl colorrow"><input type="color" id="c-symbol"><code id="c-symbol-v"></code></div>
+              <div class="kit-form-ctl kit-color-row"><input type="color" id="c-symbol"><code id="c-symbol-v"></code></div>
             </div>
-            <div class="frow" id="fld-glow">
+            <div class="kit-form-row" id="fld-glow">
               <label for="f-glow">Glow</label>
-              <div class="fctl rangerow" title="100% is the picture's own glow."><input type="range" id="f-glow" min="0" max="200" step="10" value="100"><code id="f-glow-v">100%</code></div>
+              <div class="kit-form-ctl kit-range" title="100% is the picture's own glow."><input type="range" id="f-glow" min="0" max="200" step="10" value="100"><code id="f-glow-v">100%</code></div>
             </div>
-            <div class="frow" id="fld-c-glowcolor">
+            <div class="kit-form-row" id="fld-c-glowcolor">
               <label for="c-glowColor">Glow color</label>
-              <div class="fctl colorrow"><input type="color" id="c-glowColor"><code id="c-glowColor-v"></code></div>
-              <div class="fnote" id="c-glow-note">Follows Color unless set.</div>
+              <div class="kit-form-ctl kit-color-row"><input type="color" id="c-glowColor"><code id="c-glowColor-v"></code></div>
+              <div class="kit-form-note" id="c-glow-note">Follows Color unless set.</div>
             </div>
-            <div class="frow" id="fld-grayscale">
+            <div class="kit-form-row" id="fld-grayscale">
               <label for="f-grayscale">Grayscale</label>
-              <div class="fctl"><label class="check" title="Draws the picture in grays with no glow, as for an off look."><input type="checkbox" id="f-grayscale"> Gray version</label></div>
+              <div class="kit-form-ctl"><label class="check" title="Draws the picture in grays with no glow, as for an off look."><input type="checkbox" id="f-grayscale"> Gray version</label></div>
             </div>
-            <div class="frow" id="fld-c-size">
+            <div class="kit-form-row" id="fld-c-size">
               <label for="c-size">Size</label>
-              <div class="fctl rangerow"><input type="range" id="c-size" min="50" max="100" step="2" value="100"><code id="c-size-v">100%</code></div>
+              <div class="kit-form-ctl kit-range"><input type="range" id="c-size" min="50" max="100" step="2" value="100"><code id="c-size-v">100%</code></div>
             </div>
-            <div class="frow" id="fld-c-pos">
+            <div class="kit-form-row" id="fld-c-pos">
               <label>Position</label>
-              <div class="fctl" id="c-pos">
+              <div class="kit-form-ctl" id="c-pos">
                 <button class="btn btn-secondary btn-sm" type="button" data-move="left" aria-label="Left">&larr;</button>
                 <button class="btn btn-secondary btn-sm" type="button" data-move="up" aria-label="Up">&uarr;</button>
                 <button class="btn btn-secondary btn-sm" type="button" data-move="down" aria-label="Down">&darr;</button>
@@ -444,20 +378,20 @@
             </div>
           </div>
         </details>
-        <details class="customize" id="badge-section">
+        <details class="kit-disclosure" id="badge-section">
           <summary>Badge</summary>
-          <div class="lookform" id="badge-form">
-            <div class="frow" id="fld-c-badge">
+          <div class="kit-form" id="badge-form">
+            <div class="kit-form-row" id="fld-c-badge">
               <label for="c-badge">Text</label>
-              <div class="fctl">
+              <div class="kit-form-ctl">
                 <div id="badge-ed"><textarea id="c-badge" rows="1" maxlength="200" placeholder="None" autocomplete="off"></textarea></div>
                 <button class="btn btn-secondary btn-sm" id="badge-insert" type="button">Browse Variables</button>
               </div>
-              <div class="fnote" id="c-badge-note"></div>
+              <div class="kit-form-note" id="c-badge-note"></div>
             </div>
-            <div class="frow" id="fld-c-every" hidden>
+            <div class="kit-form-row" id="fld-c-every" hidden>
               <label for="c-every">Update</label>
-              <div class="fctl">
+              <div class="kit-form-ctl">
                 <select id="c-every">
                   <option value="30">Every 30 seconds</option>
                   <option value="60">Every minute</option>
@@ -466,23 +400,23 @@
                   <option value="3600">Every hour</option>
                 </select>
               </div>
-              <div class="fnote">At most this often. Each update writes to the controller's storage and every Navigator loads the new picture, so less often is better.</div>
+              <div class="kit-form-note">At most this often. Each update writes to the controller's storage and every Navigator loads the new picture, so less often is better.</div>
             </div>
-            <div class="frow" id="fld-c-badge-size">
+            <div class="kit-form-row" id="fld-c-badge-size">
               <label for="c-badge-size">Size</label>
-              <div class="fctl rangerow"><input type="range" id="c-badge-size" min="50" max="150" step="10" value="100"><code id="c-badge-size-v">100%</code></div>
+              <div class="kit-form-ctl kit-range"><input type="range" id="c-badge-size" min="50" max="150" step="10" value="100"><code id="c-badge-size-v">100%</code></div>
             </div>
-            <div class="frow" id="fld-c-place">
+            <div class="kit-form-row" id="fld-c-place">
               <label>Place</label>
-              <div class="fctl"><div class="seg" id="c-place"></div></div>
+              <div class="kit-form-ctl"><div class="seg" id="c-place"></div></div>
             </div>
-            <div class="frow" id="fld-c-textcolor">
+            <div class="kit-form-row" id="fld-c-textcolor">
               <label for="c-badge-color">Text color</label>
-              <div class="fctl colorrow"><input type="color" id="c-badge-color" value="#ffffff"><code id="c-badge-color-v"></code></div>
+              <div class="kit-form-ctl kit-color-row"><input type="color" id="c-badge-color" value="#ffffff"><code id="c-badge-color-v"></code></div>
             </div>
-            <div class="frow" id="fld-c-bg">
+            <div class="kit-form-row" id="fld-c-bg">
               <label for="c-badge-bg">Background</label>
-              <div class="fctl colorrow"><input type="color" id="c-badge-bg" value="#dc2626"><code id="c-badge-bg-v"></code><div class="seg"><button type="button" id="c-badge-none">None</button></div></div>
+              <div class="kit-form-ctl kit-color-row"><input type="color" id="c-badge-bg" value="#dc2626"><code id="c-badge-bg-v"></code><div class="seg"><button type="button" id="c-badge-none">None</button></div></div>
             </div>
           </div>
         </details>
@@ -492,11 +426,11 @@
         <div class="note" style="text-align:center">As the Control4 app shows the button.</div>
       </div>
     </div>
-    <div class="actions">
+    <div class="kit-actions below">
       <button class="btn btn-primary" id="save" type="button">Save Look</button>
       <button class="btn btn-secondary" id="cancel" type="button">Cancel</button>
     </div>
-    <div class="status" id="status"></div>
+    <div class="kit-msg" id="status"></div>
   </div>
 
   <details class="card" id="lic-card">
@@ -532,6 +466,10 @@ const PACK_ICONS = [{"id":"classic-device:battery-0","category":"Battery","label
 <!-- #embed ../../../../src/lib/ui/page.js -->
 <!-- #embed ../../../../src/lib/ui/variables.js -->
 <!-- #embed ../../../../src/lib/ui/expressions.js -->
+<!-- #embed ../../../../src/lib/ui/color.js -->
+<!-- #embed ../../../../src/lib/ui/pickgrid.js -->
+
+var rgbOf = Kit.color.rgb, hexOf = Kit.color.hex, hslOf = Kit.color.hsl, hexFromHsl = Kit.color.fromHsl, normalHex = Kit.color.normal;
 
 function refresh() { return Kit.sendCommand('_GET_STATE'); }
 
@@ -587,7 +525,7 @@ function plainRefusal(msg) {
 function setStatus(msg, bad) {
   var el = $('status');
   el.textContent = msg || '';
-  el.className = 'status' + (bad ? ' bad' : '');
+  el.className = 'kit-msg' + (bad ? ' bad' : '');
 }
 
 var SHAPES = ['None', 'Circle', 'Rounded Square', 'Square'];
@@ -694,25 +632,7 @@ function badgeFont() {
 }
 
 var HEX6 = /^#[0-9a-f]{6}$/i;
-function rgbOf(h) { return [1, 3, 5].map(function(i) { return parseInt(h.slice(i, i + 2), 16); }); }
-function hexOf(c) { return '#' + c.map(function(v) { return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'); }).join('').toUpperCase(); }
 function mixColor(a, b, t) { var x = rgbOf(a), y = rgbOf(b); return hexOf(x.map(function(v, i) { return v + (y[i] - v) * t; })); }
-function hslOf(h) {
-  var c = rgbOf(h).map(function(v) { return v / 255; }), mx = Math.max.apply(0, c), mn = Math.min.apply(0, c);
-  var l = (mx + mn) / 2, d = mx - mn, s = 0, hue = 0;
-  if (d) {
-    s = d / (1 - Math.abs(2 * l - 1));
-    hue = mx === c[0] ? ((c[1] - c[2]) / d) % 6 : mx === c[1] ? (c[2] - c[0]) / d + 2 : (c[0] - c[1]) / d + 4;
-    hue *= 60;
-    if (hue < 0) hue += 360;
-  }
-  return { h: hue, s: Math.min(1, s), l: l };
-}
-function hexFromHsl(o) {
-  var c = (1 - Math.abs(2 * o.l - 1)) * o.s, x = c * (1 - Math.abs((o.h / 60) % 2 - 1)), m = o.l - c / 2;
-  var r = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(o.h / 60) % 6];
-  return hexOf(r.map(function(v) { return (v + m) * 255; }));
-}
 function chromaOf(h) { var c = rgbOf(h); return Math.max.apply(0, c) - Math.min.apply(0, c); }
 // The picked hue and saturation with the old paint's own lightness, so the shading stays.
 function recolor(old, pick, satScale) {
@@ -1327,45 +1247,17 @@ function command(cmd, params, demoApply) {
 // ============================================================
 // Icon grids
 // ============================================================
-function iconCell(id, icon) {
-  var b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'icon' + (gEditor.icon && gEditor.icon.id === id ? ' on' : '');
-  b.dataset.id = id;
-  b.title = id;
-  setCellArt(b, icon);
-  return b;
+var pkGrid = Kit.pickGrid($('pk-grid')), miGrid = Kit.pickGrid($('mi-grid')), oGrid = Kit.pickGrid($('o-grid'));
+function iconItem(id, icon) {
+  return icon ? { id: id, title: id, src: cellSrc(icon) } : { id: id, title: id, text: id.split(':')[1] || id };
 }
-function setCellArt(b, icon) {
-  b.textContent = '';
-  if (icon) {
-    var img = document.createElement('img');
-    img.alt = '';
-    img.src = cellSrc(icon);
-    b.appendChild(img);
-  } else {
-    var t = document.createElement('span');
-    t.className = 'txt';
-    t.textContent = b.dataset.id.split(':')[1] || b.dataset.id;
-    b.appendChild(t);
-  }
-}
-function fillGrid(grid, cells, emptyText) {
-  grid.textContent = '';
-  if (!cells.length) {
-    var d = document.createElement('div');
-    d.className = 'empty';
-    d.textContent = emptyText;
-    grid.appendChild(d);
-    return;
-  }
-  var frag = document.createDocumentFragment();
-  cells.forEach(function(c) { frag.appendChild(c); });
-  grid.appendChild(frag);
+function fillGrid(grid, items, emptyText) {
+  grid.mark(gEditor.icon ? gEditor.icon.id : null);
+  grid.fill(items, emptyText);
 }
 function markPicked() {
-  var picked = gEditor.icon ? gEditor.icon.id : '';
-  document.querySelectorAll('.icongrid button.icon').forEach(function(b) { b.classList.toggle('on', b.dataset.id === picked); });
+  var picked = gEditor.icon ? gEditor.icon.id : null;
+  [pkGrid, miGrid, oGrid].forEach(function(g) { g.mark(picked); });
 }
 
 // ============================================================
@@ -1434,17 +1326,8 @@ function renderCategories() {
   $('pk-cat').innerHTML = '<option value="">All categories</option>' + cats.map(function(c) { return '<option>' + Kit.esc(c) + '</option>'; }).join('');
   if (cats.indexOf(was) >= 0) $('pk-cat').value = was;
 }
-function packCell(id, label) {
-  var b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'icon dark' + (gEditor.icon && gEditor.icon.id === id ? ' on' : '');
-  b.dataset.id = id;
-  b.title = label;
-  var img = document.createElement('img');
-  img.alt = '';
-  img.src = packCellSrc(packIcon(id));
-  b.appendChild(img);
-  return b;
+function packItem(id, label) {
+  return { id: id, title: label, src: packCellSrc(packIcon(id)), dark: true };
 }
 function renderPicker() {
   var src = pickerSource(), online = src === SOURCE_ONLINE, mine = src === SOURCE_MINE, q = $('pk-q').value.trim();
@@ -1467,7 +1350,7 @@ function renderPicker() {
   var shown = sourceItems(src).filter(function(i) {
     return (!cat || i.category === cat) && words.every(function(w) { return i.words.indexOf(w) >= 0; });
   });
-  fillGrid($('pk-grid'), shown.map(function(i) { return i.pack ? packCell(i.id, i.label) : iconCell(i.id, bundledIcon(i.id)); }),
+  fillGrid(pkGrid, shown.map(function(i) { return i.pack ? packItem(i.id, i.label) : iconItem(i.id, bundledIcon(i.id)); }),
     q ? 'No included picture matches.' : 'No pictures here.');
   var note = (gPacks[src] || {}).note || (src === SOURCE_BASIC ? 'One-color icons that take an icon color and a tile.' : '');
   $('pk-note').textContent = (shown.length === 1 ? '1 picture.' : shown.length + ' pictures.') + (note ? ' ' + note : '');
@@ -1622,8 +1505,8 @@ function search() {
   if (!q) return;
   var chosen = chosenPacks(), mine = ++gSearchSeq;
   gSearch = { query: q, ids: [] };
-  if (!chosen.length) { fillGrid($('o-grid'), [], 'Choose at least one pack to search.'); onlineNote(''); return; }
-  fillGrid($('o-grid'), [], 'Searching…');
+  if (!chosen.length) { fillGrid(oGrid, [], 'Choose at least one pack to search.'); onlineNote(''); return; }
+  fillGrid(oGrid, [], 'Searching…');
   loadLicenses();
   var prefixes = chosen.join(','), every = chosen.length === gState.packs.length;
   iconify('search', q, '/search?query=' + encodeURIComponent(q) + '&prefixes=' + prefixes + '&limit=192', every ? null : prefixes).then(function(data) {
@@ -1632,7 +1515,7 @@ function search() {
     renderOnline();
   }).catch(function(e) {
     if (mine !== gSearchSeq) return;
-    fillGrid($('o-grid'), [], 'The icon search did not answer: ' + e.message);
+    fillGrid(oGrid, [], 'The icon search did not answer: ' + e.message);
     onlineNote('');
   });
 }
@@ -1642,7 +1525,7 @@ function renderOnline() {
     return gStyle === 'any' || !s || s === gStyle;
   });
   var style = STYLES.find(function(s) { return s[0] === gStyle; })[1].toLowerCase();
-  fillGrid($('o-grid'), ids.map(function(id) { return iconCell(id, gOnline[id]); }),
+  fillGrid(oGrid, ids.map(function(id) { return iconItem(id, gOnline[id]); }),
     gSearch.ids.length ? 'None of the icons found are ' + style + '.' : 'No icons found.');
   var count = gSearch.ids.length ? (ids.length === gSearch.ids.length ? ids.length + ' icons found.' : 'Showing ' + ids.length + ' of ' + gSearch.ids.length + ' icons found.') : '';
   onlineNote((count + (gViaDriver ? ' Searched through the controller, since this computer could not reach the icon service.' : '')).trim());
@@ -1663,8 +1546,7 @@ function fetchMissing(ids) {
         Object.keys(found).forEach(function(n) {
           var id = prefix + ':' + n;
           gOnline[id] = { id: id, body: found[n].body, width: found[n].width, height: found[n].height };
-          var b = $('o-grid').querySelector('button[data-id="' + CSS.escape(id) + '"]');
-          if (b) setCellArt(b, gOnline[id]);
+          oGrid.set(iconItem(id, gOnline[id]));
         });
       }).catch(function() {}).then(function() {
         batch.forEach(function(n) { delete gFetching[prefix + ':' + n]; });
@@ -1953,7 +1835,7 @@ function nameFromFile(name) {
 // The row hides while it has nothing to say: an empty cell would shift the rows after it.
 function mineMessage(text, bad) {
   $('mi-msg').textContent = text || '';
-  $('mi-msg').className = 'mi-msg' + (bad ? ' bad' : '');
+  $('mi-msg').className = 'kit-msg sm' + (bad ? ' bad' : '');
   $('fld-mine-msg').hidden = !text || pickerSource() !== SOURCE_MINE;
 }
 function addNewPicture(p) {
@@ -1985,31 +1867,13 @@ function renderMine() {
   gState.looks.forEach(function(l) { if (l.icon) used[l.icon.id] = true; });
   if (gEditor.look && gEditor.look.icon) used[gEditor.look.icon.id] = true;
   var list = (gState.pictures || []).filter(function(p) { return used[p.id]; }).concat(gNewPictures);
-  fillGrid($('mi-grid'), list.map(function(rec) {
+  fillGrid(miGrid, list.map(function(rec) {
     requestPicture(rec.id);
-    var b = document.createElement('button'), src = gSources[rec.id];
-    b.type = 'button';
-    b.className = 'icon mi-cell' + (gEditor.icon && gEditor.icon.id === rec.id ? ' on' : '');
-    b.dataset.id = rec.id;
-    b.title = pictureName(rec);
-    if (src && src.b64) {
-      var img = document.createElement('img');
-      img.alt = '';
-      img.src = rec.kind === 'svg' ? svgUrl(pictureIcon(rec), '#374151', 44) : 'data:image/' + rec.kind + ';base64,' + src.b64;
-      b.appendChild(img);
-    } else {
-      var t = document.createElement('span');
-      t.className = 'txt';
-      t.textContent = src && src.gone ? 'Gone' : '…';
-      b.appendChild(t);
-    }
-    if (rec.kind === 'svg' || rec.every) {
-      var tag = document.createElement('span');
-      tag.className = 'mi-tag';
-      tag.textContent = rec.every ? REFRESH_TAGS[rec.every] || '' : 'SVG';
-      b.appendChild(tag);
-    }
-    return b;
+    var src = gSources[rec.id];
+    var item = { id: rec.id, title: pictureName(rec), photo: true, tag: rec.every ? REFRESH_TAGS[rec.every] || '' : rec.kind === 'svg' ? 'SVG' : '' };
+    if (src && src.b64) item.src = rec.kind === 'svg' ? svgUrl(pictureIcon(rec), '#374151', 44) : 'data:image/' + rec.kind + ';base64,' + src.b64;
+    else item.text = src && src.gone ? 'Gone' : '…';
+    return item;
   }), 'No pictures yet.');
 }
 $('mi-how').addEventListener('click', function(e) {
@@ -2026,29 +1890,12 @@ $('mi-grid').addEventListener('click', function(e) {
   pickIcon(pictureIcon(rec));
   mineMessage('');
 });
-$('mi-choose').addEventListener('click', function() { $('mi-file').click(); });
-$('mi-file').addEventListener('change', function() {
-  var file = this.files && this.files[0];
-  this.value = '';
-  addPictureFile(file);
-});
-['dragenter', 'dragover'].forEach(function(t) {
-  $('mi-drop').addEventListener(t, function(e) { e.preventDefault(); $('mi-drop').classList.add('over'); });
-});
-['dragleave', 'drop'].forEach(function(t) {
-  $('mi-drop').addEventListener(t, function() { $('mi-drop').classList.remove('over'); });
-});
-$('mi-drop').addEventListener('drop', function(e) {
-  e.preventDefault();
-  addPictureFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
-});
 // A picture pasted anywhere but a text box, while My images is open, is added as a file would be.
-document.addEventListener('paste', function(e) {
-  if (!gEditor.look || pickerSource() !== SOURCE_MINE || /^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) return;
-  var item = Array.prototype.find.call((e.clipboardData && e.clipboardData.items) || [], function(i) { return i.kind === 'file' && /^image\//.test(i.type); });
-  if (!item) return;
-  e.preventDefault();
-  addPictureFile(item.getAsFile());
+Kit.dropZone($('mi-drop'), {
+  onFile: addPictureFile,
+  choose: $('mi-choose'),
+  accept: 'image/*,.svg',
+  pasteWhen: function() { return !!gEditor.look && pickerSource() === SOURCE_MINE; },
 });
 $('mi-use-svg').addEventListener('click', function() {
   var text = $('mi-svg').value.trim();
@@ -2485,7 +2332,7 @@ function openEditor(look, title) {
   $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function closeEditor() {
-  closeColorPicker(true);
+  Kit.colorPicker.close(true);
   $('editor').hidden = true;
   gEditor.look = null;
 }
@@ -3396,71 +3243,11 @@ var DEMO_PREVIEWS = {
 };
 
 // ============================================================
-// Color picker: the dropper in Edge's own picker, which Composer embeds, reads the wrong place in
-// Composer's window, so every color input gets this picker instead
+// Color picker: the kit's, on every color input, offering the look's own colors and a dropper on its preview
 // ============================================================
-var RECENT_COLORS_KEY = 'dynamicButtonRecentColors';
-var gColorPop = null;
-var INPUT_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-function normalHex(v) {
-  var m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(String(v || '').trim());
-  if (!m) return null;
-  var h = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1];
-  return '#' + h.toUpperCase();
-}
-function recentColors() {
-  try { return (JSON.parse(localStorage.getItem(RECENT_COLORS_KEY)) || []).map(normalHex).filter(Boolean).slice(0, 10); }
-  catch (e) { return []; }
-}
-function rememberColor(hex) {
-  var list = [hex].concat(recentColors().filter(function(c) { return c !== hex; })).slice(0, 10);
-  try { localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(list)); } catch (e) {}
-}
-// The dropper reads the preview the page drew, at the picture's full size, as it shows over its tile.
-var LOUPE_CELLS = 11, LOUPE_ZOOM = 9;
-var DROPPER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M13 8l3 3-8 8H5v-3z"/><path d="M12 5l7 7"/><path d="M15 6l2.2-2.2a2.3 2.3 0 0 1 3.3 3.3L18.3 9"/></svg>';
 function previewPicture() { return $('edit-tile').querySelector('img'); }
-// The picture's pixel under the pointer, kept inside it where a scaled edge falls between pixels.
-function previewPixel(img, e) {
-  var r = img.getBoundingClientRect();
-  if (!img.naturalWidth || !r.width || !r.height) return null;
-  var at = function(v, from, size, n) { return Math.max(0, Math.min(n - 1, Math.floor((v - from) / size * n))); };
-  return { x: at(e.clientX, r.left, r.width, img.naturalWidth), y: at(e.clientY, r.top, r.height, img.naturalHeight) };
-}
-function previewCanvas(img) {
-  if (!img.pixels) {
-    var c = document.createElement('canvas');
-    c.width = img.naturalWidth;
-    c.height = img.naturalHeight;
-    c.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
-    img.pixels = c;
-  }
-  return img.pixels;
-}
 function tileBackdrop() {
   return (getComputedStyle($('edit-tile')).backgroundColor.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number);
-}
-function previewColor(img, p) {
-  var d = previewCanvas(img).getContext('2d').getImageData(p.x, p.y, 1, 1).data, a = d[3] / 255;
-  return hexOf(tileBackdrop().map(function(v, i) { return d[i] * a + v * (1 - a); }));
-}
-// The pixels around the pointer, magnified, beside it and inside the window.
-function drawLoupe(loupe, img, p, e, hex) {
-  var n = LOUPE_CELLS, z = LOUPE_ZOOM, h = (n - 1) / 2, ctx = loupe.firstChild.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = hexOf(tileBackdrop());
-  ctx.fillRect(0, 0, n * z, n * z);
-  ctx.drawImage(previewCanvas(img), p.x - h, p.y - h, n, n, 0, 0, n * z, n * z);
-  ctx.strokeStyle = '#000000';
-  ctx.strokeRect(h * z - 0.5, h * z - 0.5, z + 1, z + 1);
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.strokeRect(h * z + 0.5, h * z + 0.5, z - 1, z - 1);
-  loupe.lastChild.textContent = hex;
-  loupe.hidden = false;
-  var w = loupe.offsetWidth, ht = loupe.offsetHeight, gap = 18, page = document.documentElement;
-  loupe.style.left = (e.clientX + gap + w > page.clientWidth ? e.clientX - gap - w : e.clientX + gap) + 'px';
-  loupe.style.top = (e.clientY + gap + ht > page.clientHeight ? e.clientY - gap - ht : e.clientY + gap) + 'px';
 }
 // The colors of the look being edited and of its picture, each once, darkest first.
 function pictureColors() {
@@ -3483,217 +3270,37 @@ function pictureColors() {
   });
   return out.sort(function(a, b) { return hslOf(a).l - hslOf(b).l; }).slice(0, 20);
 }
-function paintSwatch(input) {
-  var btn = input.colorSwatch;
-  if (!btn) return;
-  btn.firstChild.style.background = INPUT_VALUE.get.call(input);
-  btn.classList.toggle('no-color', input.classList.contains('no-color'));
-}
-// Set the input as a person picking a color would, so its own handler runs.
-function pickColor(input, hex) {
-  if (INPUT_VALUE.get.call(input).toUpperCase() === hex) return;
-  INPUT_VALUE.set.call(input, hex.toLowerCase());
-  paintSwatch(input);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-}
-function closeColorPicker(keep) {
-  var pop = gColorPop;
-  if (!pop) return;
-  gColorPop = null;
-  pop.stopDropping();
-  pop.remove();
-  document.removeEventListener('mousedown', pop.outside, true);
-  document.removeEventListener('keydown', pop.keys, true);
-  if (keep) {
-    var now = INPUT_VALUE.get.call(pop.input).toUpperCase();
-    if (now !== pop.start) rememberColor(now);
-  } else if (pop.before && gEditor.look === pop.look) {
-    // The look as it was, not the box's value: a badge with no background, or a glow that
-    // follows Color, has no value of its own to put back.
-    var was = JSON.parse(pop.before), l = gEditor.look;
-    l.custom = was.custom;
-    l.iconColor = was.iconColor;
-    l.tileColor = was.tileColor;
-    $('f-icon-color').value = String(l.iconColor || '').toLowerCase();
-    $('f-tile-color').value = String(l.tileColor || '').toLowerCase();
-    syncCustom();
-    preview();
-  }
-  pop.input.colorSwatch.focus();
-}
-function openColorPicker(input) {
-  closeColorPicker(true);
-  var start = INPUT_VALUE.get.call(input).toUpperCase();
-  var pop = document.createElement('div');
-  pop.className = 'cpop';
-  pop.setAttribute('role', 'dialog');
-  pop.setAttribute('aria-label', 'Choose a color');
-  pop.input = input;
-  pop.start = start;
-  pop.look = gEditor.look;
-  pop.before = gEditor.look ? JSON.stringify({ custom: gEditor.look.custom || {}, iconColor: gEditor.look.iconColor, tileColor: gEditor.look.tileColor }) : null;
-  var chips = function(title, list) {
-    if (!list.length) return '';
-    return '<div class="clabel">' + title + '</div><div class="crow">' + list.map(function(hex) {
-      return '<button type="button" class="cchip" data-hex="' + hex + '" title="' + hex + '" aria-label="' + hex + '" style="background:' + hex + '"></button>';
-    }).join('') + '</div>';
-  };
-  pop.innerHTML = chips('This look', pictureColors()) + chips('Recent', recentColors()) +
-    '<div class="chex"><span></span><input type="text" class="sm" maxlength="7" spellcheck="false" aria-label="Hex color">' +
-    '<button type="button" class="cdrop" aria-pressed="false" title="Pick a color from the picture" aria-label="Pick a color from the picture">' + DROPPER_ICON + '</button></div>' +
-    '<div class="chint" hidden>Click the picture to pick a color.</div>' +
-    ['H', 'S', 'L'].map(function(k) {
-      return '<label class="cslider"><span>' + k + '</span><input type="range" data-k="' + k + '" min="0" max="' + (k === 'H' ? 359 : 100) + '" aria-label="' + ({ H: 'Hue', S: 'Saturation', L: 'Lightness' })[k] + '"><code></code></label>';
-    }).join('');
-  var hexBox = pop.querySelector('.chex input'), sliders = pop.querySelectorAll('.cslider input');
-  var hsl = hslOf(start);
-  var show = function(hex, from) {
-    pop.querySelector('.chex span').style.background = hex;
-    if (from !== 'hex') { hexBox.value = hex; hexBox.classList.remove('input-error'); }
-    if (from !== 'slider') hsl = hslOf(hex);
-    var v = { H: Math.round(hsl.h), S: Math.round(hsl.s * 100), L: Math.round(hsl.l * 100) };
-    Array.prototype.forEach.call(sliders, function(r) {
-      if (from !== 'slider') r.value = v[r.dataset.k];
-      r.nextElementSibling.textContent = v[r.dataset.k] + (r.dataset.k === 'H' ? '' : '%');
-    });
-    sliders[0].style.background = 'linear-gradient(to right,' + [0, 60, 120, 180, 240, 300, 359].map(function(d) { return 'hsl(' + d + ',100%,50%)'; }).join(',') + ')';
-    sliders[1].style.background = 'linear-gradient(to right,hsl(' + v.H + ',0%,' + v.L + '%),hsl(' + v.H + ',100%,' + v.L + '%))';
-    sliders[2].style.background = 'linear-gradient(to right,#000,hsl(' + v.H + ',' + v.S + '%,50%),#fff)';
-    Array.prototype.forEach.call(pop.querySelectorAll('.cchip'), function(c) { c.classList.toggle('on', c.dataset.hex === hex); });
-  };
-  pop.addEventListener('click', function(e) {
-    var chip = e.target.closest('.cchip');
-    if (!chip) return;
-    pickColor(input, chip.dataset.hex);
-    show(chip.dataset.hex);
+var gColorBefore = null;
+document.querySelectorAll('input[type="color"]').forEach(function(input) {
+  Kit.colorPicker(input, {
+    recentKey: 'dynamicButtonRecentColors',
+    offer: function() { return [{ title: 'This look', colors: pictureColors() }]; },
+    dropper: {
+      // By the look, not the preview, which may still be drawing.
+      when: function() { return !!(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing); },
+      image: previewPicture,
+      area: function() { return $('edit-tile'); },
+      backdrop: tileBackdrop,
+    },
+    onOpen: function() {
+      var l = gEditor.look;
+      gColorBefore = l ? { look: l, was: JSON.stringify({ custom: l.custom || {}, iconColor: l.iconColor, tileColor: l.tileColor }) } : null;
+    },
+    // The look as it was, not the box's value: a badge with no background, or a glow that follows Color, has no
+    // value of its own to put back.
+    onCancel: function() {
+      if (!gColorBefore || gEditor.look !== gColorBefore.look) return;
+      var was = JSON.parse(gColorBefore.was), l = gEditor.look;
+      l.custom = was.custom;
+      l.iconColor = was.iconColor;
+      l.tileColor = was.tileColor;
+      $('f-icon-color').value = String(l.iconColor || '').toLowerCase();
+      $('f-tile-color').value = String(l.tileColor || '').toLowerCase();
+      syncCustom();
+      preview();
+    },
   });
-  hexBox.addEventListener('input', function() {
-    var hex = normalHex(hexBox.value);
-    hexBox.classList.toggle('input-error', !hex);
-    if (hex) { pickColor(input, hex); show(hex, 'hex'); }
-  });
-  hexBox.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); closeColorPicker(true); } });
-  Array.prototype.forEach.call(sliders, function(r) {
-    r.addEventListener('input', function() {
-      hsl = { h: Number(sliders[0].value), s: Number(sliders[1].value) / 100, l: Number(sliders[2].value) / 100 };
-      var hex = normalHex(hexFromHsl(hsl));
-      pickColor(input, hex);
-      show(hex, 'slider');
-    });
-  });
-  // The dropper: armed by its button, it shows the color under the pointer and picks it on a click.
-  var drop = pop.querySelector('.cdrop'), hexChip = pop.querySelector('.chex span'), loupe = null;
-  var now = function() { return INPUT_VALUE.get.call(input).toUpperCase(); };
-  // By the look, not the preview, which may still be drawing.
-  drop.hidden = !(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing);
-  pop.stopDropping = function() {
-    if (!pop.dropping) return;
-    pop.dropping = false;
-    drop.setAttribute('aria-pressed', 'false');
-    pop.querySelector('.chint').hidden = true;
-    document.body.classList.remove('cdropping');
-    document.removeEventListener('mousemove', pop.hover, true);
-    document.removeEventListener('mouseout', pop.away, true);
-    if (loupe) loupe.remove();
-    loupe = null;
-    hexChip.style.background = now();
-  };
-  pop.hover = function(e) {
-    var img = previewPicture(), p = img && e.target === img && previewPixel(img, e);
-    if (!p) {
-      if (loupe) loupe.hidden = true;
-      hexChip.style.background = now();
-      return;
-    }
-    var hex = previewColor(img, p);
-    if (!loupe) {
-      loupe = document.createElement('div');
-      loupe.className = 'cloupe';
-      loupe.innerHTML = '<canvas width="' + LOUPE_CELLS * LOUPE_ZOOM + '" height="' + LOUPE_CELLS * LOUPE_ZOOM + '"></canvas><code></code>';
-      document.body.appendChild(loupe);
-    }
-    drawLoupe(loupe, img, p, e, hex);
-    hexChip.style.background = hex;
-  };
-  pop.away = function(e) {
-    if (e.relatedTarget) return;
-    if (loupe) loupe.hidden = true;
-    hexChip.style.background = now();
-  };
-  drop.addEventListener('click', function() {
-    if (pop.dropping) { pop.stopDropping(); return; }
-    pop.dropping = true;
-    drop.setAttribute('aria-pressed', 'true');
-    pop.querySelector('.chint').hidden = false;
-    document.body.classList.add('cdropping');
-    document.addEventListener('mousemove', pop.hover, true);
-    document.addEventListener('mouseout', pop.away, true);
-    // Over the picture, as in a narrow window, the picker moves above its color box.
-    var tile = $('edit-tile').getBoundingClientRect(), box = pop.getBoundingClientRect(), at = input.colorSwatch.getBoundingClientRect();
-    if (box.left < tile.right && box.right > tile.left && box.top < tile.bottom && box.bottom > tile.top && at.top - box.height - 6 >= 0) {
-      pop.style.top = (at.top - box.height - 6 + window.scrollY) + 'px';
-    }
-  });
-  pop.outside = function(e) {
-    if (pop.dropping && !drop.contains(e.target)) {
-      var img = previewPicture(), p = e.button === 0 && img && e.target === img && previewPixel(img, e), hex = p && previewColor(img, p);
-      pop.stopDropping();
-      if (hex) {
-        // A pick, not a click away: the picker stays open on the new color.
-        e.preventDefault();
-        pickColor(input, hex);
-        show(hex);
-        return;
-      }
-      // A near miss on the tile only stops the dropper.
-      if ($('edit-tile').contains(e.target)) return;
-    }
-    if (!pop.contains(e.target) && !input.colorSwatch.contains(e.target)) closeColorPicker(true);
-  };
-  pop.keys = function(e) {
-    if (e.key !== 'Escape') return;
-    e.preventDefault();
-    if (pop.dropping) pop.stopDropping();
-    else closeColorPicker(false);
-  };
-  document.addEventListener('mousedown', pop.outside, true);
-  document.addEventListener('keydown', pop.keys, true);
-  document.body.appendChild(pop);
-  var at = input.colorSwatch.getBoundingClientRect();
-  var left = Math.max(8, Math.min(at.left, document.documentElement.clientWidth - pop.offsetWidth - 8));
-  pop.style.left = (left + window.scrollX) + 'px';
-  pop.style.top = (at.bottom + 6 + window.scrollY) + 'px';
-  gColorPop = pop;
-  show(start);
-  hexBox.focus();
-  hexBox.select();
-}
-function attachColorPicker(input) {
-  var btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'cswatch';
-  btn.id = input.id + '-swatch';
-  btn.appendChild(document.createElement('span'));
-  var label = document.querySelector('label[for="' + input.id + '"]');
-  if (label) { label.htmlFor = btn.id; btn.setAttribute('aria-label', label.textContent); }
-  input.colorSwatch = btn;
-  input.hidden = true;
-  input.tabIndex = -1;
-  input.parentNode.insertBefore(btn, input);
-  // The page also sets the value from code, and the swatch follows.
-  Object.defineProperty(input, 'value', {
-    configurable: true,
-    get: function() { return INPUT_VALUE.get.call(this); },
-    set: function(v) { INPUT_VALUE.set.call(this, v); paintSwatch(this); },
-  });
-  new MutationObserver(function() { paintSwatch(input); }).observe(input, { attributes: true, attributeFilter: ['class'] });
-  btn.addEventListener('click', function() {
-    if (gColorPop && gColorPop.input === input) closeColorPicker(true);
-    else openColorPicker(input);
-  });
-  paintSwatch(input);
-}
-document.querySelectorAll('input[type="color"]').forEach(attachColorPicker);
+});
 
 
 // ============================================================

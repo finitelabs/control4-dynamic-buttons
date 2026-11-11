@@ -215,7 +215,7 @@ T.truthy(
   "the slider's range is the driver's",
   has(string.format('id="c-badge-size" min="%d" max="%d"', Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE))
 )
-for note in page:gmatch('<span class="fnote"') do
+for note in page:gmatch('<span class="kit-form-note"') do
   T.truthy("a note isn't inside its control's row, where it would push the label down: " .. note, false)
 end
 
@@ -227,50 +227,42 @@ for _ in page:gmatch("await loadImage%(svgUrl%(") do
 end
 T.eq("both of drawLook's pictures load that way", loaded, 2)
 
-T.section("The page's own color picker")
+T.section("The color picker")
 local colorInputs = 0
 for _ in page:gmatch('<input type="color"') do
   colorInputs = colorInputs + 1
 end
 T.eq("the look editor has its nine color boxes", colorInputs, 9)
 T.truthy(
-  "each gets the page's picker",
-  has("document.querySelectorAll('input[type=\"color\"]').forEach(attachColorPicker)")
+  "each gets the kit's picker",
+  has("document.querySelectorAll('input[type=\"color\"]').forEach(function(input) {\n  Kit.colorPicker(input, {")
 )
-T.truthy("and Edge's own picker never opens: the input hides", has("input.hidden = true;"))
-T.truthy("and its label opens the page's picker", has("label.htmlFor = btn.id;"))
+T.truthy("keeping the recent colors the page always kept", has("recentKey: 'dynamicButtonRecentColors',"))
 T.truthy(
-  "a value the page sets in code shows on the swatch",
-  has("set: function(v) { INPUT_VALUE.set.call(this, v); paintSwatch(this); }")
+  "offering the look's own colors first",
+  has("offer: function() { return [{ title: 'This look', colors: pictureColors() }]; },")
 )
-T.truthy("Escape puts the color back", has("if (pop.dropping) pop.stopDropping();\n    else closeColorPicker(false);"))
-T.truthy("as the look had it, not as the box's value", has("var was = JSON.parse(pop.before), l = gEditor.look;"))
-T.truthy("and only onto that look, if another is open by then", has("pop.before && gEditor.look === pop.look"))
-T.truthy("recent colors survive a browser that refuses storage", has("try { localStorage.setItem(RECENT_COLORS_KEY"))
+T.truthy(
+  "Escape puts the look back as it was, not as the box's value",
+  has("var was = JSON.parse(gColorBefore.was), l = gEditor.look;")
+)
+T.truthy(
+  "and only onto that look, if another is open by then",
+  has("if (!gColorBefore || gEditor.look !== gColorBefore.look) return;")
+)
+T.truthy("closing the editor closes the picker", has("function closeEditor() {\n  Kit.colorPicker.close(true);"))
 
 T.section("The dropper")
 T.falsy("Edge's own dropper is never used: it reads the wrong place in Composer's window", has("EyeDropper"))
 T.truthy(
   "it reads the preview the page drew",
-  has("function previewPicture() { return $('edit-tile').querySelector('img'); }")
+  has("function previewPicture() { return $('edit-tile').querySelector('img'); }") and has("image: previewPicture,")
 )
-T.truthy(
-  "a pick is the color as the picture shows over its tile",
-  has("return hexOf(tileBackdrop().map(function(v, i) { return d[i] * a + v * (1 - a); }));")
-)
-T.truthy(
-  "a click on the picture picks, and the picker stays open",
-  has("e.preventDefault();\n        pickColor(input, hex);\n        show(hex);\n        return;")
-)
-T.truthy("Escape while picking only stops picking", has("if (pop.dropping) pop.stopDropping();"))
-T.truthy("only a left click picks", has("p = e.button === 0 && img && e.target === img && previewPixel(img, e)"))
-T.truthy("a near miss on the tile only stops the dropper", has("if ($('edit-tile').contains(e.target)) return;"))
+T.truthy("a pick is the color as the picture shows over its tile", has("backdrop: tileBackdrop,"))
 T.truthy(
   "it shows for a look with a picture, even while the preview draws",
-  has("drop.hidden = !(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing);")
+  has("when: function() { return !!(gEditor.look && gEditor.look.icon && !gEditor.look.icon.missing); },")
 )
-T.truthy("closing the editor closes the picker", has("function closeEditor() {\n  closeColorPicker(true);"))
-T.truthy("and the picker closing stops it too", has("pop.stopDropping();\n  pop.remove();"))
 
 T.section("Duplicate")
 T.truthy("each look's row has Duplicate", has('data-act="copy"'))
@@ -410,7 +402,10 @@ T.truthy(
   "opening its look restores Address and Refresh",
   has("$('mi-url').value = opened.url || '';") and has("$('mi-every').value = String(opened.every);")
 )
-T.truthy("the grid tags it with how often", has("tag.textContent = rec.every ? REFRESH_TAGS[rec.every] || '' : 'SVG';"))
+T.truthy(
+  "the grid tags it with how often",
+  has("tag: rec.every ? REFRESH_TAGS[rec.every] || '' : rec.kind === 'svg' ? 'SVG' : ''")
+)
 T.truthy(
   "the picked line says how often and how its last refresh went",
   has("', refreshed ' + Kit.esc(REFRESH_WORDS[every] || '')")
