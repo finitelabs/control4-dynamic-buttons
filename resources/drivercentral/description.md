@@ -20,7 +20,7 @@ work with no internet connection.
   colors and tile shape you pick, with an optional badge showing a live value
 - Hundreds of included icons that work with no internet, and a search across
   more than a dozen free icon libraries
-- Icon packs that match the OS 3 and X4 looks, with on, off and alert pictures
+- Icon packs that match the OS 3 and X4 looks, with on, off or alert pictures
   where a subject has states
 - Your own pictures from an uploaded file, pasted SVG or a web address, kept as
   fetched or refreshed on a schedule
@@ -30,8 +30,8 @@ work with no internet connection.
   after a set time
 - Looks copied to other Dynamic Buttons in the project, or exported to a file
   and imported into another project
-- Show Look, Next Look and Previous Look commands, a Look variable, events and a
-  Look Is conditional for programming
+- Look commands, a Look variable, events and a Look Is conditional for
+  programming
 
 ## System requirements
 
