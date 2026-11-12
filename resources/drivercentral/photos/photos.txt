@@ -1,7 +1,7 @@
 # <output name>|<query>: one listing photo per line, in upload order. README.md lists the fields.
-1-in-navigator|img=navigator.png&fit=1&t=Buttons%20that%20show%20what%27s%20happening&s=Live%20badges%20and%20pictures%2C%20a%20camera%20snapshot%20too%2C%20right%20in%20the%20Control4%20app%20and%20on%20touch%20screens.
+1-in-navigator|img=navigator.png&fit=1&t=Buttons%20that%20show%20what%27s%20happening&s=Live%20badges%20and%20pictures%2C%20right%20in%20the%20Control4%20app.
 2-looks|img=looks.png&fit=1&t=Up%20to%20eight%20looks&s=Each%20look%20has%20its%20own%20picture%2C%20colors%20and%20badge.%20Presses%2C%20programming%20or%20values%20pick%20the%20one%20shown.
-3-icon-packs|img=icon-packs.png&fit=1&t=Pictures%20that%20match%20Control4&s=Classic%20and%20Modern%20icon%20packs%2C%20included%20icons%20and%20free%20icon%20libraries.
+3-icon-packs|img=icon-packs.png&fit=1&t=Pictures%20that%20match%20Control4&s=Classic%20and%20Modern%20icon%20packs%2C%20plus%20hundreds%20of%20included%20icons.
 4-icon-libraries|img=icon-search.png&fit=1&t=Free%20icon%20libraries&s=Search%20free%20icon%20libraries%20online%20by%20name%2C%20filled%20or%20outline.
 5-colors-and-glow|img=customize.png&fit=1&t=Your%20colors&s=Set%20each%20picture%27s%20color%2C%20body%2C%20glow%2C%20size%20and%20position.
 6-live-badges|img=badge.png&fit=1&t=Live%20badges&s=A%20badge%20shows%20short%20text%20or%20a%20live%20value%20from%20another%20device.
@@ -11,5 +11,5 @@
 10-copy-looks|img=copy-looks.png&fit=1&t=Copy%20and%20share%20looks&s=Copy%20looks%20to%20other%20buttons%2C%20or%20export%20them%20for%20another%20project.
 11-import|img=import.png&fit=1&t=Import%20looks&s=Pick%20the%20looks%20you%20want%20from%20an%20exported%20file.
 12-timer|img=timer.png&fit=1&t=Looks%20that%20go%20back%20on%20their%20own&s=After%20a%20set%20time%2C%20a%20look%20shows%20the%20one%20before%20it%20or%20another%20look%20you%20pick.
-13-follow-a-light|img=by-link.png&fit=1&t=Buttons%20that%20follow%20your%20lights&s=A%20look%20shows%20while%20a%20light%20is%20on%20or%20off%2C%20however%20the%20light%20was%20switched.
-14-programming|img=composer-programming.png&fit=1&t=Control4%20programming&s=Show%20Look%2C%20Next%20Look%20and%20web%20picture%20commands%2C%20an%20event%20for%20each%20look%20and%20a%20Look%20Is%20conditional.
+13-follow-a-light|img=by-link.png&fit=1&t=Looks%20that%20follow%20a%20Button%20Link&s=A%20look%20shows%20while%20its%20Button%20Link%20is%20on%20or%20off%2C%20however%20the%20device%20was%20switched.
+14-programming|img=composer-programming.png&fit=1&t=Control4%20programming&s=Look%20and%20picture%20commands%2C%20an%20event%20for%20each%20look%2C%20and%20a%20Look%20Is%20conditional.
