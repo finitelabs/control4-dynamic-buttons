@@ -73,13 +73,19 @@ local refreshes = 0
 --- @param size integer
 --- @param store? table
 --- @param liveCap? integer
+--- @param id? integer The button (optional; 1).
+--- @param buttons? fun(): integer[] The project's Dynamic Buttons (optional; none to wait on).
 --- @return Bank bank
-local function newBank(size, store, liveCap)
+local function newBank(size, store, liveCap, id, buttons)
   return Bank:new({
     store = store or memoryStore(),
     enabled = true,
     refresh = function()
       refreshes = refreshes + 1
+    end,
+    deviceId = id or 1,
+    buttons = buttons or function()
+      return {}
     end,
     size = size,
     liveCap = liveCap,
@@ -200,18 +206,53 @@ T.eq("but not one it sent before", record(old), nil)
 T.eq("its look keeps its state", u:slotFor("Kept"), kept)
 T.eq("with the picture written again", H.banked(kept), "Kept")
 local mine = u:slotFor("Mine")
-wipe(RECORDS)
-wipe(PICTURES)
 ShimFiles(RECORDS)[slotOf(mine)] = recordOf("Theirs", clock)
 u = newBank(256, store)
 u:start()
-T.eq("a slot another button took since is left to it", record(mine), recordOf("Theirs", clock))
+T.eq("a slot another button bound at the same moment is left to it", record(mine), recordOf("Theirs", clock))
 local moved = u:slotFor("Mine")
 T.truthy("and the picture takes another", slotOf(moved) and moved ~= mine)
 restartController()
 u = newBank(256, store)
 u:start()
 T.eq("a restart drops them all", store:get("BankShown"), nil)
+
+T.section("An update, before every button has started")
+wipe(RECORDS)
+wipe(PICTURES)
+local both = function()
+  return { 1, 2 }
+end
+local firstStore, lastStore = memoryStore(), memoryStore()
+local firstBank = newBank(8, firstStore, nil, 1, both)
+local lastBank = newBank(8, lastStore, nil, 2, both)
+firstBank:start()
+lastBank:start()
+local theirs = lastBank:slotFor("Theirs")
+local theirsAt = clock
+local onTheirs
+for n = 1, 500 do
+  if tonumber(hashOf("P" .. n):sub(1, 8), 16) % 8 + 1 == tonumber(slotOf(theirs)) then
+    onTheirs = "P" .. n
+    break
+  end
+end
+T.truthy("(a picture whose path starts on another button's slot)", onTheirs)
+wipe(RECORDS)
+wipe(PICTURES)
+firstBank = newBank(8, firstStore, nil, 1, both)
+T.eq("the first button to start doesn't make the bank whole", firstBank:start(), false)
+none, err = firstBank:slotFor(onTheirs)
+T.eq("so a new picture waits rather than take a slot whose record isn't back", { none, err }, { nil, Bank.WAIT })
+T.eq("and the other button's slot is left alone", { record(theirs), H.banked(theirs) }, {})
+lastBank = newBank(8, lastStore, nil, 2, both)
+T.eq("the last button to start makes it whole", lastBank:start(), true)
+T.eq("with its slot's record back", record(theirs), recordOf("Theirs", theirsAt))
+local after = firstBank:slotFor(onTheirs)
+T.truthy("then the picture takes another slot", slotOf(after) and after ~= theirs)
+T.eq("and the other button keeps its own", lastBank:slotFor("Theirs"), theirs)
+lastBank = newBank(8, lastStore, nil, 2, both)
+T.eq("a start with the bank already whole has no one to tell", lastBank:start(), false)
 
 T.section("The refresh time through an update")
 wipe(RECORDS)
@@ -350,7 +391,7 @@ T.eq(
   "controller://driver/dynamic_button_copy/icons/experience_300.png"
 )
 
-T.section("Removing a button from the project")
+T.section("A button that waits for the others after an update")
 function C4:GetDriverFileName()
   return "dynamic_button.c4z"
 end
@@ -366,6 +407,30 @@ wipe(RECORDS)
 wipe(PICTURES)
 persist:set("BankShown", nil)
 Bank.SIZE = 8
+H.restart()
+local earlyId = H.addLook("Early")
+T.contains("shows a new look by its address while others haven't started", H.lastIcon().params.icon, "controller://")
+T.eq("and Driver Status is Ready, as the bank isn't full", Properties["Driver Status"], "Ready")
+ShimFiles(RECORDS)["up-905"] = "1"
+ShimFiles(RECORDS)["up-903"] = "1"
+EC.BANK_READY()
+local earlyState = H.lastIcon().params.icon
+T.truthy("once they have, it shows through a state", slotOf(earlyState))
+T.eq("with its picture", H.banked(earlyState), H.png("Early"))
+ShimFiles(RECORDS)["up-" .. H.DEVICE_ID] = nil
+told = {}
+H.restart()
+T.eq("the last button to start tells the others", told, { "903 BANK_READY", "905 BANK_READY" })
+H.tab("_DELETE_LOOK", { id = earlyId })
+
+T.section("Removing a button from the project")
+told = {}
+wipe(RECORDS)
+wipe(PICTURES)
+persist:set("BankShown", nil)
+for _, id in ipairs({ H.DEVICE_ID, 905, 903 }) do
+  ShimFiles(RECORDS)["up-" .. id] = "1"
+end
 H.restart()
 H.addLook("Gone")
 local goneState = H.lastIcon().params.icon

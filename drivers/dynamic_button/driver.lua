@@ -683,8 +683,14 @@ function OnDriverLateInit()
     -- driver.xml's states name the dynamic_button folder: a renamed driver file shows addresses only.
     enabled = driverName() == Bank.DRIVER,
     refresh = RefreshNavs,
+    deviceId = tointeger(C4:GetDeviceID()),
+    buttons = getDriverIds,
   })
-  bank:start()
+  if bank:start() then
+    for _, id in ipairs(otherButtons()) do
+      SendToDevice(id, "BANK_READY", {})
+    end
+  end
   button = Button:new({
     looks = looks,
     images = images,
@@ -1477,6 +1483,14 @@ end
 function EC.BANK_ADOPT(params)
   log:trace("EC.BANK_ADOPT(%s)", params)
   bank:adopt(Select(params, "SLOTS"))
+end
+
+--- Every Dynamic Button wrote its picture bank records again after an update.
+function EC.BANK_READY()
+  log:trace("EC.BANK_READY()")
+  if button and followAllowed() then
+    button:bankReady()
+  end
 end
 
 --#ifdef DRIVERCENTRAL

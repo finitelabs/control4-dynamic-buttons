@@ -20,6 +20,7 @@ local Bank = require("dynamic_button.bank")
 --- @field onFull? fun(full: boolean) Hears when a look goes to its address because the bank is full, and back.
 --- @field _badgeKey string|nil Names the shown look's live badge text in its address.
 --- @field _full boolean True while the shown look is at its address because the bank is full.
+--- @field _waiting boolean True while the shown look is at its address until every button has started.
 local Button = {}
 Button.__index = Button
 
@@ -42,6 +43,7 @@ function Button:new(opts)
   instance.bank = opts.bank
   instance.onFull = opts.onFull
   instance._full = false
+  instance._waiting = false
   return instance
 end
 
@@ -149,6 +151,7 @@ function Button:_tell(look, picture)
     picture = picture or self.images:readServed(self.deviceId, look.id)
     state, err = self.bank:slotFor(picture, live and look.id or nil)
   end
+  self._waiting = err == Bank.WAIT
   if state then
     self:_noteFull(false, look)
     self.sendIcon(state, look.name)
@@ -162,6 +165,9 @@ function Button:_tell(look, picture)
   if err == Bank.CAPPED then
     log:debug("Look %s took its share of the picture bank until the controller restarts", look.name)
   end
+  if self._waiting then
+    log:debug("Look %s shows by its address until every Dynamic Button has started", look.name)
+  end
   self.sendIcon(Images.address(self.driverName, self.deviceId, look.id, version, self._badgeKey), look.name)
 end
 
@@ -171,6 +177,7 @@ function Button:_showDefault()
   self._badgeKey = nil
   self:_watch(nil)
   self:_noteFull(false)
+  self._waiting = false
   self.sendIcon(self.bank.enabled and Bank.OWN_STATE or Images.ownIcon(self.driverName), "")
 end
 
@@ -222,6 +229,14 @@ function Button:redrawBadge()
   end
   self._badgeKey = key
   self:_tell(look, picture)
+end
+
+--- Every Dynamic Button wrote its picture bank records again after an update: a look that waited
+--- for a slot takes one.
+function Button:bankReady()
+  if self._waiting then
+    self:retell()
+  end
 end
 
 --- Tell the proxy the shown look again, after its name changed. The picture is unchanged.

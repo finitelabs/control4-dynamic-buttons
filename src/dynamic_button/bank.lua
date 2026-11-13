@@ -29,6 +29,8 @@ local Images = require("dynamic_button.images")
 --- @field _now fun(): integer The clock, in ms since the epoch.
 --- @field _uptime fun(): number Seconds since the controller started.
 --- @field _refresh fun() Refreshes the Navigators.
+--- @field _deviceId integer This button.
+--- @field _buttons fun(): integer[] Every Dynamic Button in the project, this one included.
 --- @field _found table<string, integer> Slots found this run, by picture hash.
 local Bank = {}
 Bank.__index = Bank
@@ -51,11 +53,18 @@ Bank.FULL = "full"
 --- What slotFor answers when a live look took its share of new slots since the controller started.
 Bank.CAPPED = "capped"
 
+--- What slotFor answers when an update emptied the bank's folder and a button that may hold a slot
+--- hasn't written its records again yet.
+Bank.WAIT = "wait"
+
 --- The slots' records: one file per slot, "<hash> <ms>", the picture's hash and when a button last
 --- sent the state.
 local RECORDS_DIR = "bank"
 --- The file, among the records, that holds when a button last refreshed the Navigators, in ms.
 local REFRESHED_NAME = "refreshed"
+--- Each button's file among the records, "up-<id>", written once its records are back after an
+--- update replaced the folder.
+local UP_PREFIX = "up-"
 --- The pictures' folder, which the states' addresses name.
 local PICTURES_DIR = "www/bank"
 
@@ -69,7 +78,7 @@ local REFRESHED_KEY = "BankRefreshed"
 local START_SLACK_MS = 60000
 
 --- Creates a new instance of the Bank class.
---- @param opts { store: table, enabled: boolean, refresh: fun(), size?: integer, liveCap?: integer, now?: fun(): integer, uptime?: fun(): number }
+--- @param opts { store: table, enabled: boolean, refresh: fun(), deviceId: integer, buttons: fun(): integer[], size?: integer, liveCap?: integer, now?: fun(): integer, uptime?: fun(): number }
 --- @return Bank bank
 function Bank:new(opts)
   local instance = setmetatable({}, self)
@@ -84,6 +93,8 @@ function Bank:new(opts)
     return C4:GetUptime()
   end
   instance._refresh = opts.refresh
+  instance._deviceId = opts.deviceId
+  instance._buttons = opts.buttons
   instance._found = {}
   return instance
 end
@@ -163,12 +174,27 @@ function Bank:_remember(slot, hash, at)
   self.store:set(SHOWN_KEY, shown)
 end
 
+--- Whether every Dynamic Button wrote its records since the folder was last replaced. Until then, a
+--- slot with no record may be one a button that hasn't started yet sent since the restart.
+--- @private
+--- @return boolean whole
+function Bank:_whole()
+  for _, id in ipairs(self._buttons()) do
+    if not Images.readFile("C4Z", RECORDS_DIR, UP_PREFIX .. id) then
+      return false
+    end
+  end
+  return true
+end
+
 --- At every start: the first button to start since the controller started refreshes the
 --- Navigators, so apps drop their copies as remotes did. Then each writes again the refresh time and
 --- the records of the slots it sent since, since an update replaces the folder.
+--- @return boolean completed This button's records made the bank whole again, so others waiting on
+--- it can take new slots now.
 function Bank:start()
   if not self.enabled then
-    return
+    return false
   end
   local onFile = self:_refreshedAt()
   local refreshed = math.max(onFile, self.store:get(REFRESHED_KEY, 0))
@@ -203,6 +229,12 @@ function Bank:start()
     end
   end
   self.store:set(SHOWN_KEY, next(shown) and shown or nil)
+  if Images.readFile("C4Z", RECORDS_DIR, UP_PREFIX .. self._deviceId) then
+    return false
+  end
+  local waited = not self:_whole()
+  Images.writeFile("C4Z", RECORDS_DIR, UP_PREFIX .. self._deviceId, "1")
+  return waited and self:_whole()
 end
 
 --- The slot's state is about to be sent: from then on it keeps its picture until the controller
@@ -319,6 +351,7 @@ function Bank:slotFor(png, liveLookId)
     return self:_use(slot, hash, at, png)
   end
   local clearedAt = self:clearedAt()
+  local whole = self:_whole()
   local first = tonumber(hash:sub(1, 8), 16) % self._size
   local open = {}
   for i = 0, self._size - 1 do
@@ -328,12 +361,15 @@ function Bank:slotFor(png, liveLookId)
     if held == hash then
       return self:_use(slot, hash, at, png)
     end
-    if held == nil or at < clearedAt then
-      table.insert(open, slot)
-    end
-    -- A picture takes the first open slot on its path, so it's never past an empty one.
     if held == nil then
-      break
+      -- A picture takes the first open slot on its path, so it's never past an empty one, unless
+      -- the record is only missing until its button starts.
+      if whole then
+        table.insert(open, slot)
+        break
+      end
+    elseif at < clearedAt then
+      table.insert(open, slot)
     end
   end
   local live = liveLookId and self:_live()
@@ -350,7 +386,7 @@ function Bank:slotFor(png, liveLookId)
       return Bank.state(candidate)
     end
   end
-  return nil, Bank.FULL
+  return nil, whole and Bank.FULL or Bank.WAIT
 end
 
 --- The slots this button sent since apps and remotes last dropped their copies, for another button
