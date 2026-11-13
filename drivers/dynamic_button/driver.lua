@@ -126,6 +126,19 @@ local function readyStatus()
   return bankFull and BANK_FULL_STATUS or "Ready"
 end
 
+--- @return integer[] ids The project's other Dynamic Buttons, which share the picture bank.
+local function otherButtons()
+  local myId = C4:GetDeviceID()
+  local ids = {}
+  for id in pairs(C4:GetDevicesByC4iName(C4:GetDriverFileName()) or {}) do
+    if tointeger(id) ~= myId then
+      table.insert(ids, tointeger(id))
+    end
+  end
+  table.sort(ids)
+  return ids
+end
+
 --- @type LiveBadges
 local badges
 --- @type WebPictures
@@ -783,6 +796,11 @@ function OnDriverRemovedFromProject()
   end
   if button then
     button:removed()
+  end
+  local slots = bank and bank:handOver() or ""
+  local keeper = otherButtons()[1]
+  if slots ~= "" and keeper then
+    SendToDevice(keeper, "BANK_ADOPT", { SLOTS = slots })
   end
   pictures:clear()
 end
@@ -1461,18 +1479,14 @@ local function retellIfFull()
   end
 end
 
---- Refresh every Navigator. Navigators and remotes keep a picture bank state's first picture until
---- a refresh, so the slots any button let go before now can be taken again.
+--- Refresh every Navigator, then let every Dynamic Button take the picture bank's freed slots.
 function EC.Refresh_Navigators()
   log:trace("EC.Refresh_Navigators()")
   RefreshNavs()
   bank:refreshed()
   log:info("Navigators refreshed: the picture bank's freed slots can be taken again")
-  local myId = C4:GetDeviceID()
-  for id in pairs(C4:GetDevicesByC4iName(C4:GetDriverFileName()) or {}) do
-    if tonumber(id) ~= myId then
-      SendToDevice(tonumber(id), "BANK_REFRESHED", {})
-    end
+  for _, id in ipairs(otherButtons()) do
+    SendToDevice(id, "BANK_REFRESHED", {})
   end
   retellIfFull()
 end
@@ -1481,6 +1495,13 @@ end
 function EC.BANK_REFRESHED()
   log:trace("EC.BANK_REFRESHED()")
   retellIfFull()
+end
+
+--- A Dynamic Button leaving the project handed over its picture bank slots that wait for a refresh.
+--- @param params table
+function EC.BANK_ADOPT(params)
+  log:trace("EC.BANK_ADOPT(%s)", params)
+  bank:adopt(Select(params, "SLOTS"))
 end
 
 --#ifdef DRIVERCENTRAL

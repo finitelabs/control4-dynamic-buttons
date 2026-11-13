@@ -119,11 +119,11 @@ Halo and NEEO remotes show the button's look as Navigator does, except a look
 with a live badge or a web picture that refreshes, which shows on a remote with
 no picture.
 
-The Dynamic Buttons in a project share a picture bank of 1,024 pictures. An
-edited or deleted picture keeps its place in the bank until Navigators are
-refreshed. After many edits, run [Refresh Navigators](#refresh-navigators) on
-any Dynamic Button to free those places. While the bank is full, a new picture
-shows in Navigator but not on remotes, and Driver Status reads
+The Dynamic Buttons in a project share a picture bank of 256 pictures. An edited
+or deleted picture keeps its place in the bank until Navigators are refreshed.
+After many edits, run [Refresh Navigators](#refresh-navigators) on any Dynamic
+Button to free those places. While the bank is full, a new picture shows in
+Navigator but not on remotes, and Driver Status reads
 `Picture bank full, run Refresh Navigators`.
 
 ## The Button Tab

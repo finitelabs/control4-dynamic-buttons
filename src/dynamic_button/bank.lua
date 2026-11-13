@@ -6,7 +6,9 @@
 -- Every Dynamic Button in a project shares the bank, as they share the driver's folder. A button
 -- claims a slot with a file in the folder that names it, and keeps its slots in its own store too,
 -- since an update replaces the folder. Navigators and remotes keep a state's first picture until
--- Navigators refresh, so a slot a button lets go waits for a refresh before any button takes it.
+-- Navigators refresh, so a slot a button lets go waits for a refresh before any button takes it. A
+-- button leaving the project hands its waiting slots to another button, whose store outlives the
+-- folder.
 
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
@@ -32,7 +34,7 @@ local Bank = {}
 Bank.__index = Bank
 
 --- The states driver.xml declares (tools/gen_bank.py SIZE).
-Bank.SIZE = 1024
+Bank.SIZE = 256
 
 --- The driver folder the states' pictures are in.
 Bank.DRIVER = "dynamic_button"
@@ -154,7 +156,8 @@ function Bank:_free(slot, refreshedAt)
 end
 
 --- At every start: claim this button's slots again, since an update replaces the folder. A slot
---- another button holds now is dropped, and its look takes a new one when it next shows.
+--- another button holds now, or one past a smaller bank's end, is dropped, and its look takes a new
+--- one when it next shows.
 function Bank:start()
   if not self.enabled then
     return
@@ -162,7 +165,9 @@ function Bank:start()
   local slots = self:_slots()
   for lookId, held in pairs(slots) do
     local owner = self:_claim(held.slot)
-    if owner and owner ~= self.deviceId then
+    if held.slot > self._size then
+      slots[lookId] = nil
+    elseif owner and owner ~= self.deviceId then
       log:warn("Picture bank slot %d is another button's now: look %s takes a new one", held.slot, lookId)
       slots[lookId] = nil
     elseif owner == nil then
@@ -174,7 +179,7 @@ function Bank:start()
   local waiting = {}
   for _, entry in ipairs(self:_waiting()) do
     local owner, freedAt = self:_claim(entry.slot)
-    if entry.at > refreshedAt and owner == nil then
+    if entry.slot <= self._size and entry.at > refreshedAt and owner == nil then
       if freedAt == nil then
         self:_writeClaim(entry.slot, string.format("freed %d", entry.at))
       end
@@ -311,6 +316,47 @@ function Bank:removed()
   for lookId in pairs(self:_slots()) do
     self:release(tonumber(lookId))
   end
+end
+
+--- The slots this button let go that still wait for a refresh, for another button to keep.
+--- @return string slots "<slot>:<ms>" entries joined by commas; empty when none wait.
+function Bank:handOver()
+  if not self.enabled then
+    return ""
+  end
+  local parts = {}
+  for _, entry in ipairs(self:_waiting()) do
+    table.insert(parts, string.format("%d:%d", entry.slot, entry.at))
+  end
+  return table.concat(parts, ",")
+end
+
+--- Keep a leaving button's waiting slots with this button's own, so they wait for a refresh even
+--- after an update replaces the folder.
+--- @param slots string|nil What the leaving button's handOver returned.
+function Bank:adopt(slots)
+  if not self.enabled or not slots then
+    return
+  end
+  local refreshedAt = self:refreshedAt()
+  local waiting = self:_waiting()
+  local index = {}
+  for i, entry in ipairs(waiting) do
+    index[entry.slot] = i
+  end
+  for slotText, atText in slots:gmatch("(%d+):(%d+)") do
+    local slot, at = tonumber(slotText), tonumber(atText)
+    if slot >= 1 and slot <= self._size and at > refreshedAt then
+      local i = index[slot]
+      if i then
+        waiting[i].at = math.max(waiting[i].at, at)
+      else
+        table.insert(waiting, { slot = slot, at = at })
+        index[slot] = #waiting
+      end
+    end
+  end
+  self:_setWaiting(waiting)
 end
 
 --- Navigators were just asked to refresh: every slot let go until now is free to take again.

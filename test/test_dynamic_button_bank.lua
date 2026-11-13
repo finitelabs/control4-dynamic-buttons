@@ -10,6 +10,7 @@
 local T = require("testlib")
 local H = require("dynamic_button_harness")
 local Bank = require("dynamic_button.bank")
+local persist = require("lib.persist")
 
 local CLAIMS = "C4Z/bank"
 local PICTURES = "C4Z/www/bank"
@@ -180,6 +181,52 @@ end
 T.truthy("which another button takes after a refresh", taken[c3] and taken[c4])
 T.falsy("but not one a button still holds", taken[c1])
 
+T.section("A button leaving the project, then an update")
+wipe(CLAIMS)
+wipe(PICTURES)
+local leaving = newBank(861, 1)
+local leavingState = leaving:slotFor(1, 1, picture("Leaving"))
+local keeperStore = memoryStore()
+local keeper = newBank(863, 1, keeperStore)
+clock = 6000
+leaving:removed()
+T.eq("hands over the slots it let go", leaving:handOver(), slotOf(leavingState) .. ":6000")
+keeper:adopt(leaving:handOver())
+keeper:adopt("9:6000")
+T.eq("to a button that keeps them, inside its bank", keeper:handOver(), slotOf(leavingState) .. ":6000")
+wipe(CLAIMS)
+wipe(PICTURES)
+keeper = newBank(863, 1, keeperStore)
+keeper:start()
+T.eq("which marks them let go again at start", claim(leavingState), "freed 6000")
+local after = newBank(865, 1)
+after:start()
+local afterState, afterErr = after:slotFor(1, 1, picture("After"))
+T.eq("so no button takes one before a refresh", { afterState, afterErr }, { nil, Bank.FULL })
+keeper:refreshed()
+T.eq("and one does after", after:slotFor(1, 1, picture("After")), leavingState)
+T.eq("a refresh empties the keeper's list", keeper:handOver(), "")
+keeper:adopt(slotOf(leavingState) .. ":6000")
+T.eq("which takes no slot let go before its last refresh", keeper:handOver(), "")
+
+T.section("A smaller bank after an update")
+wipe(CLAIMS)
+wipe(PICTURES)
+local shrinkStore = memoryStore()
+-- 871 starts its search at slot 4.
+local shrink = newBank(871, 8, shrinkStore)
+local held = shrink:slotFor(1, 1, picture("S1"))
+local let = shrink:slotFor(2, 1, picture("S2"))
+shrink:release(2)
+T.eq("(slots past the smaller bank's end)", { held, let }, { "p4", "p5" })
+wipe(CLAIMS)
+wipe(PICTURES)
+shrink = newBank(871, 2, shrinkStore)
+shrink:start()
+T.eq("drops a held slot past its end", claim(held), nil)
+T.eq("and a let-go one", { claim(let), shrink:handOver() }, { nil, "" })
+T.truthy("so the look takes a state the bank declares", ({ p1 = true, p2 = true })[shrink:slotFor(1, 1, picture("S1"))])
+
 T.section("A bank that's off")
 wipe(CLAIMS)
 wipe(PICTURES)
@@ -265,6 +312,37 @@ T.eq(
   "and the driver's own icon by its address",
   H.lastIcon().params.icon,
   "controller://driver/dynamic_button_copy/icons/experience_300.png"
+)
+
+T.section("Removing a button from the project")
+function C4:GetDriverFileName()
+  return "dynamic_button.c4z"
+end
+function C4:GetDevicesByC4iName()
+  return { [tostring(H.DEVICE_ID)] = "This button", ["905"] = "Another button", ["903"] = "A third button" }
+end
+told = {}
+local sent
+function C4:SendToDevice(id, command, params)
+  table.insert(told, id .. " " .. command)
+  sent = params
+end
+wipe(CLAIMS)
+wipe(PICTURES)
+Bank.SIZE = 8
+H.restart()
+H.addLook("Gone")
+local goneState = H.lastIcon().params.icon
+OnDriverRemovedFromProject()
+T.eq("hands its slots to one other Dynamic Button", told, { "903 BANK_ADOPT" })
+T.contains("with the slot it let go", sent.SLOTS, slotOf(goneState) .. ":")
+T.eq("and lets it go", claim(goneState):match("^freed"), "freed")
+persist:set("BankWaiting", nil)
+EC.BANK_ADOPT(sent)
+T.eq(
+  "a button handed slots keeps them in its own store",
+  persist:get("BankWaiting", {})[1].slot,
+  tonumber(slotOf(goneState))
 )
 
 T.finish()
