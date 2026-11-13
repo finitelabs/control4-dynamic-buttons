@@ -128,6 +128,7 @@ end
 
 T.section("A picture's slot")
 local a = newBank(8)
+a:start()
 local red = a:slotFor("Red")
 T.eq("starts at the picture's place in the bank", slotOf(red), tostring(tonumber(hashOf("Red"):sub(1, 8), 16) % 8 + 1))
 T.eq("whose record holds the picture's hash and when it was sent", record(red), recordOf("Red", clock))
@@ -149,9 +150,11 @@ T.section("Until the controller restarts")
 wipe(RECORDS)
 wipe(PICTURES)
 local b = newBank(2)
+none, err = b:slotFor("One")
+T.eq("a new bank shows pictures by address until its buttons start", { none, err }, { nil, Bank.WAIT })
 local refreshesBefore = refreshes
 b:start()
-T.eq("a new bank's first start doesn't refresh the Navigators, as no app has drawn it", refreshes, refreshesBefore)
+T.eq("and once they all have, refreshes the Navigators so apps learn its states", refreshes, refreshesBefore + 1)
 local one, two = b:slotFor("One"), b:slotFor("Two")
 T.truthy("(two slots)", slotOf(one) and slotOf(two) and one ~= two)
 clock = clock + 24 * HOUR
@@ -177,6 +180,7 @@ T.section("A look whose picture changes while it shows")
 wipe(RECORDS)
 wipe(PICTURES)
 local live = newBank(8, nil, 2)
+live:start()
 local first = live:slotFor("Badge 1", 7)
 T.truthy("takes slots for its pictures", slotOf(first) and slotOf(live:slotFor("Badge 2", 7)))
 none, err = live:slotFor("Badge 3", 7)
@@ -192,6 +196,7 @@ wipe(RECORDS)
 wipe(PICTURES)
 local store = memoryStore()
 local u = newBank(256, store)
+u:start()
 local old = u:slotFor("Old")
 restartController()
 local kept = u:slotFor("Kept")
@@ -226,8 +231,15 @@ end
 local firstStore, lastStore = memoryStore(), memoryStore()
 local firstBank = newBank(8, firstStore, nil, 1, both)
 local lastBank = newBank(8, lastStore, nil, 2, both)
+refreshesBefore = refreshes
 firstBank:start()
-lastBank:start()
+none, err = firstBank:slotFor("Early")
+T.eq("a new bank waits for its other buttons to start", { none, err }, { nil, Bank.WAIT })
+T.eq("before it refreshes the Navigators", refreshes, refreshesBefore)
+T.eq("which the last to start does", lastBank:start(), true)
+T.eq("once", refreshes, refreshesBefore + 1)
+firstBank:ready()
+T.eq("and the others keep its time", firstStore:get("BankRefreshed"), lastStore:get("BankRefreshed"))
 local theirs = lastBank:slotFor("Theirs")
 local theirsAt = clock
 local onTheirs
@@ -259,7 +271,7 @@ wipe(RECORDS)
 local refreshStore = memoryStore()
 newBank(8, refreshStore):start()
 local refreshedAt = ShimFiles(RECORDS).refreshed
-T.eq("(written at the first start)", refreshedAt, string.format("%.0f", clock))
+T.eq("(written at the new bank's refresh)", refreshedAt, string.format("%.0f", clock))
 refreshesBefore = refreshes
 wipe(RECORDS)
 newBank(8, refreshStore):start()
@@ -271,6 +283,7 @@ wipe(RECORDS)
 wipe(PICTURES)
 local shrinkStore = memoryStore()
 local shrink = newBank(256, shrinkStore)
+shrink:start()
 local past
 for n = 1, 20 do
   local state = shrink:slotFor("S" .. n)
@@ -351,7 +364,7 @@ T.section("A button whose bank is full")
 Bank.SIZE = 2
 H.start()
 T.eq("a button with no look shows its own icon through a state", H.lastIcon().params.icon, Bank.OWN_STATE)
-T.eq("and its first start doesn't refresh the Navigators", H.navRefreshes, 0)
+T.eq("and its first start refreshes the Navigators, as it's a new bank", H.navRefreshes, 1)
 local oneId = H.addLook("One")
 local twoId = H.addLook("Two")
 EC.Show_Look({ Look = "Two (" .. twoId .. ")" })
@@ -371,7 +384,7 @@ T.eq("and Driver Status is Ready", Properties["Driver Status"], "Ready")
 EC.Show_Look({ Look = "Three (" .. threeId .. ")" })
 controllerRestarted()
 local threeState = H.lastIcon().params.icon
-T.eq("after a controller restart the button refreshes the Navigators", H.navRefreshes, 1)
+T.eq("after a controller restart the button refreshes the Navigators", H.navRefreshes, 2)
 T.truthy("and the shown look takes a slot", slotOf(threeState))
 T.eq("with its picture", H.banked(threeState), H.png("Three"))
 T.eq("and Driver Status is Ready again", Properties["Driver Status"], "Ready")
@@ -422,6 +435,41 @@ told = {}
 H.restart()
 T.eq("the last button to start tells the others", told, { "903 BANK_READY", "905 BANK_READY" })
 H.tab("_DELETE_LOOK", { id = earlyId })
+
+T.section("A new bank, from an update of a version without one")
+wipe(RECORDS)
+wipe(PICTURES)
+persist:set("BankShown", nil)
+persist:set("BankRefreshed", nil)
+local refreshes = H.navRefreshes
+told = {}
+H.restart()
+local freshId = H.addLook("Fresh")
+T.contains("shows a look by its address while others haven't started", H.lastIcon().params.icon, "controller://")
+T.eq("and doesn't refresh the Navigators yet", H.navRefreshes, refreshes)
+local refreshedAt = string.format("%.0f", C4:GetTime())
+ShimFiles(RECORDS)["up-905"] = "1"
+ShimFiles(RECORDS)["up-903"] = "1"
+ShimFiles(RECORDS).refreshed = refreshedAt
+EC.BANK_READY()
+local freshState = H.lastIcon().params.icon
+T.truthy("once the last button has refreshed them, it shows through a state", slotOf(freshState))
+T.eq("and keeps that refresh time for its next update", persist:get("BankRefreshed"), tonumber(refreshedAt))
+H.tab("_DELETE_LOOK", { id = freshId })
+wipe(RECORDS)
+wipe(PICTURES)
+persist:set("BankShown", nil)
+persist:set("BankRefreshed", nil)
+ShimFiles(RECORDS)["up-905"] = "1"
+ShimFiles(RECORDS)["up-903"] = "1"
+H.restart()
+T.eq("the last button to start refreshes the Navigators once", H.navRefreshes, refreshes + 1)
+T.eq("and tells the others", told, { "903 BANK_READY", "905 BANK_READY" })
+local lastId = H.addLook("Last")
+T.truthy("and shows its own looks through states", slotOf(H.lastIcon().params.icon))
+H.restart()
+T.eq("its next start doesn't refresh again", H.navRefreshes, refreshes + 1)
+H.tab("_DELETE_LOOK", { id = lastId })
 
 T.section("Removing a button from the project")
 told = {}

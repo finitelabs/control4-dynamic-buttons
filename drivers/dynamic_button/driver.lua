@@ -1488,7 +1488,11 @@ end
 --- Every Dynamic Button wrote its picture bank records again after an update.
 function EC.BANK_READY()
   log:trace("EC.BANK_READY()")
-  if button and followAllowed() then
+  if not button then
+    return
+  end
+  bank:ready()
+  if followAllowed() then
     button:bankReady()
   end
 end

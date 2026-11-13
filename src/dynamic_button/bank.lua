@@ -53,8 +53,9 @@ Bank.FULL = "full"
 --- What slotFor answers when a live look took its share of new slots since the controller started.
 Bank.CAPPED = "capped"
 
---- What slotFor answers when an update emptied the bank's folder and a button that may hold a slot
---- hasn't written its records again yet.
+--- What slotFor answers until every button has started: after an update emptied the bank's folder,
+--- a button that may hold a slot hasn't written its records again yet, and in a new bank the apps
+--- don't know the states until the Navigators refresh.
 Bank.WAIT = "wait"
 
 --- The slots' records: one file per slot, "<hash> <ms>", the picture's hash and when a button last
@@ -187,31 +188,36 @@ function Bank:_whole()
   return true
 end
 
+--- @private
+--- @param refreshed integer
+function Bank:_writeRefreshed(refreshed)
+  C4:FileCreateDir("C4Z", RECORDS_DIR)
+  Images.writeFile("C4Z", RECORDS_DIR, REFRESHED_NAME, string.format("%.0f", refreshed))
+end
+
 --- At every start: the first button to start since the controller started refreshes the
 --- Navigators, so apps drop their copies as remotes did. Then each writes again the refresh time and
---- the records of the slots it sent since, since an update replaces the folder.
---- @return boolean completed This button's records made the bank whole again, so others waiting on
---- it can take new slots now.
+--- the records of the slots it sent since, since an update replaces the folder. A new bank refreshes
+--- them once every button has started, as the apps learn its states only then.
+--- @return boolean completed This button made the bank whole, so others waiting on it can take
+--- slots now.
 function Bank:start()
   if not self.enabled then
     return false
   end
   local onFile = self:_refreshedAt()
   local refreshed = math.max(onFile, self.store:get(REFRESHED_KEY, 0))
-  if refreshed == 0 then
-    -- A new bank, which no app has drawn. A refresh now could also land while Director is still
-    -- updating the drivers, and the apps would show the buttons empty until the next one.
-    refreshed = self._now()
-  elseif refreshed < self:startedAt() then
+  if refreshed > 0 and refreshed < self:startedAt() then
     log:info("Refreshing Navigators, once since the controller started, so picture bank slots can take new pictures")
     refreshed = self._now()
     self._refresh()
   end
-  if refreshed ~= onFile then
-    C4:FileCreateDir("C4Z", RECORDS_DIR)
-    Images.writeFile("C4Z", RECORDS_DIR, REFRESHED_NAME, string.format("%.0f", refreshed))
+  if refreshed > 0 then
+    if refreshed ~= onFile then
+      self:_writeRefreshed(refreshed)
+    end
+    self.store:set(REFRESHED_KEY, refreshed)
   end
-  self.store:set(REFRESHED_KEY, refreshed)
   local clearedAt = self:clearedAt()
   local shown = {}
   for key, entry in pairs(self:_shown()) do
@@ -229,12 +235,31 @@ function Bank:start()
     end
   end
   self.store:set(SHOWN_KEY, next(shown) and shown or nil)
-  if Images.readFile("C4Z", RECORDS_DIR, UP_PREFIX .. self._deviceId) then
-    return false
-  end
   local waited = not self:_whole()
-  Images.writeFile("C4Z", RECORDS_DIR, UP_PREFIX .. self._deviceId, "1")
-  return waited and self:_whole()
+  if waited then
+    C4:FileCreateDir("C4Z", RECORDS_DIR)
+    Images.writeFile("C4Z", RECORDS_DIR, UP_PREFIX .. self._deviceId, "1")
+  end
+  local whole = self:_whole()
+  if refreshed == 0 and whole then
+    -- A first install, or an update from a version without the bank: every button runs with the
+    -- states now, and the apps learn them at a refresh. One sent sooner leaves later buttons empty.
+    log:info("Refreshing Navigators so apps learn the picture bank's states")
+    refreshed = self._now()
+    self:_writeRefreshed(refreshed)
+    self.store:set(REFRESHED_KEY, refreshed)
+    self._refresh()
+    return true
+  end
+  return waited and whole
+end
+
+--- Another button made the bank whole: keep the refresh time it wrote, for the next update.
+function Bank:ready()
+  local refreshed = self:_refreshedAt()
+  if self.enabled and refreshed > 0 then
+    self.store:set(REFRESHED_KEY, refreshed)
+  end
 end
 
 --- The slot's state is about to be sent: from then on it keeps its picture until the controller
@@ -345,6 +370,9 @@ function Bank:slotFor(png, liveLookId)
   local hash = C4:Hash("SHA256", png)
   if not hash or hash == "" then
     return nil
+  end
+  if self:_refreshedAt() == 0 then
+    return nil, Bank.WAIT
   end
   local slot, at = self:_known(hash)
   if slot then
