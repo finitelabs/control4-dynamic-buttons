@@ -49,6 +49,17 @@ local function firstCharacters(text, count)
   return table.concat(out)
 end
 
+--- A number to so many decimals, a half rounding away from zero as the Button tab rounds it: what
+--- `%.Nf` does with a half depends on the platform's C library.
+--- @param value number
+--- @param places integer
+--- @return string text
+local function rounded(value, places)
+  local scale = 10 ^ places
+  local magnitude = math.floor(math.abs(value) * scale + 0.5) / scale
+  return string.format("%." .. places .. "f", value < 0 and -magnitude or magnitude)
+end
+
 --- The text a live badge reads now, with only the characters the face has, before it is fitted.
 --- @param text string
 --- @return string kept
@@ -71,9 +82,10 @@ function LiveBadges.fit(text, badge)
     return text
   end
   local before, number, after = text:match("^(.-)(%-?%d+%.%d+)(.*)$")
-  if number then
+  -- Past this the tab's own rounding writes an exponent, so such a number is only cut.
+  if number and math.abs(tonumber(number)) < 1e21 then
     for places = #number:match("%.(%d+)$") - 1, 0, -1 do
-      local shorter = before .. string.format("%." .. places .. "f", tonumber(number)) .. after
+      local shorter = before .. rounded(tonumber(number), places) .. after
       if fits(shorter) then
         return shorter
       end

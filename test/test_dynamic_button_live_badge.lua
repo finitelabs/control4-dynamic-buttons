@@ -233,6 +233,19 @@ T.eq(
   LiveBadges.fit(string.rep("i", 25), topRight),
   string.rep("i", Looks.MAX_BADGE)
 )
+for _, case in ipairs({
+  { "Power now 0.25 kW", "Power now 0.3 kW" },
+  { "Master Room is 72.5", "Master Room is 73" },
+  { "Master Bed is -72.5", "Master Bed is -73" },
+  { "Outside now -0.04 F", "Outside now -0.0 F" },
+}) do
+  T.eq("a half rounds away from zero, as the tab rounds it: " .. case[1], LiveBadges.fit(case[1], topRight), case[2])
+end
+T.eq(
+  "a number too large to round is only cut",
+  LiveBadges.fit("1234567890123456789012345.123", topRight),
+  "123456789012345"
+)
 T.truthy("what fits is what the badge's art says fits", BadgeArt.fits(topRight, "Master Bedroom T"))
 T.falsy("and one more character doesn't", BadgeArt.fits(topRight, "Master Bedroom TV"))
 T.truthy("a small badge never shrinks its text, only widens", BadgeArt.fits({ place = "Under", size = 50 }, "Input 12"))

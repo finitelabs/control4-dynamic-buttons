@@ -847,6 +847,8 @@ function badgeLayout(ctx, size, b, face) {
   var under = b.place === 'Under', h = Math.round(size * (under ? 0.2 : 0.24) * (b.size || 100) / 100), full = Math.round(h * 0.68);
   var family = (face ? face + ', ' : '') + '"Segoe UI", Roboto, Arial, sans-serif';
   ctx.font = '700 ' + full + 'px ' + family;
+  // The controller draws a variable's value without the face's kerning, so the tab measures and draws it so.
+  ctx.fontKerning = b.unkerned ? 'none' : 'auto';
   var measured = ctx.measureText(b.text).width, w = Math.min(size * 0.94, Math.max(h, measured + h * 0.7)), room = w - h * 0.3;
   var font = measured > room ? full * room / measured : full;
   return { h: h, w: w, font: font, family: family, fits: font >= Math.min(full, size * BADGE_MIN_FONT) };
@@ -861,10 +863,11 @@ function badgeFits(b) {
 // decimals first, then the end goes.
 function fitBadge(text, b) {
   text = String(text == null ? '' : text).trim();
-  function fits(t) { return Array.from(t).length <= BADGE_MAX && badgeFits(Object.assign({}, b, { text: t })); }
+  function fits(t) { return Array.from(t).length <= BADGE_MAX && badgeFits(Object.assign({}, b, { text: t, unkerned: true })); }
   if (fits(text)) return text;
   var m = /^(.*?)(-?\d+\.\d+)(.*)$/.exec(text);
-  if (m) {
+  // Past this toFixed writes an exponent, so such a number is only cut, as the driver cuts it.
+  if (m && Math.abs(Number(m[2])) < 1e21) {
     for (var places = m[2].split('.')[1].length - 1; places >= 0; places--) {
       var shorter = m[1] + Number(m[2]).toFixed(places) + m[3];
       if (fits(shorter)) return shorter;
@@ -933,7 +936,7 @@ async function drawLook(canvas, look) {
   }
   var c = look.custom || {}, badge = c.badge && c.badge.text ? c.badge : null;
   // A live badge draws what it reads now, and nothing until that is known.
-  if (badge && isLiveText(badge.text)) badge = look.badgeNow ? Object.assign({}, badge, { text: look.badgeNow }) : null;
+  if (badge && isLiveText(badge.text)) badge = look.badgeNow ? Object.assign({}, badge, { text: look.badgeNow, unkerned: true }) : null;
   var face = badge ? await badgeFont() : '';
   if (turn !== canvas.drawTurn) return;
   var pack = packOf(look.icon);
@@ -2415,6 +2418,8 @@ function checkLook(l) {
 
 // Save the look, then send its 300 px picture in chunks unless the driver already has it.
 async function saveLook() {
+  // What fits is measured in the badge's face.
+  await badgeFont();
   var l = gEditor.look;
   l.name = String(l.name || '').trim();
   var problem = checkLook(l);
@@ -2520,7 +2525,7 @@ function demoSave(fields) {
   existing.showWhenText = when ? when.rendered : fields.showWhen;
   existing.whenError = when ? when.error : '';
   var live = fields.custom && fields.custom.badge && isLiveText(fields.custom.badge.text) ? gEditor.badgeResult : null;
-  existing.badgeNow = live && !live.error ? Kit.str(live.fitted) : null;
+  existing.badgeNow = live && !live.error ? fitBadge(Kit.str(live.fitted), fields.custom.badge) : null;
   existing.badgeError = live ? live.error : '';
   existing.badgeText = live ? live.rendered : '';
   if (fields.isDefault) gState.defaultLook = id;
@@ -3014,6 +3019,8 @@ function withoutReach(it) {
   return Object.assign({}, it, { look: look });
 }
 async function readLooksFile(file) {
+  // What fits is measured in the badge's face.
+  await badgeFont();
   if (file.size > LOOKS_FILE_MAX) throw new Error('That file is larger than 20 MB.');
   var data;
   try { data = JSON.parse(await file.text()); } catch (e) { throw new Error(NOT_LOOKS); }
@@ -3365,7 +3372,8 @@ document.querySelectorAll('input[type="color"]').forEach(function(input) {
   Kit.initPropertiesCard($('props'), { exclude: PROPS_ELSEWHERE });
   $('nav-meta').textContent = 'Dynamic Button' + (Kit.driverId ? ' \u00b7 device ' + Kit.driverId : '');
   // Composer's browser takes a moment to load the font, so it starts before the first badge needs it.
-  badgeFont();
+  // What fits was measured in another face until it loads.
+  badgeFont().then(function() { if (gEditor.look) refitBadge(); });
   renderSources();
   renderCategories();
   renderPacks();

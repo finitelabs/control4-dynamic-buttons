@@ -608,6 +608,11 @@ T.truthy(
     "if (!live && !badgeFits({ text: text, place: b.place, size: b.size })) return 'its badge text is too wide to fit';"
   )
 )
+T.truthy(
+  "a variable's value is measured without kerning, as the controller draws it",
+  has("ctx.fontKerning = b.unkerned ? 'none' : 'auto';") and has("{ text: t, unkerned: true }")
+)
+T.truthy("and a number too large to round is only cut", has("if (m && Math.abs(Number(m[2])) < 1e21) {"))
 T.truthy("the size and the place change what fits", has("refitBadge();\n});\n$('c-badge-size')"))
 
 T.section("A sentence names the field in quotes")
