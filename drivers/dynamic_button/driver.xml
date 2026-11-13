@@ -215,6 +215,12 @@
           <Icon width="300" height="300">controller://driver/dynamic_button/icons/placeholder_300.png</Icon>
           <Icon width="512" height="512">controller://driver/dynamic_button/icons/placeholder_512.png</Icon>
           <Icon width="1024" height="1024">controller://driver/dynamic_button/icons/placeholder_1024.png</Icon>
+          <state id="own">
+            <Icon width="70" height="70">controller://driver/dynamic_button/icons/experience_70.png</Icon>
+            <Icon width="90" height="90">controller://driver/dynamic_button/icons/experience_90.png</Icon>
+            <Icon width="300" height="300">controller://driver/dynamic_button/icons/experience_300.png</Icon>
+          </state>
+          <!-- #embed generated/picture_bank.xml -->
       </display_icons>
     </navigator_display_option>
   </capabilities>

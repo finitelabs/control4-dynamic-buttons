@@ -20,6 +20,14 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 ## Unreleased
 
+### Added
+
+- Added each look's picture on Halo and NEEO remotes
+
+### Fixed
+
+- Fixed the button going blank for a moment when it's pressed or changes look
+
 ### Changed
 
 - Changed a badge's text from 5 characters to as many as fit, up to 20, with

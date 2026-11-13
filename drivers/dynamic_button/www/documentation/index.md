@@ -40,6 +40,7 @@ the programming you attach to it.
   <!-- #endif -->
   - [Driver Installation](#driver-installation)
   - [Showing the Button in Navigator](#showing-the-button-in-navigator)
+  - [Halo and NEEO Remotes](#halo-and-neeo-remotes)
   - [The Button Tab](#the-button-tab)
     - [Properties](#properties)
     - [Looks](#looks)
@@ -170,6 +171,22 @@ A new button starts hidden in every Navigator menu. To show it:
 1. Refresh Navigators.
 
 Until the button has a look, it shows the driver's own icon.
+
+## Halo and NEEO Remotes
+
+Halo and NEEO remotes show the button's look as Navigator does. The first time
+Dynamic Buttons start in a project, the driver refreshes Navigators about a
+minute later, and remotes show looks from then.
+
+The Dynamic Buttons in a project share a picture bank of 256 pictures, and looks
+with the same picture share one place in it. A place keeps its picture until the
+controller restarts, even after its look is edited or deleted. After a
+controller restart the driver refreshes Navigators once, which frees those
+places for new pictures. A look with a live badge or a web picture that
+refreshes takes up to 32 new places between restarts, and past that its new
+pictures show in Navigator but not on remotes. While the bank is full, a new
+picture shows in Navigator but not on remotes, and Driver Status reads
+`Picture bank full until the controller restarts`.
 
 ## The Button Tab
 
@@ -726,7 +743,9 @@ and `Prerelease` also installs test builds.
 
 ##### Driver Status (read-only)
 
-Displays `Ready` once the driver has started.
+Displays `Ready` once the driver has started, or
+`Picture bank full until the controller restarts` while the
+[picture bank](#halo-and-neeo-remotes) has no room for a new picture.
 
 ##### Driver Version (read-only)
 

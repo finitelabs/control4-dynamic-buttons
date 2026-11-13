@@ -8,7 +8,7 @@
 ---   ./test/run_test.sh test_license_gate.lua
 
 local T = require("testlib")
-local OWN_ICON = "controller://driver/dynamic_button/icons/experience_300.png"
+local OWN_ICON = "own"
 local H = require("dynamic_button_harness")
 local cloud = require("dc_cloud")
 
@@ -53,11 +53,6 @@ end
 local function lastIcon()
   local sent = H.lastIcon()
   return sent and sent.params.icon
-end
-
---- @return integer|nil version The address version of the last picture the proxy was told.
-local function lastVersion()
-  return tonumber((lastIcon() or ""):match("v=(%d+)$"))
 end
 
 --- Every way a look can change, from a press, programming and the Button tab.
@@ -151,12 +146,11 @@ T.eq("ten more reads leave it stopped", gate:licensed(), false)
 T.eq("with the proxy told nothing more", #H.proxy, 0)
 
 T.section("A purchase starts it at once")
-local before = lastVersion() or 0
 H.mark()
 cloud.say(LICENSED)
 T.eq("running without waiting for a read", gate:licensed(), true)
 T.truthy("the look shows again", (lastIcon() or "") ~= "")
-T.truthy("under a new address, so the app loads it again", (lastVersion() or 0) > before)
+T.truthy("through its picture bank state", (lastIcon() or ""):match("^p%d+$"))
 T.eq("Driver Status", Properties["Driver Status"], "Ready")
 T.eq("no look event fires for the same look", #H.fired, 0)
 H.mark()
