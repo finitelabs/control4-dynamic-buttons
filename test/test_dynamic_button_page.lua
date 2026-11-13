@@ -612,6 +612,11 @@ T.truthy(
   "a variable's value is measured without kerning, as the controller draws it",
   has("ctx.fontKerning = b.unkerned ? 'none' : 'auto';") and has("{ text: t, unkerned: true }")
 )
+T.truthy(
+  "a number rounds by the driver's arithmetic, not toFixed's",
+  has("magnitude = Math.floor(Math.abs(value) * scale + 0.5) / scale;")
+    and has("m[1] + roundedText(Number(m[2]), places) + m[3]")
+)
 T.truthy("and a number too large to round is only cut", has("if (m && Math.abs(Number(m[2])) < 1e21) {"))
 T.truthy("the size and the place change what fits", has("refitBadge();\n});\n$('c-badge-size')"))
 

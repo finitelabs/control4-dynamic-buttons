@@ -237,7 +237,10 @@ for _, case in ipairs({
   { "Power now 0.25 kW", "Power now 0.3 kW" },
   { "Master Room is 72.5", "Master Room is 73" },
   { "Master Bed is -72.5", "Master Bed is -73" },
-  { "Outside now -0.04 F", "Outside now -0.0 F" },
+  { "Outside now -0.04 F", "Outside now 0.0 F" },
+  -- 4.35 is a little under the half in binary, and still rounds as written.
+  { "Power now 4.35 kW", "Power now 4.4 kW" },
+  { "Power now 1.45 kW", "Power now 1.5 kW" },
 }) do
   T.eq("a half rounds away from zero, as the tab rounds it: " .. case[1], LiveBadges.fit(case[1], topRight), case[2])
 end

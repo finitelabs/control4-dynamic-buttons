@@ -57,7 +57,8 @@ end
 local function rounded(value, places)
   local scale = 10 ^ places
   local magnitude = math.floor(math.abs(value) * scale + 0.5) / scale
-  return string.format("%." .. places .. "f", value < 0 and -magnitude or magnitude)
+  -- A value that rounds to zero loses its sign.
+  return string.format("%." .. places .. "f", value < 0 and magnitude > 0 and -magnitude or magnitude)
 end
 
 --- The text a live badge reads now, with only the characters the face has, before it is fitted.

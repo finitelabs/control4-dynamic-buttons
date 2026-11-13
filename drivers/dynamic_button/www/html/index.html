@@ -859,6 +859,12 @@ function badgeFits(b) {
   gBadgeMeasure = gBadgeMeasure || document.createElement('canvas').getContext('2d');
   return badgeLayout(gBadgeMeasure, LOOK_PICTURE, b, gBadgeFace).fits;
 }
+// A number to so many decimals by the driver's own arithmetic: toFixed alone rounds the number's exact binary
+// value, so 4.35 would read 4.3 here and 4.4 on the button.
+function roundedText(value, places) {
+  var scale = Math.pow(10, places), magnitude = Math.floor(Math.abs(value) * scale + 0.5) / scale;
+  return (value < 0 && magnitude > 0 ? -magnitude : magnitude).toFixed(places);
+}
 // A variable's value cut to what fits its badge, as the driver's LiveBadges.fit cuts it: a number gives up
 // decimals first, then the end goes.
 function fitBadge(text, b) {
@@ -869,7 +875,7 @@ function fitBadge(text, b) {
   // Past this toFixed writes an exponent, so such a number is only cut, as the driver cuts it.
   if (m && Math.abs(Number(m[2])) < 1e21) {
     for (var places = m[2].split('.')[1].length - 1; places >= 0; places--) {
-      var shorter = m[1] + Number(m[2]).toFixed(places) + m[3];
+      var shorter = m[1] + roundedText(Number(m[2]), places) + m[3];
       if (fits(shorter)) return shorter;
       text = shorter;
     }
