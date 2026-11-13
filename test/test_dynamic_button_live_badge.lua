@@ -11,6 +11,7 @@ local T = require("testlib")
 local H = require("dynamic_button_harness")
 local LibDeflate = require("LibDeflate")
 local Png = require("dynamic_button.png")
+local BadgeArt = require("dynamic_button.badge_art")
 local Looks = require("dynamic_button.looks")
 local LiveBadges = require("dynamic_button.live_badges")
 
@@ -196,22 +197,61 @@ setDevices()
 H.start()
 
 T.section("How text fits")
+local topRight = { place = "Top Right" }
 for _, case in ipairs({
   { "62%", "62%" },
   { "  62% ", "62%" },
-  { "12.345W", "12.3W" },
-  { "1234.6W", "1235W" },
-  { "-12.345", "-12.3" },
-  { "12345.6W", "12346" },
-  { "Charging", "Charg" },
-  { "20.6\194\176C", "21\194\176C" },
-  { "\194\176\194\176\194\176\194\176\194\176\194\176", "\194\176\194\176\194\176\194\176\194\176" },
+  { "12.345W", "12.345W" },
+  { "Charging", "Charging" },
+  { "Master Bedroom", "Master Bedroom" },
+  { "20.6\194\176C", "20.6\194\176C" },
   { "On", "On" },
   { "", "" },
   { "K\195\188che", "Kche" },
+  -- Wider than the badge at its smallest text: decimals go first, then the end.
+  { "123456789.123456W", "123456789.1235W" },
+  { "1234567890.55 kWh today", "1234567891 kWh t" },
+  { "Living Room Television", "Living Room Televi" },
+  { "Master Bedroom TV On", "Master Bedroom T" },
+  { "WWWWWWWWWWWWWW", "WWWWWWWWW" },
 }) do
-  T.eq("'" .. case[1] .. "' fits as '" .. case[2] .. "'", LiveBadges.fit(case[1]), case[2])
+  T.eq("'" .. case[1] .. "' fits as '" .. case[2] .. "'", LiveBadges.fit(case[1], topRight), case[2])
 end
+T.eq(
+  "a smaller badge's text is smaller, so more of it fits",
+  LiveBadges.fit("Master Bedroom TV On", { place = "Top Right", size = 50 }),
+  "Master Bedroom TV On"
+)
+T.eq(
+  "a larger badge has less room past its ends",
+  LiveBadges.fit("Master Bedroom TV On", { place = "Top Right", size = 150 }),
+  "Master Bedroom"
+)
+T.eq("under the picture it fits the same way", LiveBadges.fit("WWWWWWWWWWWWWW", { place = "Under" }), "WWWWWWWWWW")
+T.eq(
+  "narrow characters stop at the most a badge holds",
+  LiveBadges.fit(string.rep("i", 25), topRight),
+  string.rep("i", Looks.MAX_BADGE)
+)
+for _, case in ipairs({
+  { "Power now 0.25 kW", "Power now 0.3 kW" },
+  { "Master Room is 72.5", "Master Room is 73" },
+  { "Master Bed is -72.5", "Master Bed is -73" },
+  { "Outside now -0.04 F", "Outside now 0.0 F" },
+  -- 4.35 is a little under the half in binary, and still rounds as written.
+  { "Power now 4.35 kW", "Power now 4.4 kW" },
+  { "Power now 1.45 kW", "Power now 1.5 kW" },
+}) do
+  T.eq("a half rounds away from zero, as the tab rounds it: " .. case[1], LiveBadges.fit(case[1], topRight), case[2])
+end
+T.eq(
+  "a number too large to round is only cut",
+  LiveBadges.fit("1234567890123456789012345.123", topRight),
+  "123456789012345"
+)
+T.truthy("what fits is what the badge's art says fits", BadgeArt.fits(topRight, "Master Bedroom T"))
+T.falsy("and one more character doesn't", BadgeArt.fits(topRight, "Master Bedroom TV"))
+T.truthy("a small badge never shrinks its text, only widens", BadgeArt.fits({ place = "Under", size = 50 }, "Input 12"))
 
 T.section("A live badge's picture")
 H.mark()
@@ -303,8 +343,9 @@ local function unfinished(text)
   H.tab("_SAVE_LOOK", fields)
   return tostring(H.lastUi("ERROR") and H.lastUi("ERROR").message)
 end
-T.contains("an unfinished one is plain text, and too long", unfinished("PARAM{"), "1 to 5")
-T.contains("so is one with no variable named", unfinished("PARAM{100}"), "1 to 5")
+local padding = string.rep("x", Looks.MAX_BADGE)
+T.contains("an unfinished one is plain text, and too long", unfinished("PARAM{" .. padding), "1 to 20")
+T.contains("so is one with no variable named", unfinished("PARAM{100}" .. padding), "1 to 20")
 T.falsy("neither counts as live", Looks.isLiveText("PARAM{100}"))
 T.truthy("a whole one does", Looks.isLiveText("PARAM{ 100 , LEVEL }%"))
 
@@ -491,7 +532,7 @@ H.tab("_EVAL_EXPRESSION", { id = "b1", expression = "PARAM{100,1002}: 12.345", m
 local answer = H.lastUi("EVAL_RESULT")
 T.eq("the answer goes by its id", answer.id, "b1")
 T.eq("the text as it reads", answer.result, "Idle: 12.345")
-T.eq("and as it fits", answer.fitted, "Idle:")
+T.eq("and as the face can draw it, for the tab to fit to its badge", answer.fitted, "Idle: 12.345")
 H.tab("_EVAL_EXPRESSION", { id = "b2", expression = "PARAM{100,NOPE}", mode = "string" })
 T.contains("a missing variable is an error", H.lastUi("EVAL_RESULT").error, "NOPE")
 H.tab("_EVAL_EXPRESSION", { id = "w1", expression = "1 < 2" })
@@ -511,7 +552,11 @@ T.contains(
   tostring(refused(live(string.rep("x", Looks.MAX_LIVE_BADGE) .. LEVEL).badge)),
   "at most"
 )
-T.contains("a plain one is 5 characters", tostring(refused(live("TOOLONG").badge)), "1 to 5")
+T.contains(
+  "a plain one is 20 characters",
+  tostring(refused(live(string.rep("X", Looks.MAX_BADGE + 1)).badge)),
+  "1 to 20"
+)
 T.contains("an update choice is one of the list", tostring(refused(live(LEVEL, { every = 7 }).badge)), "update choice")
 
 T.section("A device leaving the project")

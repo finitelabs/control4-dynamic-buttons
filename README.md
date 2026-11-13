@@ -239,13 +239,15 @@ that changes its picture.
 `Badge`, under `Customize`, draws text over the picture. It opens by itself on a
 look that has a badge.
 
-1. **Text** - up to 5 characters, or text with a variable's value in it. Empty
-   means no badge. `Browse Variables` picks a variable. The controller draws a
-   badge with a variable on the shown look and keeps it current. A number gives
-   up decimals to fit the 5 characters, and then the end of the text is cut.
-   Only English letters, digits, punctuation and the degree sign draw, and other
-   characters are left out. While a variable is missing, the look shows no
-   badge, and this note and the look's row say why.
+1. **Text** - up to 20 characters, or text with a variable's value in it. Empty
+   means no badge. The badge widens with its text, and text too wide for the
+   picture draws smaller. Text that would be too small to read is refused: use
+   fewer characters or a smaller `Size`. `Browse Variables` picks a variable.
+   The controller draws a badge with a variable on the shown look and keeps it
+   current. A value too wide to fit gives up a number's decimals, and then the
+   end of the text is cut. Only English letters, digits, punctuation and the
+   degree sign draw, and other characters are left out. While a variable is
+   missing, the look shows no badge, and this note and the look's row say why.
 1. **Update** - shows when the text holds a variable: `Every 30 seconds`,
    `Every minute`, `Every 5 minutes`, `Every 15 minutes` or `Every hour`. The
    badge changes at most this often, and a change after a quiet spell shows at
@@ -797,6 +799,13 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 ### Removed
 - Removed
 -->
+
+## Unreleased
+
+### Changed
+
+- Changed a badge's text from 5 characters to as many as fit, up to 20, with
+  longer text drawn smaller
 
 ## v20261112 - 2026-11-12
 

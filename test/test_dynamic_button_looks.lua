@@ -339,6 +339,16 @@ T.eq(
   "HDMI1"
 )
 T.eq(
+  "so are twenty",
+  looks:update(
+    a.id,
+    withDrawn({
+      custom = { badge = { text = "Master Bedroom TV On", place = "Under", color = "#FFFFFF", background = "None" } },
+    })
+  ).custom.badge.text,
+  "Master Bedroom TV On"
+)
+T.eq(
   "counted as characters, not bytes",
   looks:update(
     a.id,
@@ -347,14 +357,14 @@ T.eq(
   "20°C"
 )
 T.eq(
-  "six are too many",
-  badgeWhy({ text = "HDMI12", place = "Under", color = "#FFFFFF", background = "None" }),
-  "a badge is 1 to 5 characters"
+  "twenty-one are too many",
+  badgeWhy({ text = "Master Bedroom TV Off", place = "Under", color = "#FFFFFF", background = "None" }),
+  "a badge is 1 to 20 characters"
 )
 T.eq(
   "an empty badge is refused",
   badgeWhy({ text = "  ", place = "Under", color = "#FFFFFF", background = "None" }),
-  "a badge is 1 to 5 characters"
+  "a badge is 1 to 20 characters"
 )
 T.eq(
   "so are control characters",

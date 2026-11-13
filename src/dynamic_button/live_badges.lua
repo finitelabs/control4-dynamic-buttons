@@ -49,39 +49,69 @@ local function firstCharacters(text, count)
   return table.concat(out)
 end
 
---- A badge's text as it will draw: only the characters the face has, cut to what fits. A number
---- gives up decimals first, then the end goes.
---- @param text string
+--- A number to so many decimals, a half rounding away from zero as the Button tab rounds it: what
+--- `%.Nf` does with a half depends on the platform's C library.
+--- @param value number
+--- @param places integer
 --- @return string text
-function LiveBadges.fit(text)
+local function rounded(value, places)
+  local scale = 10 ^ places
+  local magnitude = math.floor(math.abs(value) * scale + 0.5) / scale
+  -- A value that rounds to zero loses its sign.
+  return string.format("%." .. places .. "f", value < 0 and magnitude > 0 and -magnitude or magnitude)
+end
+
+--- The text a live badge reads now, with only the characters the face has, before it is fitted.
+--- @param text string
+--- @return string kept
+function LiveBadges.drawable(text)
   local _, kept = BadgeFont.characters(text)
-  text = kept:match("^%s*(.-)%s*$")
-  if Looks.characters(text) <= Looks.MAX_BADGE then
+  return (kept:match("^%s*(.-)%s*$"))
+end
+
+--- A badge's text as it will draw: only the characters the face has, cut to what fits the badge at
+--- its size and place. A number gives up decimals first, then the end goes.
+--- @param text string
+--- @param badge LookBadge Its place and size.
+--- @return string text
+function LiveBadges.fit(text, badge)
+  text = LiveBadges.drawable(text)
+  local function fits(candidate)
+    return Looks.characters(candidate) <= Looks.MAX_BADGE and BadgeArt.fits(badge, candidate)
+  end
+  if fits(text) then
     return text
   end
   local before, number, after = text:match("^(.-)(%-?%d+%.%d+)(.*)$")
-  if number then
+  -- Past this the tab's own rounding writes an exponent, so such a number is only cut.
+  if number and math.abs(tonumber(number)) < 1e21 then
     for places = #number:match("%.(%d+)$") - 1, 0, -1 do
-      local shorter = before .. string.format("%." .. places .. "f", tonumber(number)) .. after
-      if Looks.characters(shorter) <= Looks.MAX_BADGE then
+      local shorter = before .. rounded(tonumber(number), places) .. after
+      if fits(shorter) then
         return shorter
       end
       text = shorter
     end
   end
-  return firstCharacters(text, Looks.MAX_BADGE)
+  for count = math.min(Looks.characters(text) - 1, Looks.MAX_BADGE), 1, -1 do
+    local cut = firstCharacters(text, count):match("^(.-)%s*$")
+    if fits(cut) then
+      return cut
+    end
+  end
+  return ""
 end
 
 --- What a live badge says now.
---- @param template string The badge's text, with its variables.
+--- @param badge LookBadge The badge, its text with its variables.
 --- @return string|nil text Nil when a variable is missing.
 --- @return string|nil err Which one.
-function LiveBadges.read(template)
-  local evaluation = Expressions.evaluate("string", template)
+function LiveBadges.read(badge)
+  local evaluation = Expressions.evaluate("string", badge.text)
   if evaluation.error then
     return nil, evaluation.error
   end
-  return LiveBadges.fit(tostring(evaluation.result)), nil
+  return LiveBadges.fit(tostring(evaluation.result), badge), nil
 end
 
 --- @param text string|nil
@@ -135,7 +165,7 @@ function LiveBadges:holding(look)
   if not (self._booting and badge) then
     return false
   end
-  local _, err = LiveBadges.read(badge.text)
+  local _, err = LiveBadges.read(badge)
   if err then
     self._drawnText = false
   end
@@ -208,7 +238,7 @@ function LiveBadges:picture(look, png)
   if not badge then
     return png, nil
   end
-  local text, err = LiveBadges.read(badge.text)
+  local text, err = LiveBadges.read(badge)
   local drawn
   if text and text ~= "" then
     drawn, err = self:_draw(look, badge, png, text)
@@ -228,7 +258,7 @@ function LiveBadges:check()
   if not badge or not self._allowed() then
     return
   end
-  local text, err = LiveBadges.read(badge.text)
+  local text, err = LiveBadges.read(badge)
   if err and self._booting then
     return
   end
