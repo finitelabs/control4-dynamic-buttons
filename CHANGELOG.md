@@ -18,6 +18,13 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Removed
 -->
 
+## Unreleased
+
+### Changed
+
+- Changed a badge's text from 5 characters to as many as fit, up to 20, with
+  longer text drawn smaller
+
 ## v20261112 - 2026-11-12
 
 ### Added

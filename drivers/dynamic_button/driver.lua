@@ -318,7 +318,7 @@ local function tabState()
     local live = Looks.liveBadge(look)
     local badgeNow, badgeError
     if live then
-      badgeNow, badgeError = LiveBadges.read(live.text)
+      badgeNow, badgeError = LiveBadges.read(live)
     end
     local linkState, linkBound, linkColors
     if linked then
@@ -1523,7 +1523,10 @@ expressionTab.serve({
     return nil
   end,
   extra = function(evaluation, mode)
-    return { fitted = mode == "string" and evaluation.result and LiveBadges.fit(tostring(evaluation.result)) or nil }
+    -- The tab fits the text to the badge it is editing, whose size and place the driver hasn't yet.
+    return {
+      fitted = mode == "string" and evaluation.result and LiveBadges.drawable(tostring(evaluation.result)) or nil,
+    }
   end,
   wrap = tabGate,
 })

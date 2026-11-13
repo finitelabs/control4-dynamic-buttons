@@ -620,10 +620,11 @@ function cellSrc(icon) {
 // the degree sign. A character outside it falls back to the system's bold sans.
 var BADGE_FONT = 'data:font/woff2;base64,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';
 var gBadgeFont = null;
+var gBadgeFace = '';
 function badgeFont() {
   if (!gBadgeFont) {
     gBadgeFont = (window.FontFace
-      ? new FontFace('DynamicButtonBadge', 'url(' + BADGE_FONT + ')', { weight: '700' }).load().then(function(f) { document.fonts.add(f); return 'DynamicButtonBadge'; })
+      ? new FontFace('DynamicButtonBadge', 'url(' + BADGE_FONT + ')', { weight: '700' }).load().then(function(f) { document.fonts.add(f); gBadgeFace = 'DynamicButtonBadge'; return gBadgeFace; })
       : Promise.reject(new Error('no FontFace'))).catch(function() { return ''; });
   }
   return gBadgeFont;
@@ -839,11 +840,57 @@ function placedBody(body, look, viewSize) {
   if (s === 1 && !dx && !dy) return body;
   return '<g transform="translate(' + (half + dx) + ' ' + (half + dy) + ') scale(' + s + ') translate(' + (-half) + ' ' + (-half) + ')">' + body + '</g>';
 }
+// Where a badge's text and pill go: the pill widens with the text to its limit, then the text draws
+// smaller, down to BADGE_MIN_FONT of the picture's width. The driver's BadgeArt lays a live badge out the same.
+var BADGE_MIN_FONT = 0.1, LOOK_PICTURE = 300;
+function badgeLayout(ctx, size, b, face) {
+  var under = b.place === 'Under', h = Math.round(size * (under ? 0.2 : 0.24) * (b.size || 100) / 100), full = Math.round(h * 0.68);
+  var family = (face ? face + ', ' : '') + '"Segoe UI", Roboto, Arial, sans-serif';
+  ctx.font = '700 ' + full + 'px ' + family;
+  // The controller draws a variable's value without the face's kerning, so the tab measures and draws it so.
+  ctx.fontKerning = b.unkerned ? 'none' : 'auto';
+  var measured = ctx.measureText(b.text).width, w = Math.min(size * 0.94, Math.max(h, measured + h * 0.7)), room = w - h * 0.3;
+  var font = measured > room ? full * room / measured : full;
+  return { h: h, w: w, font: font, family: family, fits: font >= Math.min(full, size * BADGE_MIN_FONT) };
+}
+// Whether a badge's text fits at its size and place without its characters going under their smallest size.
+var gBadgeMeasure = null;
+function badgeFits(b) {
+  gBadgeMeasure = gBadgeMeasure || document.createElement('canvas').getContext('2d');
+  return badgeLayout(gBadgeMeasure, LOOK_PICTURE, b, gBadgeFace).fits;
+}
+// A number to so many decimals by the driver's own arithmetic: toFixed alone rounds the number's exact binary
+// value, so 4.35 would read 4.3 here and 4.4 on the button.
+function roundedText(value, places) {
+  var scale = Math.pow(10, places), magnitude = Math.floor(Math.abs(value) * scale + 0.5) / scale;
+  return (value < 0 && magnitude > 0 ? -magnitude : magnitude).toFixed(places);
+}
+// A variable's value cut to what fits its badge, as the driver's LiveBadges.fit cuts it: a number gives up
+// decimals first, then the end goes.
+function fitBadge(text, b) {
+  text = String(text == null ? '' : text).trim();
+  function fits(t) { return Array.from(t).length <= BADGE_MAX && badgeFits(Object.assign({}, b, { text: t, unkerned: true })); }
+  if (fits(text)) return text;
+  var m = /^(.*?)(-?\d+\.\d+)(.*)$/.exec(text);
+  // Past this toFixed writes an exponent, so such a number is only cut, as the driver cuts it.
+  if (m && Math.abs(Number(m[2])) < 1e21) {
+    for (var places = m[2].split('.')[1].length - 1; places >= 0; places--) {
+      var shorter = m[1] + roundedText(Number(m[2]), places) + m[3];
+      if (fits(shorter)) return shorter;
+      text = shorter;
+    }
+  }
+  var chars = Array.from(text);
+  for (var n = Math.min(chars.length - 1, BADGE_MAX); n >= 1; n--) {
+    var cut = chars.slice(0, n).join('').replace(/\s+$/, '');
+    if (fits(cut)) return cut;
+  }
+  return '';
+}
 function drawBadge(ctx, size, b, face) {
-  var under = b.place === 'Under', h = Math.round(size * (under ? 0.2 : 0.24) * (b.size || 100) / 100);
   ctx.save();
-  ctx.font = '700 ' + Math.round(h * 0.68) + 'px ' + (face ? face + ', ' : '') + '"Segoe UI", Roboto, Arial, sans-serif';
-  var w = Math.min(size * 0.94, Math.max(h, ctx.measureText(b.text).width + h * 0.7)), x, y;
+  var at = badgeLayout(ctx, size, b, face), h = at.h, w = at.w, x, y;
+  ctx.font = '700 ' + at.font + 'px ' + at.family;
   if (b.place === 'Top Right') { x = size - w - size * 0.03; y = size * 0.03; }
   else if (b.place === 'Bottom Right') { x = size - w - size * 0.03; y = size - h - size * 0.03; }
   else { x = (size - w) / 2; y = size - h - size * 0.02; }
@@ -856,7 +903,7 @@ function drawBadge(ctx, size, b, face) {
   ctx.fillStyle = b.color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(b.text, x + w / 2, y + h / 2 + h * 0.03, w - h * 0.3);
+  ctx.fillText(b.text, x + w / 2, y + h / 2 + h * 0.03);
   ctx.restore();
 }
 
@@ -895,7 +942,7 @@ async function drawLook(canvas, look) {
   }
   var c = look.custom || {}, badge = c.badge && c.badge.text ? c.badge : null;
   // A live badge draws what it reads now, and nothing until that is known.
-  if (badge && isLiveText(badge.text)) badge = look.badgeNow ? Object.assign({}, badge, { text: look.badgeNow }) : null;
+  if (badge && isLiveText(badge.text)) badge = look.badgeNow ? Object.assign({}, badge, { text: look.badgeNow, unkerned: true }) : null;
   var face = badge ? await badgeFont() : '';
   if (turn !== canvas.drawTurn) return;
   var pack = packOf(look.icon);
@@ -2037,7 +2084,7 @@ $('f-grayscale').addEventListener('change', function() { gEditor.look.grayscale 
 // ============================================================
 var CUSTOM_COLORS = ['color', 'body', 'tile', 'symbol', 'glowColor'];
 var BADGE_PLACES = ['Top Right', 'Bottom Right', 'Under'];
-var BADGE_MAX = 5;
+var BADGE_MAX = 20;
 var BADGE_EVERY = 60;
 function isLiveText(text) { return /PARAM\s*\{[^,}]*,[^}]*\}/.test(String(text || '')); }
 function customOf(l) { return l.custom || (l.custom = {}); }
@@ -2145,26 +2192,42 @@ var badgeEditor = Kit.expressionEditor($('c-badge'), {
   },
   onResult: onBadgeResult
 });
+// Why a typed badge can't be saved, or nothing.
+var BADGE_TOO_LONG = 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.';
+var BADGE_TOO_WIDE = 'That badge is too wide to fit. Shorten it, or make the badge smaller.';
+function badgeProblem(b) {
+  var text = String((b && b.text) || '').trim();
+  if (isLiveText(text)) return '';
+  if (Array.from(text).length > BADGE_MAX) return BADGE_TOO_LONG;
+  return badgeFits(Object.assign({}, b, { text: text })) ? '' : BADGE_TOO_WIDE;
+}
 // The badge's note and Update row, from its text. A live text's note waits for the driver's answer.
 function syncBadgeNote() {
-  var text = badgeEditor.value(), live = isLiveText(text), long = Array.from(text.trim()).length > BADGE_MAX;
+  var text = badgeEditor.value(), live = isLiveText(text);
   $('fld-c-every').hidden = !live;
   if (live) return;
+  var problem = badgeProblem(Object.assign({}, badgeOf(gEditor.look), { text: text }));
   gEditor.look.badgeNow = null;
-  $('c-badge').classList.toggle('input-error', long);
-  $('c-badge-note').textContent = long ? 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.' : 'Up to ' + BADGE_MAX + ' characters, or a variable\u2019s value.';
-  $('c-badge-note').classList.toggle('bad', long);
+  $('c-badge').classList.toggle('input-error', !!problem);
+  $('c-badge-note').textContent = problem || 'Up to ' + BADGE_MAX + ' characters that fit, or a variable\u2019s value. Longer text draws smaller.';
+  $('c-badge-note').classList.toggle('bad', !!problem);
   $('c-badge-note').title = '';
 }
 // What the driver answers about a live badge's text.
 function onBadgeResult(result) {
   gEditor.badgeResult = result;
   if (!gEditor.look) return;
-  var note = $('c-badge-note'), now = result.error ? '' : Kit.str(result.fitted);
+  var note = $('c-badge-note'), now = result.error ? '' : fitBadge(Kit.str(result.fitted), badgeOf(gEditor.look));
   note.classList.toggle('bad', !!result.error);
-  note.textContent = result.error ? result.message : 'Shows ' + (now || 'nothing') + ' now. Up to ' + BADGE_MAX + ' characters, and a number shortens to fit.';
+  note.textContent = result.error ? result.message : 'Shows ' + (now || 'nothing') + ' now. A number shortens to fit, and then the end is cut.';
   note.title = result.error || '';
   gEditor.look.badgeNow = now;
+  preview();
+}
+// The badge's size or place changed, and with it what fits.
+function refitBadge() {
+  if (!isLiveText(badgeEditor.value())) syncBadgeNote();
+  else if (gEditor.badgeResult) { onBadgeResult(gEditor.badgeResult); return; }
   preview();
 }
 $('c-place').addEventListener('click', function(e) {
@@ -2172,13 +2235,13 @@ $('c-place').addEventListener('click', function(e) {
   if (!btn) return;
   badgeOf(gEditor.look).place = btn.dataset.place;
   syncCustom();
-  preview();
+  refitBadge();
 });
 $('c-badge-size').addEventListener('input', function() {
   var b = badgeOf(gEditor.look);
   b.size = Number($('c-badge-size').value);
   $('c-badge-size-v').textContent = b.size + '%';
-  preview();
+  refitBadge();
 });
 $('c-badge-color').addEventListener('input', function() {
   badgeOf(gEditor.look).color = $('c-badge-color').value.toUpperCase();
@@ -2348,7 +2411,8 @@ function checkLook(l) {
   if (l.icon.missing) return isPicture(l.icon) ? 'This button no longer has that picture. Pick another.' : 'This driver no longer has the icon ' + l.icon.id + '. Pick another.';
   if (isPicture(l.icon) && !l.icon.body) return 'Your picture is still loading. Try again in a moment.';
   var badge = String((l.custom && l.custom.badge && l.custom.badge.text) || '').trim();
-  if (!isLiveText(badge) && Array.from(badge).length > BADGE_MAX) return 'A badge is up to ' + BADGE_MAX + ' characters, unless it holds a variable.';
+  var badgeWhy = badgeProblem(l.custom && l.custom.badge);
+  if (badgeWhy) return badgeWhy;
   // What the driver would refuse, as its preview said.
   if (whenEditor.hold) return '"Show when": ' + whenEditor.hold;
   if (isLiveText(badge) && badgeEditor.hold) return 'Badge: ' + badgeEditor.hold;
@@ -2360,6 +2424,8 @@ function checkLook(l) {
 
 // Save the look, then send its 300 px picture in chunks unless the driver already has it.
 async function saveLook() {
+  // What fits is measured in the badge's face.
+  await badgeFont();
   var l = gEditor.look;
   l.name = String(l.name || '').trim();
   var problem = checkLook(l);
@@ -2465,7 +2531,7 @@ function demoSave(fields) {
   existing.showWhenText = when ? when.rendered : fields.showWhen;
   existing.whenError = when ? when.error : '';
   var live = fields.custom && fields.custom.badge && isLiveText(fields.custom.badge.text) ? gEditor.badgeResult : null;
-  existing.badgeNow = live && !live.error ? Kit.str(live.fitted) : null;
+  existing.badgeNow = live && !live.error ? fitBadge(Kit.str(live.fitted), fields.custom.badge) : null;
   existing.badgeError = live ? live.error : '';
   existing.badgeText = live ? live.rendered : '';
   if (fields.isDefault) gState.defaultLook = id;
@@ -2942,6 +3008,7 @@ function lookProblem(l, refreshes) {
   if (BADGE_PLACES.indexOf(b.place) < 0) return 'its badge place isn’t one the driver knows';
   if (!isHexColor(b.color) || !(b.background === 'None' || isHexColor(b.background))) return 'its badge colors aren’t #RRGGBB';
   if (b.size != null && !wholeIn(b.size, 50, 150)) return 'its badge size isn’t a whole percent from 50 to 150';
+  if (!live && !badgeFits({ text: text, place: b.place, size: b.size })) return 'its badge text is too wide to fit';
   var every = typeof b.every === 'number' || (typeof b.every === 'string' && b.every.trim() !== '' && !isNaN(Number(b.every))) ? Number(b.every) : BADGE_EVERY;
   if (live && BADGE_EVERY_CHOICES.indexOf(every) < 0) return 'its badge’s update choice isn’t one the driver knows';
   return null;
@@ -2958,6 +3025,8 @@ function withoutReach(it) {
   return Object.assign({}, it, { look: look });
 }
 async function readLooksFile(file) {
+  // What fits is measured in the badge's face.
+  await badgeFont();
   if (file.size > LOOKS_FILE_MAX) throw new Error('That file is larger than 20 MB.');
   var data;
   try { data = JSON.parse(await file.text()); } catch (e) { throw new Error(NOT_LOOKS); }
@@ -3309,7 +3378,8 @@ document.querySelectorAll('input[type="color"]').forEach(function(input) {
   Kit.initPropertiesCard($('props'), { exclude: PROPS_ELSEWHERE });
   $('nav-meta').textContent = 'Dynamic Button' + (Kit.driverId ? ' \u00b7 device ' + Kit.driverId : '');
   // Composer's browser takes a moment to load the font, so it starts before the first badge needs it.
-  badgeFont();
+  // What fits was measured in another face until it loads.
+  badgeFont().then(function() { if (gEditor.look) refitBadge(); });
   renderSources();
   renderCategories();
   renderPacks();

@@ -37,7 +37,7 @@ local Expressions = require("lib.expressions")
 --- version is the number it's served under; for a refreshing picture, its source names the bytes.
 
 --- @class LookBadge
---- @field text string Up to `Looks.MAX_BADGE` characters, or with a variable up to
+--- @field text string Up to `Looks.MAX_BADGE` characters that fit, or with a variable up to
 --- `Looks.MAX_LIVE_BADGE` bytes that the controller draws as they read now.
 --- @field place string One of `Looks.BADGE_PLACES`.
 --- @field color string The text's color, `#RRGGBB`.
@@ -88,8 +88,9 @@ Looks.MIN_SIZE = 50
 --- The furthest a customized picture moves each way, in percent.
 Looks.MAX_SHIFT = 10
 
---- The longest badge, in characters.
-Looks.MAX_BADGE = 5
+--- The longest badge, in characters. The Button tab also refuses text too wide to fit, and a
+--- variable's value is cut to what fits.
+Looks.MAX_BADGE = 20
 
 --- The longest badge text that holds a variable, in bytes.
 Looks.MAX_LIVE_BADGE = 200
