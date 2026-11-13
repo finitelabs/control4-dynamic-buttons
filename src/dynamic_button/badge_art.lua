@@ -9,6 +9,13 @@ local BadgeArt = {}
 --- Sub-rows per pixel row when working out the pill's curved ends.
 local SUBROWS = 8
 
+--- The width and height the Button tab draws a look's picture at.
+BadgeArt.CANVAS = 300
+
+--- The smallest a badge's text shrinks to so a long one fits, as a share of the picture's width.
+--- A badge whose own text is smaller keeps its size.
+BadgeArt.MIN_FONT = 0.1
+
 --- @param badge LookBadge
 --- @param canvas integer The picture's width and height.
 --- @return integer height The pill's height.
@@ -136,6 +143,34 @@ local function textWidth(codes, fontSize)
   return width
 end
 
+--- Where a badge's text and pill go: the pill widens with the text to its limit, then the text
+--- draws smaller, as the Button tab's badgeLayout does.
+--- @param badge LookBadge
+--- @param canvas integer The picture's width and height.
+--- @param codes integer[] The text's character codes.
+--- @return integer height The pill's height.
+--- @return number width The pill's width.
+--- @return number fontSize The size the text draws at.
+--- @return boolean fits Whether the text fits without going under its smallest size.
+local function layout(badge, canvas, codes)
+  local height = pillHeight(badge, canvas)
+  local full = floor(height * 0.68 + 0.5)
+  local measured = textWidth(codes, full)
+  local width = min(canvas * 0.94, max(height, measured + height * 0.7))
+  local room = width - height * 0.3
+  local fontSize = measured > room and full * room / measured or full
+  return height, width, fontSize, fontSize >= min(full, canvas * BadgeArt.MIN_FONT)
+end
+
+--- Whether a text fits a badge without its characters going under their smallest size.
+--- @param badge LookBadge Its place and size.
+--- @param text string
+--- @return boolean fits
+function BadgeArt.fits(badge, text)
+  local _, _, _, fits = layout(badge, BadgeArt.CANVAS, (BadgeFont.characters(text)))
+  return fits
+end
+
 --- Draw a badge on the rows that `BadgeArt.rows` named.
 --- @param rows integer[][]
 --- @param firstRow integer The picture row `rows[1]` is.
@@ -143,17 +178,9 @@ end
 --- @param badge LookBadge Its place, colors and size.
 --- @param text string What it says now.
 function BadgeArt.draw(rows, firstRow, canvas, badge, text)
-  local height = pillHeight(badge, canvas)
   local codes = BadgeFont.characters(text)
-  local fontSize = floor(height * 0.68 + 0.5)
+  local height, width, fontSize = layout(badge, canvas, codes)
   local measured = textWidth(codes, fontSize)
-  local width = min(canvas * 0.94, max(height, measured + height * 0.7))
-  -- Text too long for the widest pill draws smaller, where the tab's canvas squeezes it.
-  local room = width - height * 0.3
-  if measured > room then
-    fontSize = fontSize * room / measured
-    measured = textWidth(codes, fontSize)
-  end
   local x, y = pillAt(badge, canvas, width, height)
   if badge.background ~= "None" then
     fillPill(rows, firstRow, canvas, x, y, width, height, badge.background)

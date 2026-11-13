@@ -180,8 +180,8 @@ T.truthy(
   has("gEditor.whenResult = null;\n  gEditor.badgeResult = null;\n  whenEditor.setValue(gEditor.look.showWhen || '');")
 )
 T.truthy(
-  "a badge too long to be one is marked as it's typed",
-  has("$('c-badge').classList.toggle('input-error', long);")
+  "a badge too long or too wide to be one is marked as it's typed",
+  has("$('c-badge').classList.toggle('input-error', !!problem);")
 )
 T.truthy(
   "a badge's text is one line that previews while it reads a variable",
@@ -587,8 +587,28 @@ T.truthy("the card is collapsed until it's opened", has('<details class="card" i
 T.truthy("and still names every collection", has("<summary>Icon licenses</summary>") and has('id="lic-list"'))
 
 T.section("A badge's answer")
-T.truthy("is the kit's, with the driver's fitted text", has("now = result.error ? '' : Kit.str(result.fitted)"))
+T.truthy(
+  "is the kit's, with the driver's text fitted to the badge being edited",
+  has("now = result.error ? '' : fitBadge(Kit.str(result.fitted), badgeOf(gEditor.look))")
+)
 T.truthy("and its error in plain words", has("note.textContent = result.error ? result.message"))
+
+T.section("A badge's text fits as the driver fits it")
+local BadgeArt = require("dynamic_button.badge_art")
+T.truthy("the most characters are the driver's", has("var BADGE_MAX = " .. Looks.MAX_BADGE .. ";"))
+T.truthy(
+  "the smallest text and the picture's size are the driver's",
+  has("var BADGE_MIN_FONT = " .. BadgeArt.MIN_FONT .. ", LOOK_PICTURE = " .. BadgeArt.CANVAS .. ";")
+)
+T.truthy("long text draws smaller, not squeezed", has("ctx.fillText(b.text, x + w / 2, y + h / 2 + h * 0.03);"))
+T.truthy("a typed badge too wide to fit holds Save", has("var badgeWhy = badgeProblem(l.custom && l.custom.badge);"))
+T.truthy(
+  "and is skipped on import",
+  has(
+    "if (!live && !badgeFits({ text: text, place: b.place, size: b.size })) return 'its badge text is too wide to fit';"
+  )
+)
+T.truthy("the size and the place change what fits", has("refitBadge();\n});\n$('c-badge-size')"))
 
 T.section("A sentence names the field in quotes")
 T.truthy("under Look Control", has([['The first look whose "Show when" is true shows.']]))
