@@ -4,9 +4,9 @@
 --
 -- Every Dynamic Button in a project shares the bank, as they share the driver's folder. A picture's
 -- hash picks its slot, so the same picture shows through the same state whichever look or button
--- shows it. Navigators and the controller keep a state's picture once they've drawn it, until the
--- controller restarts, so a slot sent since the controller started keeps its picture: only a slot
--- not sent since can take a new one.
+-- shows it. Once they've drawn a state, remotes keep its picture until the controller restarts and
+-- apps keep it until the Navigators refresh, so the first button to start after a restart refreshes
+-- them, and only a slot not sent since both can take a new picture.
 
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
@@ -28,6 +28,7 @@ local Images = require("dynamic_button.images")
 --- @field _liveCap integer
 --- @field _now fun(): integer The clock, in ms since the epoch.
 --- @field _uptime fun(): number Seconds since the controller started.
+--- @field _refresh fun() Refreshes the Navigators.
 --- @field _found table<string, integer> Slots found this run, by picture hash.
 local Bank = {}
 Bank.__index = Bank
@@ -53,18 +54,22 @@ Bank.CAPPED = "capped"
 --- The slots' records: one file per slot, "<hash> <ms>", the picture's hash and when a button last
 --- sent the state.
 local RECORDS_DIR = "bank"
+--- The file, among the records, that holds when a button last refreshed the Navigators, in ms.
+local REFRESHED_NAME = "refreshed"
 --- The pictures' folder, which the states' addresses name.
 local PICTURES_DIR = "www/bank"
 
 local SHOWN_KEY = "BankShown"
 local LIVE_KEY = "BankLive"
+--- Each button keeps the refresh time too, to write it again after an update replaces the folder.
+local REFRESHED_KEY = "BankRefreshed"
 
 --- Slack in the controller's start time, as the two clocks are read a moment apart. A slot sent
 --- just before a restart only keeps its picture a little longer.
 local START_SLACK_MS = 60000
 
 --- Creates a new instance of the Bank class.
---- @param opts { store: table, enabled: boolean, size?: integer, liveCap?: integer, now?: fun(): integer, uptime?: fun(): number }
+--- @param opts { store: table, enabled: boolean, refresh: fun(), size?: integer, liveCap?: integer, now?: fun(): integer, uptime?: fun(): number }
 --- @return Bank bank
 function Bank:new(opts)
   local instance = setmetatable({}, self)
@@ -78,6 +83,7 @@ function Bank:new(opts)
   instance._uptime = opts.uptime or function()
     return C4:GetUptime()
   end
+  instance._refresh = opts.refresh
   instance._found = {}
   return instance
 end
@@ -94,10 +100,23 @@ local function pictureName(slot)
   return string.format("%d.png", slot)
 end
 
---- When the controller last started, which cleared its copies of the states' pictures.
+--- When the controller last started, which cleared the remotes' copies of the states' pictures.
 --- @return integer at In ms since the epoch, less a minute's slack.
 function Bank:startedAt()
   return self._now() - math.floor(self._uptime() * 1000) - START_SLACK_MS
+end
+
+--- @private
+--- @return integer at When a button last refreshed the Navigators, which cleared the apps' copies; 0 for never.
+function Bank:_refreshedAt()
+  local text = Images.readFile("C4Z", RECORDS_DIR, REFRESHED_NAME)
+  return tonumber((text or ""):match("^(%d+)$")) or 0
+end
+
+--- When apps and remotes last both dropped their copies: a slot sent before then can take a new picture.
+--- @return integer at In ms since the epoch.
+function Bank:clearedAt()
+  return math.min(self:startedAt(), self:_refreshedAt())
 end
 
 --- @private
@@ -126,16 +145,17 @@ function Bank:_shown()
   return self.store:get(SHOWN_KEY, {})
 end
 
---- Keep a slot this button sent with its others, dropping those sent before the controller started.
+--- Keep a slot this button sent with its others, dropping those sent before apps and remotes last
+--- dropped their copies.
 --- @private
 --- @param slot integer
 --- @param hash string
 --- @param at integer
 function Bank:_remember(slot, hash, at)
-  local startedAt = self:startedAt()
+  local clearedAt = self:clearedAt()
   local shown = {}
   for key, entry in pairs(self:_shown()) do
-    if entry.at >= startedAt then
+    if entry.at >= clearedAt then
       shown[key] = entry
     end
   end
@@ -143,17 +163,30 @@ function Bank:_remember(slot, hash, at)
   self.store:set(SHOWN_KEY, shown)
 end
 
---- At every start: write again the records of the slots this button sent since the controller
---- started, since an update replaces the folder. Older ones are dropped: the restart cleared them.
+--- At every start: the first button to start since the controller started refreshes the
+--- Navigators, so apps drop their copies as remotes did. Then each writes again the refresh time and
+--- the records of the slots it sent since, since an update replaces the folder.
 function Bank:start()
   if not self.enabled then
     return
   end
-  local startedAt = self:startedAt()
+  local onFile = self:_refreshedAt()
+  local refreshed = math.max(onFile, self.store:get(REFRESHED_KEY, 0))
+  if refreshed < self:startedAt() then
+    log:info("Refreshing Navigators, once since the controller started, so picture bank slots can take new pictures")
+    refreshed = self._now()
+    self._refresh()
+  end
+  if refreshed ~= onFile then
+    C4:FileCreateDir("C4Z", RECORDS_DIR)
+    Images.writeFile("C4Z", RECORDS_DIR, REFRESHED_NAME, string.format("%.0f", refreshed))
+  end
+  self.store:set(REFRESHED_KEY, refreshed)
+  local clearedAt = self:clearedAt()
   local shown = {}
   for key, entry in pairs(self:_shown()) do
     local slot = tonumber(key)
-    if slot and slot <= self._size and entry.at >= startedAt then
+    if slot and slot <= self._size and entry.at >= clearedAt then
       local held = self:_record(slot)
       if held == nil then
         self:_writeRecord(slot, entry.hash, entry.at)
@@ -169,7 +202,7 @@ function Bank:start()
 end
 
 --- The slot's state is about to be sent: from then on it keeps its picture until the controller
---- restarts.
+--- restarts and a button refreshes the Navigators.
 --- @private
 --- @param slot integer
 --- @param hash string
@@ -230,8 +263,8 @@ function Bank:_known(hash)
   return nil, 0
 end
 
---- Give a slot no one sent since the controller started a new picture. Of two buttons binding it at
---- once, the later record holds it.
+--- Give a slot no one sent since apps and remotes last dropped their copies a new picture. Of two
+--- buttons binding it at once, the later record holds it.
 --- @private
 --- @param slot integer
 --- @param hash string
@@ -281,7 +314,7 @@ function Bank:slotFor(png, liveLookId)
   if slot then
     return self:_use(slot, hash, at, png)
   end
-  local startedAt = self:startedAt()
+  local clearedAt = self:clearedAt()
   local first = tonumber(hash:sub(1, 8), 16) % self._size
   local open = {}
   for i = 0, self._size - 1 do
@@ -291,7 +324,7 @@ function Bank:slotFor(png, liveLookId)
     if held == hash then
       return self:_use(slot, hash, at, png)
     end
-    if held == nil or at < startedAt then
+    if held == nil or at < clearedAt then
       table.insert(open, slot)
     end
     -- A picture takes the first open slot on its path, so it's never past an empty one.
@@ -316,17 +349,17 @@ function Bank:slotFor(png, liveLookId)
   return nil, Bank.FULL
 end
 
---- The slots this button sent since the controller started, for another button to keep when this
---- one leaves the project.
+--- The slots this button sent since apps and remotes last dropped their copies, for another button
+--- to keep when this one leaves the project.
 --- @return string slots "<slot>:<hash>:<ms>" entries joined by commas; empty when none.
 function Bank:handOver()
   if not self.enabled then
     return ""
   end
-  local startedAt = self:startedAt()
+  local clearedAt = self:clearedAt()
   local parts = {}
   for key, entry in pairs(self:_shown()) do
-    if entry.at >= startedAt then
+    if entry.at >= clearedAt then
       table.insert(parts, string.format("%s:%s:%.0f", key, entry.hash, entry.at))
     end
   end
@@ -340,12 +373,12 @@ function Bank:adopt(slots)
   if not self.enabled or not slots then
     return
   end
-  local startedAt = self:startedAt()
+  local clearedAt = self:clearedAt()
   local shown = self:_shown()
   for slotText, hash, atText in slots:gmatch("(%d+):(%x+):(%d+)") do
     local slot, at = tonumber(slotText), tonumber(atText)
     local mine = shown[slotText]
-    if slot >= 1 and slot <= self._size and at >= startedAt and not (mine and mine.at >= at) then
+    if slot >= 1 and slot <= self._size and at >= clearedAt and not (mine and mine.at >= at) then
       shown[slotText] = { hash = hash, at = at }
     end
   end

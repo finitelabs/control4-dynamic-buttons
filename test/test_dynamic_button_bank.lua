@@ -1,7 +1,7 @@
 --- The picture bank: display_icons states whose pictures the buttons write while they run. A
 --- picture's hash picks its slot, so every look and button showing it shares one state, and a slot
---- sent since the controller started keeps its picture until the next restart, since apps and
---- remotes keep a state's picture.
+--- keeps its picture until the controller restarts and a button refreshes the Navigators, since
+--- remotes and apps keep a state's picture.
 ---
 --- Run from the driver root:
 ---   make test
@@ -68,6 +68,8 @@ local function memoryStore()
   }
 end
 
+local refreshes = 0
+
 --- @param size integer
 --- @param store? table
 --- @param liveCap? integer
@@ -76,6 +78,9 @@ local function newBank(size, store, liveCap)
   return Bank:new({
     store = store or memoryStore(),
     enabled = true,
+    refresh = function()
+      refreshes = refreshes + 1
+    end,
     size = size,
     liveCap = liveCap,
     now = now,
@@ -149,7 +154,13 @@ T.section("After a controller restart")
 restartController()
 T.eq("a picture shown again keeps its slot", b:slotFor("One"), one)
 T.eq("and is marked sent again", record(one), recordOf("One", clock))
-T.eq("a new picture takes a slot not sent since", b:slotFor("Three"), two)
+T.eq("a new picture takes no slot yet, as apps keep their copies", select(2, b:slotFor("Three")), Bank.FULL)
+local refreshesBefore = refreshes
+b:start()
+T.eq("the first button to start since refreshes the Navigators", refreshes, refreshesBefore + 1)
+newBank(2):start()
+T.eq("and the others don't", refreshes, refreshesBefore + 1)
+T.eq("then a new picture takes a slot not sent since", b:slotFor("Three"), two)
 T.eq("with its picture", H.banked(two), "Three")
 T.eq("so the bank is full again until the next one", select(2, b:slotFor("Two")), Bank.FULL)
 
@@ -199,6 +210,18 @@ u = newBank(256, store)
 u:start()
 T.eq("a restart drops them all", store:get("BankShown"), nil)
 
+T.section("The refresh time through an update")
+wipe(RECORDS)
+local refreshStore = memoryStore()
+newBank(8, refreshStore):start()
+local refreshedAt = ShimFiles(RECORDS).refreshed
+T.eq("(written at the refresh)", refreshedAt, string.format("%.0f", clock))
+refreshesBefore = refreshes
+wipe(RECORDS)
+newBank(8, refreshStore):start()
+T.eq("a button writes it again", ShimFiles(RECORDS).refreshed, refreshedAt)
+T.eq("and doesn't refresh the Navigators again", refreshes, refreshesBefore)
+
 T.section("A smaller bank after an update")
 wipe(RECORDS)
 wipe(PICTURES)
@@ -223,6 +246,7 @@ T.section("A button leaving the project")
 wipe(RECORDS)
 wipe(PICTURES)
 local leaving = newBank(256)
+leaving:start()
 local leavingState = leaving:slotFor("Leaving")
 local hand = leaving:handOver()
 T.eq(
@@ -245,13 +269,23 @@ T.eq("which writes their records again after an update", record(leavingState), r
 T.section("A bank that's off")
 wipe(RECORDS)
 wipe(PICTURES)
-local off = Bank:new({ store = memoryStore(), enabled = false, now = now, uptime = uptime })
+local off = Bank:new({
+  store = memoryStore(),
+  enabled = false,
+  refresh = function()
+    refreshes = refreshes + 1
+  end,
+  now = now,
+  uptime = uptime,
+})
+refreshesBefore = refreshes
 off:start()
 none, err = off:slotFor("Off")
 T.eq("gives no state, and isn't full", { none, err }, { nil, nil })
 off:adopt(hand)
 T.eq("hands over nothing", off:handOver(), "")
 T.eq("and writes nothing", { next(ShimFiles(RECORDS)), next(ShimFiles(PICTURES)) }, {})
+T.eq("nor refreshes the Navigators", refreshes, refreshesBefore)
 
 --- A controller restart: every slot was last sent before it, and Director starts the driver.
 local function controllerRestarted()
@@ -270,6 +304,7 @@ T.section("A button whose bank is full")
 Bank.SIZE = 2
 H.start()
 T.eq("a button with no look shows its own icon through a state", H.lastIcon().params.icon, Bank.OWN_STATE)
+T.eq("and its first start refreshes the Navigators", H.navRefreshes, 1)
 local oneId = H.addLook("One")
 local twoId = H.addLook("Two")
 EC.Show_Look({ Look = "Two (" .. twoId .. ")" })

@@ -212,6 +212,12 @@ if not C4.GetUptime then
     return 3600
   end
 end
+-- No Director listens for a Navigator refresh under the shim: count them instead.
+require("drivers-common-public.global.lib")
+H.navRefreshes = 0
+function RefreshNavs()
+  H.navRefreshes = H.navRefreshes + 1
+end
 local configInfo = C4.GetDriverConfigInfo
 function C4:GetDriverConfigInfo(section)
   if section == "minimum_os_version" then

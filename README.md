@@ -119,11 +119,13 @@ Halo and NEEO remotes show the button's look as Navigator does.
 
 The Dynamic Buttons in a project share a picture bank of 256 pictures, and looks
 with the same picture share one place in it. A place keeps its picture until the
-controller restarts, even after its look is edited or deleted. A look with a
-live badge or a web picture that refreshes takes up to 32 new places between
-restarts, and past that its new pictures show in Navigator but not on remotes.
-While the bank is full, a new picture shows in Navigator but not on remotes, and
-Driver Status reads `Picture bank full until the controller restarts`.
+controller restarts, even after its look is edited or deleted. After a
+controller restart the driver refreshes Navigators once, which frees those
+places for new pictures. A look with a live badge or a web picture that
+refreshes takes up to 32 new places between restarts, and past that its new
+pictures show in Navigator but not on remotes. While the bank is full, a new
+picture shows in Navigator but not on remotes, and Driver Status reads
+`Picture bank full until the controller restarts`.
 
 ## The Button Tab
 

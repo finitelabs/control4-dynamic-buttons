@@ -682,6 +682,7 @@ function OnDriverLateInit()
     store = persist,
     -- driver.xml's states name the dynamic_button folder: a renamed driver file shows addresses only.
     enabled = driverName() == Bank.DRIVER,
+    refresh = RefreshNavs,
   })
   bank:start()
   button = Button:new({
