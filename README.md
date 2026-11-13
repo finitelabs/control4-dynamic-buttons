@@ -115,7 +115,9 @@ Until the button has a look, it shows the driver's own icon.
 
 ## Halo and NEEO Remotes
 
-Halo and NEEO remotes show the button's look as Navigator does.
+Halo and NEEO remotes show the button's look as Navigator does. The first time
+Dynamic Buttons start in a project, the driver refreshes Navigators about a
+minute later, and remotes show looks from then.
 
 The Dynamic Buttons in a project share a picture bank of 256 pictures, and looks
 with the same picture share one place in it. A place keeps its picture until the

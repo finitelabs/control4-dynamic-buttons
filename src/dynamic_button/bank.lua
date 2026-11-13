@@ -29,6 +29,8 @@ local Images = require("dynamic_button.images")
 --- @field _now fun(): integer The clock, in ms since the epoch.
 --- @field _uptime fun(): number Seconds since the controller started.
 --- @field _refresh fun() Refreshes the Navigators.
+--- @field _setTimer fun(name: string, ms: integer, fn: fun())
+--- @field _ready fun() Lets every button, this one included, show its looks through the bank.
 --- @field _deviceId integer This button.
 --- @field _buttons fun(): integer[] Every Dynamic Button in the project, this one included.
 --- @field _found table<string, integer> Slots found this run, by picture hash.
@@ -78,8 +80,18 @@ local REFRESHED_KEY = "BankRefreshed"
 --- just before a restart only keeps its picture a little longer.
 local START_SLACK_MS = 60000
 
+--- How long a new bank waits, once every button has started, before it refreshes the Navigators.
+--- The apps learn the states from the project Director saves after an update, which took up to 20 s.
+Bank.SETTLE_MS = 60000
+
+--- How long after that refresh the buttons wait to show through the bank: a state sent before the
+--- apps reload draws empty in them.
+Bank.RELOAD_MS = 5000
+
+local REFRESH_TIMER = "BankRefresh"
+
 --- Creates a new instance of the Bank class.
---- @param opts { store: table, enabled: boolean, refresh: fun(), deviceId: integer, buttons: fun(): integer[], size?: integer, liveCap?: integer, now?: fun(): integer, uptime?: fun(): number }
+--- @param opts { store: table, enabled: boolean, refresh: fun(), ready: fun(), deviceId: integer, buttons: fun(): integer[], size?: integer, liveCap?: integer, now?: fun(): integer, uptime?: fun(): number, setTimer?: fun(name: string, ms: integer, fn: fun()) }
 --- @return Bank bank
 function Bank:new(opts)
   local instance = setmetatable({}, self)
@@ -94,6 +106,10 @@ function Bank:new(opts)
     return C4:GetUptime()
   end
   instance._refresh = opts.refresh
+  instance._ready = opts.ready
+  instance._setTimer = opts.setTimer or function(name, ms, fn)
+    SetTimer(name, ms, fn)
+  end
   instance._deviceId = opts.deviceId
   instance._buttons = opts.buttons
   instance._found = {}
@@ -197,13 +213,12 @@ end
 
 --- At every start: the first button to start since the controller started refreshes the
 --- Navigators, so apps drop their copies as remotes did. Then each writes again the refresh time and
---- the records of the slots it sent since, since an update replaces the folder. A new bank refreshes
---- them once every button has started, as the apps learn its states only then.
---- @return boolean completed This button made the bank whole, so others waiting on it can take
---- slots now.
+--- the records of the slots it sent since, since an update replaces the folder. The button that
+--- makes the bank whole lets the others show through it, and in a new bank refreshes the Navigators
+--- first, as the apps learn its states only then.
 function Bank:start()
   if not self.enabled then
-    return false
+    return
   end
   local onFile = self:_refreshedAt()
   local refreshed = math.max(onFile, self.store:get(REFRESHED_KEY, 0))
@@ -240,18 +255,34 @@ function Bank:start()
     C4:FileCreateDir("C4Z", RECORDS_DIR)
     Images.writeFile("C4Z", RECORDS_DIR, UP_PREFIX .. self._deviceId, "1")
   end
-  local whole = self:_whole()
-  if refreshed == 0 and whole then
-    -- A first install, or an update from a version without the bank: every button runs with the
-    -- states now, and the apps learn them at a refresh. One sent sooner leaves later buttons empty.
-    log:info("Refreshing Navigators so apps learn the picture bank's states")
-    refreshed = self._now()
-    self:_writeRefreshed(refreshed)
-    self.store:set(REFRESHED_KEY, refreshed)
-    self._refresh()
-    return true
+  if not self:_whole() then
+    return
   end
-  return waited and whole
+  if refreshed == 0 then
+    -- A first install, or an update from a version without the bank. Until the refresh every
+    -- button shows by address.
+    log:info("Refreshing Navigators in %d s so apps learn the picture bank's states", Bank.SETTLE_MS / 1000)
+    self._setTimer(REFRESH_TIMER, Bank.SETTLE_MS, function()
+      self:_refreshNew()
+    end)
+  elseif waited then
+    self._ready()
+  end
+end
+
+--- @private
+function Bank:_refreshNew()
+  if self:_refreshedAt() > 0 then
+    return
+  end
+  log:info("Refreshing Navigators so apps learn the picture bank's states")
+  local refreshed = self._now()
+  self:_writeRefreshed(refreshed)
+  self.store:set(REFRESHED_KEY, refreshed)
+  self._refresh()
+  self._setTimer(REFRESH_TIMER, Bank.RELOAD_MS, function()
+    self._ready()
+  end)
 end
 
 --- Another button made the bank whole: keep the refresh time it wrote, for the next update.

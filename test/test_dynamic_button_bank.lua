@@ -69,6 +69,26 @@ local function memoryStore()
 end
 
 local refreshes = 0
+local readies = 0
+
+--- The timers the banks set, oldest first.
+--- @type { ms: integer, fn: fun() }[]
+local pending = {}
+
+--- Runs the oldest timer a bank set.
+--- @return integer ms The delay it was set for.
+local function step()
+  local timer = table.remove(pending, 1)
+  timer.fn()
+  return timer.ms
+end
+
+--- Runs every timer the banks set, and those they set in turn: a new bank's minute has passed.
+local function settle()
+  while #pending > 0 do
+    step()
+  end
+end
 
 --- @param size integer
 --- @param store? table
@@ -82,6 +102,12 @@ local function newBank(size, store, liveCap, id, buttons)
     enabled = true,
     refresh = function()
       refreshes = refreshes + 1
+    end,
+    ready = function()
+      readies = readies + 1
+    end,
+    setTimer = function(_, ms, fn)
+      table.insert(pending, { ms = ms, fn = fn })
     end,
     deviceId = id or 1,
     buttons = buttons or function()
@@ -127,8 +153,10 @@ local function wipe(dir)
 end
 
 T.section("A picture's slot")
+wipe(RECORDS)
 local a = newBank(8)
 a:start()
+settle()
 local red = a:slotFor("Red")
 T.eq("starts at the picture's place in the bank", slotOf(red), tostring(tonumber(hashOf("Red"):sub(1, 8), 16) % 8 + 1))
 T.eq("whose record holds the picture's hash and when it was sent", record(red), recordOf("Red", clock))
@@ -152,9 +180,22 @@ wipe(PICTURES)
 local b = newBank(2)
 none, err = b:slotFor("One")
 T.eq("a new bank shows pictures by address until its buttons start", { none, err }, { nil, Bank.WAIT })
-local refreshesBefore = refreshes
+local refreshesBefore, readiesBefore = refreshes, readies
 b:start()
-T.eq("and once they all have, refreshes the Navigators so apps learn its states", refreshes, refreshesBefore + 1)
+none, err = b:slotFor("One")
+T.eq("and still once they all have", { none, err, refreshes }, { nil, Bank.WAIT, refreshesBefore })
+local waited = step()
+T.eq(
+  "until a minute later, as Director saves the project, when it refreshes the Navigators so apps learn its states",
+  { waited, refreshes },
+  { Bank.SETTLE_MS, refreshesBefore + 1 }
+)
+waited = step()
+T.eq(
+  "and once the apps reload, lets the buttons show through it",
+  { waited, readies },
+  { Bank.RELOAD_MS, readiesBefore + 1 }
+)
 local one, two = b:slotFor("One"), b:slotFor("Two")
 T.truthy("(two slots)", slotOf(one) and slotOf(two) and one ~= two)
 clock = clock + 24 * HOUR
@@ -181,6 +222,7 @@ wipe(RECORDS)
 wipe(PICTURES)
 local live = newBank(8, nil, 2)
 live:start()
+settle()
 local first = live:slotFor("Badge 1", 7)
 T.truthy("takes slots for its pictures", slotOf(first) and slotOf(live:slotFor("Badge 2", 7)))
 none, err = live:slotFor("Badge 3", 7)
@@ -197,6 +239,7 @@ wipe(PICTURES)
 local store = memoryStore()
 local u = newBank(256, store)
 u:start()
+settle()
 local old = u:slotFor("Old")
 restartController()
 local kept = u:slotFor("Kept")
@@ -231,13 +274,15 @@ end
 local firstStore, lastStore = memoryStore(), memoryStore()
 local firstBank = newBank(8, firstStore, nil, 1, both)
 local lastBank = newBank(8, lastStore, nil, 2, both)
-refreshesBefore = refreshes
+refreshesBefore, readiesBefore = refreshes, readies
 firstBank:start()
 none, err = firstBank:slotFor("Early")
 T.eq("a new bank waits for its other buttons to start", { none, err }, { nil, Bank.WAIT })
 T.eq("before it refreshes the Navigators", refreshes, refreshesBefore)
-T.eq("which the last to start does", lastBank:start(), true)
-T.eq("once", refreshes, refreshesBefore + 1)
+lastBank:start()
+settle()
+T.eq("which the last to start does, once", refreshes, refreshesBefore + 1)
+T.eq("then lets the buttons show through the bank", readies, readiesBefore + 1)
 firstBank:ready()
 T.eq("and the others keep its time", firstStore:get("BankRefreshed"), lastStore:get("BankRefreshed"))
 local theirs = lastBank:slotFor("Theirs")
@@ -253,23 +298,29 @@ T.truthy("(a picture whose path starts on another button's slot)", onTheirs)
 wipe(RECORDS)
 wipe(PICTURES)
 firstBank = newBank(8, firstStore, nil, 1, both)
-T.eq("the first button to start doesn't make the bank whole", firstBank:start(), false)
+readiesBefore = readies
+firstBank:start()
+T.eq("the first button to start doesn't make the bank whole", readies, readiesBefore)
 none, err = firstBank:slotFor(onTheirs)
 T.eq("so a new picture waits rather than take a slot whose record isn't back", { none, err }, { nil, Bank.WAIT })
 T.eq("and the other button's slot is left alone", { record(theirs), H.banked(theirs) }, {})
 lastBank = newBank(8, lastStore, nil, 2, both)
-T.eq("the last button to start makes it whole", lastBank:start(), true)
+lastBank:start()
+T.eq("the last button to start makes it whole, and lets the others take slots", readies, readiesBefore + 1)
 T.eq("with its slot's record back", record(theirs), recordOf("Theirs", theirsAt))
 local after = firstBank:slotFor(onTheirs)
 T.truthy("then the picture takes another slot", slotOf(after) and after ~= theirs)
 T.eq("and the other button keeps its own", lastBank:slotFor("Theirs"), theirs)
 lastBank = newBank(8, lastStore, nil, 2, both)
-T.eq("a start with the bank already whole has no one to tell", lastBank:start(), false)
+lastBank:start()
+T.eq("a start with the bank already whole has no one to tell", readies, readiesBefore + 1)
+T.eq("(and no timer)", #pending, 0)
 
 T.section("The refresh time through an update")
 wipe(RECORDS)
 local refreshStore = memoryStore()
 newBank(8, refreshStore):start()
+settle()
 local refreshedAt = ShimFiles(RECORDS).refreshed
 T.eq("(written at the new bank's refresh)", refreshedAt, string.format("%.0f", clock))
 refreshesBefore = refreshes
@@ -284,6 +335,7 @@ wipe(PICTURES)
 local shrinkStore = memoryStore()
 local shrink = newBank(256, shrinkStore)
 shrink:start()
+settle()
 local past
 for n = 1, 20 do
   local state = shrink:slotFor("S" .. n)
@@ -304,6 +356,7 @@ wipe(RECORDS)
 wipe(PICTURES)
 local leaving = newBank(256)
 leaving:start()
+settle()
 local leavingState = leaving:slotFor("Leaving")
 local hand = leaving:handOver()
 T.eq(
@@ -321,6 +374,7 @@ wipe(RECORDS)
 wipe(PICTURES)
 keeper = newBank(256, keeperStore)
 keeper:start()
+settle()
 T.eq("which writes their records again after an update", record(leavingState), recordOf("Leaving", clock))
 
 T.section("A bank that's off")
@@ -364,7 +418,10 @@ T.section("A button whose bank is full")
 Bank.SIZE = 2
 H.start()
 T.eq("a button with no look shows its own icon through a state", H.lastIcon().params.icon, Bank.OWN_STATE)
-T.eq("and its first start refreshes the Navigators, as it's a new bank", H.navRefreshes, 1)
+T.eq("its first start doesn't refresh the Navigators, as it's a new bank", H.navRefreshes, 0)
+ShimFireTimers()
+T.eq("until a minute later", H.navRefreshes, 1)
+ShimFireTimers()
 local oneId = H.addLook("One")
 local twoId = H.addLook("Two")
 EC.Show_Look({ Look = "Two (" .. twoId .. ")" })
@@ -463,9 +520,14 @@ persist:set("BankRefreshed", nil)
 ShimFiles(RECORDS)["up-905"] = "1"
 ShimFiles(RECORDS)["up-903"] = "1"
 H.restart()
-T.eq("the last button to start refreshes the Navigators once", H.navRefreshes, refreshes + 1)
-T.eq("and tells the others", told, { "903 BANK_READY", "905 BANK_READY" })
 local lastId = H.addLook("Last")
+T.contains("the last button to start shows by address too", H.lastIcon().params.icon, "controller://")
+T.eq("as it waits for Director to save the project before it refreshes the Navigators", H.navRefreshes, refreshes)
+ShimFireTimers()
+T.eq("then refreshes them once", H.navRefreshes, refreshes + 1)
+T.eq("and tells no one while the apps reload", told, {})
+ShimFireTimers()
+T.eq("then tells the others", told, { "903 BANK_READY", "905 BANK_READY" })
 T.truthy("and shows its own looks through states", slotOf(H.lastIcon().params.icon))
 H.restart()
 T.eq("its next start doesn't refresh again", H.navRefreshes, refreshes + 1)

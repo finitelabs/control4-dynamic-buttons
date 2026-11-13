@@ -218,6 +218,8 @@ H.navRefreshes = 0
 function RefreshNavs()
   H.navRefreshes = H.navRefreshes + 1
 end
+-- A bank the Navigators have learned since the controller started; test_dynamic_button_bank covers a new one.
+ShimFiles("C4Z/bank").refreshed = string.format("%.0f", C4:GetTime())
 local configInfo = C4.GetDriverConfigInfo
 function C4:GetDriverConfigInfo(section)
   if section == "minimum_os_version" then

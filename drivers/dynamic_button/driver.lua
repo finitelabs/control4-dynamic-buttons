@@ -683,14 +683,18 @@ function OnDriverLateInit()
     -- driver.xml's states name the dynamic_button folder: a renamed driver file shows addresses only.
     enabled = driverName() == Bank.DRIVER,
     refresh = RefreshNavs,
+    ready = function()
+      for _, id in ipairs(otherButtons()) do
+        SendToDevice(id, "BANK_READY", {})
+      end
+      if button and followAllowed() then
+        button:bankReady()
+      end
+    end,
     deviceId = tointeger(C4:GetDeviceID()),
     buttons = getDriverIds,
   })
-  if bank:start() then
-    for _, id in ipairs(otherButtons()) do
-      SendToDevice(id, "BANK_READY", {})
-    end
-  end
+  bank:start()
   button = Button:new({
     looks = looks,
     images = images,
