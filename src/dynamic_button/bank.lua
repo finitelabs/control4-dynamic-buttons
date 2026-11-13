@@ -172,7 +172,11 @@ function Bank:start()
   end
   local onFile = self:_refreshedAt()
   local refreshed = math.max(onFile, self.store:get(REFRESHED_KEY, 0))
-  if refreshed < self:startedAt() then
+  if refreshed == 0 then
+    -- A new bank, which no app has drawn. A refresh now could also land while Director is still
+    -- updating the drivers, and the apps would show the buttons empty until the next one.
+    refreshed = self._now()
+  elseif refreshed < self:startedAt() then
     log:info("Refreshing Navigators, once since the controller started, so picture bank slots can take new pictures")
     refreshed = self._now()
     self._refresh()

@@ -143,6 +143,9 @@ T.section("Until the controller restarts")
 wipe(RECORDS)
 wipe(PICTURES)
 local b = newBank(2)
+local refreshesBefore = refreshes
+b:start()
+T.eq("a new bank's first start doesn't refresh the Navigators, as no app has drawn it", refreshes, refreshesBefore)
 local one, two = b:slotFor("One"), b:slotFor("Two")
 T.truthy("(two slots)", slotOf(one) and slotOf(two) and one ~= two)
 clock = clock + 24 * HOUR
@@ -155,7 +158,7 @@ restartController()
 T.eq("a picture shown again keeps its slot", b:slotFor("One"), one)
 T.eq("and is marked sent again", record(one), recordOf("One", clock))
 T.eq("a new picture takes no slot yet, as apps keep their copies", select(2, b:slotFor("Three")), Bank.FULL)
-local refreshesBefore = refreshes
+refreshesBefore = refreshes
 b:start()
 T.eq("the first button to start since refreshes the Navigators", refreshes, refreshesBefore + 1)
 newBank(2):start()
@@ -215,7 +218,7 @@ wipe(RECORDS)
 local refreshStore = memoryStore()
 newBank(8, refreshStore):start()
 local refreshedAt = ShimFiles(RECORDS).refreshed
-T.eq("(written at the refresh)", refreshedAt, string.format("%.0f", clock))
+T.eq("(written at the first start)", refreshedAt, string.format("%.0f", clock))
 refreshesBefore = refreshes
 wipe(RECORDS)
 newBank(8, refreshStore):start()
@@ -287,11 +290,14 @@ T.eq("hands over nothing", off:handOver(), "")
 T.eq("and writes nothing", { next(ShimFiles(RECORDS)), next(ShimFiles(PICTURES)) }, {})
 T.eq("nor refreshes the Navigators", refreshes, refreshesBefore)
 
---- A controller restart: every slot was last sent before it, and Director starts the driver.
+--- A controller restart: every slot was last sent, and the Navigators last refreshed, before it,
+--- and Director starts the driver.
 local function controllerRestarted()
   for name, text in pairs(ShimFiles(RECORDS)) do
     ShimFiles(RECORDS)[name] = (text:gsub(" %d+$", " 1"))
   end
+  ShimFiles(RECORDS).refreshed = "1"
+  persist:set("BankRefreshed", 1)
   local shown = persist:get("BankShown", {})
   for _, entry in pairs(shown) do
     entry.at = 1
@@ -304,7 +310,7 @@ T.section("A button whose bank is full")
 Bank.SIZE = 2
 H.start()
 T.eq("a button with no look shows its own icon through a state", H.lastIcon().params.icon, Bank.OWN_STATE)
-T.eq("and its first start refreshes the Navigators", H.navRefreshes, 1)
+T.eq("and its first start doesn't refresh the Navigators", H.navRefreshes, 0)
 local oneId = H.addLook("One")
 local twoId = H.addLook("Two")
 EC.Show_Look({ Look = "Two (" .. twoId .. ")" })
@@ -324,7 +330,8 @@ T.eq("and Driver Status is Ready", Properties["Driver Status"], "Ready")
 EC.Show_Look({ Look = "Three (" .. threeId .. ")" })
 controllerRestarted()
 local threeState = H.lastIcon().params.icon
-T.truthy("after a controller restart the shown look takes a slot", slotOf(threeState))
+T.eq("after a controller restart the button refreshes the Navigators", H.navRefreshes, 1)
+T.truthy("and the shown look takes a slot", slotOf(threeState))
 T.eq("with its picture", H.banked(threeState), H.png("Three"))
 T.eq("and Driver Status is Ready again", Properties["Driver Status"], "Ready")
 
