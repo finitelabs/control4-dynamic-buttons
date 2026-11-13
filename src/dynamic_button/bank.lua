@@ -80,9 +80,11 @@ local REFRESHED_KEY = "BankRefreshed"
 --- just before a restart only keeps its picture a little longer.
 local START_SLACK_MS = 60000
 
---- How long a new bank waits, once every button has started, before it refreshes the Navigators.
---- The apps learn the states from the project Director saves after an update, which took up to 20 s.
-Bank.SETTLE_MS = 60000
+--- A new bank refreshes the Navigators twice once every button has started, this long apart. The
+--- apps learn the states from the controller's copy of the project, which it reads again some
+--- seconds after a refresh and not after an update: the first refresh has it read again, and the
+--- second teaches the apps.
+Bank.SETTLE_MS = 30000
 
 --- How long after that refresh the buttons wait to show through the bank: a state sent before the
 --- apps reload draws empty in them.
@@ -261,13 +263,25 @@ function Bank:start()
   if refreshed == 0 then
     -- A first install, or an update from a version without the bank. Until the refresh every
     -- button shows by address.
-    log:info("Refreshing Navigators in %d s so apps learn the picture bank's states", Bank.SETTLE_MS / 1000)
+    log:info("Refreshing Navigators in %d s so apps learn the picture bank's states", Bank.SETTLE_MS * 2 / 1000)
     self._setTimer(REFRESH_TIMER, Bank.SETTLE_MS, function()
-      self:_refreshNew()
+      self:_settle()
     end)
   elseif waited then
     self._ready()
   end
+end
+
+--- @private
+function Bank:_settle()
+  if self:_refreshedAt() > 0 then
+    return
+  end
+  log:info("Refreshing Navigators so the controller reads the project again with the picture bank's states")
+  self._refresh()
+  self._setTimer(REFRESH_TIMER, Bank.SETTLE_MS, function()
+    self:_refreshNew()
+  end)
 end
 
 --- @private
