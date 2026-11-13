@@ -161,10 +161,6 @@
           </param>
         </params>
       </action>
-      <action>
-        <name>Refresh Navigators</name>
-        <command>Refresh_Navigators</command>
-      </action>
       <!-- #ifdef DRIVERCENTRAL -->
       <action>
         <name>Diagnostics Snapshot</name>

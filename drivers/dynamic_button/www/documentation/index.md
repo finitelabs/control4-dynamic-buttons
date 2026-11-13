@@ -174,16 +174,15 @@ Until the button has a look, it shows the driver's own icon.
 
 ## Halo and NEEO Remotes
 
-Halo and NEEO remotes show the button's look as Navigator does, except a look
-with a live badge or a web picture that refreshes, which shows on a remote with
-no picture.
+Halo and NEEO remotes show the button's look as Navigator does.
 
-The Dynamic Buttons in a project share a picture bank of 256 pictures. An edited
-or deleted picture keeps its place in the bank until Navigators are refreshed.
-After many edits, run [Refresh Navigators](#refresh-navigators) on any Dynamic
-Button to free those places. While the bank is full, a new picture shows in
-Navigator but not on remotes, and Driver Status reads
-`Picture bank full, run Refresh Navigators`.
+The Dynamic Buttons in a project share a picture bank of 256 pictures, and looks
+with the same picture share one place in it. A place keeps its picture until the
+controller restarts, even after its look is edited or deleted. A look with a
+live badge or a web picture that refreshes takes up to 32 new places between
+restarts, and past that its new pictures show in Navigator but not on remotes.
+While the bank is full, a new picture shows in Navigator but not on remotes, and
+Driver Status reads `Picture bank full until the controller restarts`.
 
 ## The Button Tab
 
@@ -741,7 +740,7 @@ and `Prerelease` also installs test builds.
 ##### Driver Status (read-only)
 
 Displays `Ready` once the driver has started, or
-`Picture bank full, run Refresh Navigators` while the
+`Picture bank full until the controller restarts` while the
 [picture bank](#halo-and-neeo-remotes) has no room for a new picture.
 
 ##### Driver Version (read-only)
@@ -833,12 +832,6 @@ look takes the same name: choose the new look in that programming.
 **Parameters:**
 
 - **Are You Sure?** \[ **_No_** | Yes \] - Confirmation to reset the driver.
-
-#### Refresh Navigators
-
-Refreshes every Navigator, and frees the places in the
-[picture bank](#halo-and-neeo-remotes) that edited and deleted pictures held.
-Composer's own Refresh Navigators refreshes them but frees nothing.
 
 <!-- #ifdef DRIVERCENTRAL -->
 

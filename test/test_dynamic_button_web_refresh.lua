@@ -544,12 +544,7 @@ T.section("A look on it is served the bytes as they came")
 local driveway = saveOn("Driveway", webId, { tileShape = "Circle", custom = { badge = { text = "Hi" } } })
 local served = H.served()[driveway .. ".png"]
 T.eq("the served file is the site's JPEG, byte for byte", served, JPEG_A)
-T.truthy("the button shows it", H.lastIcon() and H.lastIcon().params.icon:find("/" .. driveway .. ".png", 1, true))
-T.contains(
-  "by its address, not a picture bank state, as it changes while it shows",
-  H.lastIcon().params.icon,
-  "controller://"
-)
+T.eq("the button shows it through the picture bank's state for those bytes", H.banked(H.lastIcon().params.icon), JPEG_A)
 local look = H.state().looks[#H.state().looks]
 T.eq("drawn with no tile", look.tileShape, "None")
 T.eq("and no badge", look.custom, nil)
@@ -631,7 +626,7 @@ T.eq("Logo shows", Properties["Shown Look"], "Logo")
 local porchPicture = addWeb("http://camera.local/porch.jpg", 300).picture
 local porch = saveOn("Porch", porchPicture, { showWhen = "true" })
 T.eq("the look whose Show when is true shows at once", Properties["Shown Look"], "Porch")
-T.truthy("with its picture on the button", H.lastIcon().params.icon:find("/" .. porch .. ".png", 1, true))
+T.eq("with its picture on the button", H.banked(H.lastIcon().params.icon), H.served()[porch .. ".png"])
 
 T.section("Two looks sharing one picture: the other shows its current bytes, told once")
 Properties["Look Control"] = "Manual"

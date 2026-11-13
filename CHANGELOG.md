@@ -22,15 +22,11 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 ### Added
 
-- Added each look's picture on Halo and NEEO remotes, except a look with a live
-  badge or a web picture that refreshes
-- Added a Refresh Navigators action that refreshes every Navigator and frees
-  room for new pictures on remotes
+- Added each look's picture on Halo and NEEO remotes
 
 ### Fixed
 
-- Fixed the button going blank for a moment when it's pressed or changes look,
-  except on a look with a live badge or a web picture that refreshes
+- Fixed the button going blank for a moment when it's pressed or changes look
 
 ### Changed
 

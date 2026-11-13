@@ -1,6 +1,7 @@
---- The picture bank: display_icons states whose pictures the buttons write while they run. Every
---- Dynamic Button shares the bank, so a button claims slots in the driver's folder, and a slot it
---- lets go waits for a Navigator refresh, since apps and remotes keep a state's first picture.
+--- The picture bank: display_icons states whose pictures the buttons write while they run. A
+--- picture's hash picks its slot, so every look and button showing it shares one state, and a slot
+--- sent since the controller started keeps its picture until the next restart, since apps and
+--- remotes keep a state's picture.
 ---
 --- Run from the driver root:
 ---   make test
@@ -12,14 +13,28 @@ local H = require("dynamic_button_harness")
 local Bank = require("dynamic_button.bank")
 local persist = require("lib.persist")
 
-local CLAIMS = "C4Z/bank"
+local RECORDS = "C4Z/bank"
 local PICTURES = "C4Z/www/bank"
+local HOUR = 3600000
 
-local clock = 1000
+local clock = 1794600000000
+local booted = clock - HOUR
 
 --- @return integer ms
 local function now()
   return clock
+end
+
+--- @return number seconds
+local function uptime()
+  return (clock - booted) / 1000
+end
+
+--- The controller restarts and has been up two minutes.
+local function restartController()
+  clock = clock + HOUR
+  booted = clock
+  clock = clock + 120000
 end
 
 --- @param value any
@@ -53,25 +68,19 @@ local function memoryStore()
   }
 end
 
---- @param deviceId integer
 --- @param size integer
 --- @param store? table
+--- @param liveCap? integer
 --- @return Bank bank
-local function newBank(deviceId, size, store)
-  return Bank:new({ store = store or memoryStore(), deviceId = deviceId, enabled = true, size = size, now = now })
-end
-
---- @param png string
---- @return fun(): string picture
---- @return fun(): integer reads How many times the picture was read.
-local function picture(png)
-  local reads = 0
-  return function()
-    reads = reads + 1
-    return png
-  end, function()
-    return reads
-  end
+local function newBank(size, store, liveCap)
+  return Bank:new({
+    store = store or memoryStore(),
+    enabled = true,
+    size = size,
+    liveCap = liveCap,
+    now = now,
+    uptime = uptime,
+  })
 end
 
 --- @param state string|nil
@@ -81,9 +90,22 @@ local function slotOf(state)
 end
 
 --- @param state string|nil
---- @return string|nil claim
-local function claim(state)
-  return ShimFiles(CLAIMS)[slotOf(state) or ""]
+--- @return string|nil record The slot's record: the picture's hash and when it was last sent.
+local function record(state)
+  return ShimFiles(RECORDS)[slotOf(state) or ""]
+end
+
+--- @param png string
+--- @return string hash
+local function hashOf(png)
+  return (C4:Hash("SHA256", png))
+end
+
+--- @param png string
+--- @param at integer
+--- @return string record
+local function recordOf(png, at)
+  return string.format("%s %.0f", hashOf(png), at)
 end
 
 --- @param dir string
@@ -93,212 +115,183 @@ local function wipe(dir)
   end
 end
 
-T.section("Taking a slot")
-local a = newBank(843, 4)
-local a1 = a:slotFor(1, 1, picture("A1"))
-T.truthy("a look's picture gets a state", slotOf(a1))
-T.eq("whose claim names the button", claim(a1), "843")
-T.eq("and whose picture is written", H.banked(a1), "A1")
+T.section("A picture's slot")
+local a = newBank(8)
+local red = a:slotFor("Red")
+T.eq("starts at the picture's place in the bank", slotOf(red), tostring(tonumber(hashOf("Red"):sub(1, 8), 16) % 8 + 1))
+T.eq("whose record holds the picture's hash and when it was sent", record(red), recordOf("Red", clock))
+T.eq("and whose picture is written", H.banked(red), "Red")
 
 T.section("The same picture again")
-local read, reads = picture("A1")
-T.eq("keeps its state", a:slotFor(1, 1, read), a1)
-T.eq("without reading the picture", reads(), 0)
-ShimFiles(PICTURES)[slotOf(a1) .. ".png"] = nil
-T.eq("a picture file that's gone keeps its state", a:slotFor(1, 1, read), a1)
-T.eq("and is written again", H.banked(a1), "A1")
+T.eq("from another look keeps its state", a:slotFor("Red"), red)
+T.eq("from another button too", newBank(8):slotFor("Red"), red)
+ShimFiles(PICTURES)[slotOf(red) .. ".png"] = nil
+T.eq("a picture file that's gone keeps its state", a:slotFor("Red"), red)
+T.eq("and is written again", H.banked(red), "Red")
 
-T.section("A new picture")
-local a2 = a:slotFor(1, 2, picture("A2"))
-T.neq("takes a new state, so no app shows the old picture", a2, a1)
-T.eq("with the new picture", H.banked(a2), "A2")
-T.eq("the old slot waits for a refresh", claim(a1), "freed 1000")
+T.section("Another picture")
+local blue = a:slotFor("Blue")
+T.truthy("takes another state", slotOf(blue) and blue ~= red)
+T.eq("with its picture", H.banked(blue), "Blue")
 
-T.section("Another button")
-local b = newBank(845, 4)
-local b1 = b:slotFor(1, 1, picture("B1"))
-T.truthy("takes a slot of its own", slotOf(b1) and b1 ~= a1 and b1 ~= a2)
-local b2 = b:slotFor(2, 1, picture("B2"))
-T.truthy("and another", slotOf(b2) and b2 ~= b1 and b2 ~= a1 and b2 ~= a2)
-local none, err = b:slotFor(3, 1, picture("B3"))
-T.eq("a full bank gives no state", none, nil)
-T.eq("and says it's full", err, Bank.FULL)
-T.eq("a slot waiting for a refresh is not taken", claim(a1), "freed 1000")
+T.section("Until the controller restarts")
+wipe(RECORDS)
+wipe(PICTURES)
+local b = newBank(2)
+local one, two = b:slotFor("One"), b:slotFor("Two")
+T.truthy("(two slots)", slotOf(one) and slotOf(two) and one ~= two)
+clock = clock + 24 * HOUR
+local none, err = b:slotFor("Three")
+T.eq("no slot takes a new picture, however long it's been", { none, err }, { nil, Bank.FULL })
+T.eq("so each keeps its picture", { H.banked(one), H.banked(two) }, { "One", "Two" })
 
-T.section("A Navigator refresh")
-clock = 2000
-a:refreshed()
-T.eq("is kept in the folder for every button", ShimFiles(CLAIMS)["refreshed"], "2000")
-local b3 = b:slotFor(3, 1, picture("B3"))
-T.eq("a slot let go before it can be taken", b3, a1)
-T.eq("by any button", claim(b3), "845")
-T.eq("with its new picture", H.banked(b3), "B3")
-clock = 3000
-a:release(1)
-T.eq("a slot let go after it waits for the next", claim(a2), "freed 3000")
-T.eq("so a full bank stays full", b:slotFor(4, 1, picture("B4")), nil)
-clock = 3000
-b:refreshed()
-T.eq("a refresh at the moment it was let go frees it", b:slotFor(4, 1, picture("B4")), a2)
+T.section("After a controller restart")
+restartController()
+T.eq("a picture shown again keeps its slot", b:slotFor("One"), one)
+T.eq("and is marked sent again", record(one), recordOf("One", clock))
+T.eq("a new picture takes a slot not sent since", b:slotFor("Three"), two)
+T.eq("with its picture", H.banked(two), "Three")
+T.eq("so the bank is full again until the next one", select(2, b:slotFor("Two")), Bank.FULL)
+
+T.section("A look whose picture changes while it shows")
+wipe(RECORDS)
+wipe(PICTURES)
+local live = newBank(8, nil, 2)
+local first = live:slotFor("Badge 1", 7)
+T.truthy("takes slots for its pictures", slotOf(first) and slotOf(live:slotFor("Badge 2", 7)))
+none, err = live:slotFor("Badge 3", 7)
+T.eq("up to its share between restarts", { none, err }, { nil, Bank.CAPPED })
+T.eq("a picture it showed before keeps its slot", live:slotFor("Badge 1", 7), first)
+T.truthy("another such look has a share of its own", slotOf(live:slotFor("Badge 3", 8)))
+T.truthy("and a look whose picture stays has no share", slotOf(live:slotFor("Still")))
+restartController()
+T.truthy("a restart gives the look its share again", slotOf(live:slotFor("Badge 4", 7)))
 
 T.section("An update, which replaces the folder")
-wipe(CLAIMS)
+wipe(RECORDS)
 wipe(PICTURES)
-local cStore = memoryStore()
-local c = newBank(847, 8, cStore)
-local c1 = c:slotFor(1, 1, picture("C1"))
-local c2 = c:slotFor(2, 1, picture("C2"))
-clock = 4000
-local c3 = c:slotFor(2, 2, picture("C2 again"))
-wipe(CLAIMS)
+local store = memoryStore()
+local u = newBank(256, store)
+local old = u:slotFor("Old")
+restartController()
+local kept = u:slotFor("Kept")
+local keptAt = clock
+T.truthy("(two slots)", slotOf(old) and slotOf(kept) and old ~= kept)
+wipe(RECORDS)
 wipe(PICTURES)
--- Another button that started first took look 1's slot.
-ShimFiles(CLAIMS)[slotOf(c1)] = "849"
-c = newBank(847, 8, cStore)
-c:start()
-T.eq("a button claims its slots again at start", claim(c3), "847")
-T.eq("and keeps the one it let go waiting for a refresh", claim(c2), "freed 4000")
-T.eq("but leaves one another button holds now", claim(c1), "849")
-read, reads = picture("C2 again")
-T.eq("its look keeps its state", c:slotFor(2, 2, read), c3)
-T.eq("with the picture written again", H.banked(c3), "C2 again")
-local c4 = c:slotFor(1, 1, picture("C1"))
-T.truthy("a look whose slot was taken gets a new one", slotOf(c4) and c4 ~= c1 and c4 ~= c2 and c4 ~= c3)
-
-T.section("A button leaving the project")
-clock = 5000
-c:removed()
-T.eq("lets every slot go", { claim(c3), claim(c4) }, { "freed 5000", "freed 5000" })
-local d = newBank(851, 8)
-d:refreshed()
-local taken = {}
-for look = 1, 7 do
-  local state = d:slotFor(look, 1, picture("D"))
-  if state then
-    taken[state] = true
-  end
-end
-T.truthy("which another button takes after a refresh", taken[c3] and taken[c4])
-T.falsy("but not one a button still holds", taken[c1])
-
-T.section("A button leaving the project, then an update")
-wipe(CLAIMS)
+u = newBank(256, store)
+u:start()
+T.eq("a button writes again the records of the slots it sent since the restart", record(kept), recordOf("Kept", keptAt))
+T.eq("but not one it sent before", record(old), nil)
+T.eq("its look keeps its state", u:slotFor("Kept"), kept)
+T.eq("with the picture written again", H.banked(kept), "Kept")
+local mine = u:slotFor("Mine")
+wipe(RECORDS)
 wipe(PICTURES)
-local leaving = newBank(861, 1)
-local leavingState = leaving:slotFor(1, 1, picture("Leaving"))
-local keeperStore = memoryStore()
-local keeper = newBank(863, 1, keeperStore)
-clock = 6000
-leaving:removed()
-T.eq("hands over the slots it let go", leaving:handOver(), slotOf(leavingState) .. ":6000")
-keeper:adopt(leaving:handOver())
-keeper:adopt("9:6000")
-T.eq("to a button that keeps them, inside its bank", keeper:handOver(), slotOf(leavingState) .. ":6000")
-wipe(CLAIMS)
-wipe(PICTURES)
-keeper = newBank(863, 1, keeperStore)
-keeper:start()
-T.eq("which marks them let go again at start", claim(leavingState), "freed 6000")
-local after = newBank(865, 1)
-after:start()
-local afterState, afterErr = after:slotFor(1, 1, picture("After"))
-T.eq("so no button takes one before a refresh", { afterState, afterErr }, { nil, Bank.FULL })
-keeper:refreshed()
-T.eq("and one does after", after:slotFor(1, 1, picture("After")), leavingState)
-T.eq("a refresh empties the keeper's list", keeper:handOver(), "")
-keeper:adopt(slotOf(leavingState) .. ":6000")
-T.eq("which takes no slot let go before its last refresh", keeper:handOver(), "")
+ShimFiles(RECORDS)[slotOf(mine)] = recordOf("Theirs", clock)
+u = newBank(256, store)
+u:start()
+T.eq("a slot another button took since is left to it", record(mine), recordOf("Theirs", clock))
+local moved = u:slotFor("Mine")
+T.truthy("and the picture takes another", slotOf(moved) and moved ~= mine)
+restartController()
+u = newBank(256, store)
+u:start()
+T.eq("a restart drops them all", store:get("BankShown"), nil)
 
 T.section("A smaller bank after an update")
-wipe(CLAIMS)
+wipe(RECORDS)
 wipe(PICTURES)
 local shrinkStore = memoryStore()
--- 871 starts its search at slot 4.
-local shrink = newBank(871, 8, shrinkStore)
-local held = shrink:slotFor(1, 1, picture("S1"))
-local let = shrink:slotFor(2, 1, picture("S2"))
-shrink:release(2)
-T.eq("(slots past the smaller bank's end)", { held, let }, { "p4", "p5" })
-wipe(CLAIMS)
+local shrink = newBank(256, shrinkStore)
+local past
+for n = 1, 20 do
+  local state = shrink:slotFor("S" .. n)
+  if tonumber(slotOf(state)) > 2 then
+    past = state
+    break
+  end
+end
+T.truthy("(a slot past the smaller bank's end)", past)
+wipe(RECORDS)
 wipe(PICTURES)
-shrink = newBank(871, 2, shrinkStore)
+shrink = newBank(2, shrinkStore)
 shrink:start()
-T.eq("drops a held slot past its end", claim(held), nil)
-T.eq("and a let-go one", { claim(let), shrink:handOver() }, { nil, "" })
-T.truthy("so the look takes a state the bank declares", ({ p1 = true, p2 = true })[shrink:slotFor(1, 1, picture("S1"))])
+T.eq("drops a slot past its end", { record(past), shrinkStore:get("BankShown") }, { nil, nil })
+
+T.section("A button leaving the project")
+wipe(RECORDS)
+wipe(PICTURES)
+local leaving = newBank(256)
+local leavingState = leaving:slotFor("Leaving")
+local hand = leaving:handOver()
+T.eq(
+  "hands over the slots it sent since the restart",
+  hand,
+  string.format("%s:%s:%.0f", slotOf(leavingState), hashOf("Leaving"), clock)
+)
+local keeperStore = memoryStore()
+local keeper = newBank(256, keeperStore)
+keeper:adopt(hand)
+keeper:adopt("999:abc:" .. string.format("%.0f", clock))
+keeper:adopt("9:abc:1")
+T.eq("to a button that keeps those inside its bank and sent since", keeper:handOver(), hand)
+wipe(RECORDS)
+wipe(PICTURES)
+keeper = newBank(256, keeperStore)
+keeper:start()
+T.eq("which writes their records again after an update", record(leavingState), recordOf("Leaving", clock))
 
 T.section("A bank that's off")
-wipe(CLAIMS)
+wipe(RECORDS)
 wipe(PICTURES)
-local off = Bank:new({ store = memoryStore(), deviceId = 853, enabled = false, now = now })
+local off = Bank:new({ store = memoryStore(), enabled = false, now = now, uptime = uptime })
 off:start()
-local offState, offErr = off:slotFor(1, 1, picture("Off"))
-T.eq("gives no state", offState, nil)
-T.eq("and isn't full", offErr, nil)
-off:release(1)
-off:refreshed()
-T.eq("and writes nothing", { next(ShimFiles(CLAIMS)), next(ShimFiles(PICTURES)) }, {})
+none, err = off:slotFor("Off")
+T.eq("gives no state, and isn't full", { none, err }, { nil, nil })
+off:adopt(hand)
+T.eq("hands over nothing", off:handOver(), "")
+T.eq("and writes nothing", { next(ShimFiles(RECORDS)), next(ShimFiles(PICTURES)) }, {})
+
+--- A controller restart: every slot was last sent before it, and Director starts the driver.
+local function controllerRestarted()
+  for name, text in pairs(ShimFiles(RECORDS)) do
+    ShimFiles(RECORDS)[name] = (text:gsub(" %d+$", " 1"))
+  end
+  local shown = persist:get("BankShown", {})
+  for _, entry in pairs(shown) do
+    entry.at = 1
+  end
+  persist:set("BankShown", next(shown) and shown or nil)
+  H.restart()
+end
 
 T.section("A button whose bank is full")
-wipe(CLAIMS)
-wipe(PICTURES)
 Bank.SIZE = 2
 H.start()
 T.eq("a button with no look shows its own icon through a state", H.lastIcon().params.icon, Bank.OWN_STATE)
-local refreshes = 0
-RefreshNavs = function()
-  refreshes = refreshes + 1
-end
-local one = H.addLook("One")
-local oneState = H.lastIcon().params.icon
-local two = H.addLook("Two")
-EC.Show_Look({ Look = "Two (" .. two .. ")" })
-local three = H.addLook("Three")
-EC.Show_Look({ Look = "Three (" .. three .. ")" })
-T.contains("shows a look by its address when no slot is free", H.lastIcon().params.icon, "controller://")
-T.eq("and Driver Status says so", Properties["Driver Status"], "Picture bank full, run Refresh Navigators")
-H.tab("_DELETE_LOOK", { id = one })
-EC.Show_Look({ Look = "Two (" .. two .. ")" })
-EC.Show_Look({ Look = "Three (" .. three .. ")" })
-T.contains("a deleted look's slot waits for a refresh", H.lastIcon().params.icon, "controller://")
-local told = {}
-function C4:GetDevicesByC4iName()
-  return { [tostring(H.DEVICE_ID)] = "This button", ["902"] = "Another button" }
-end
-function C4:SendToDevice(id, command)
-  table.insert(told, id .. " " .. command)
-end
-H.mark()
-EC.Refresh_Navigators()
-T.eq("Refresh Navigators refreshes them", refreshes, 1)
-T.eq("and tells every other Dynamic Button", told, { "902 BANK_REFRESHED" })
-T.eq("the shown look takes the freed slot", H.lastIcon().params.icon, oneState)
-T.eq("with its picture", H.banked(oneState), H.png("Three"))
-T.eq("Driver Status is Ready again", Properties["Driver Status"], "Ready")
-T.contains("the action is in driver.xml", io.open(H.XML):read("*a"), "<command>Refresh_Navigators</command>")
-
-T.section("Another button refreshing Navigators")
-local four = H.addLook("Four")
-EC.Show_Look({ Look = "Four (" .. four .. ")" })
-T.contains("a full bank shows the look by its address", H.lastIcon().params.icon, "controller://")
-local liveFields = H.lookFields("Live")
-liveFields.custom =
-  { badge = { text = "PARAM{100,1002}", place = "Top Right", color = "#FFFFFF", background = "#DC2626" } }
-H.mark()
-H.tab("_SAVE_LOOK", liveFields)
-local liveLook = tonumber(H.lastUi("SAVED").look)
-H.sendImage(liveLook, H.png("Live"))
-EC.Show_Look({ Look = "Live (" .. liveLook .. ")" })
-T.eq("a look with a live badge needs no slot, so Driver Status is Ready", Properties["Driver Status"], "Ready")
-H.tab("_DELETE_LOOK", { id = liveLook })
-EC.Show_Look({ Look = "Four (" .. four .. ")" })
-T.eq("and a look that does reads full again", Properties["Driver Status"], "Picture bank full, run Refresh Navigators")
-H.tab("_DELETE_LOOK", { id = two })
-Bank:new({ store = memoryStore(), deviceId = 902, enabled = true }):refreshed(C4:GetTime() + 1)
-H.mark()
-EC.BANK_REFRESHED()
-T.truthy("takes the slot the other button's refresh freed", slotOf(H.lastIcon().params.icon))
+local oneId = H.addLook("One")
+local twoId = H.addLook("Two")
+EC.Show_Look({ Look = "Two (" .. twoId .. ")" })
+local twoState = H.lastIcon().params.icon
+local threeId = H.addLook("Three")
+EC.Show_Look({ Look = "Three (" .. threeId .. ")" })
+T.contains("shows a new picture by its address when no slot can take it", H.lastIcon().params.icon, "controller://")
+T.eq("and Driver Status says so", Properties["Driver Status"], "Picture bank full until the controller restarts")
+H.tab("_DELETE_LOOK", { id = oneId })
+EC.Show_Look({ Look = "Two (" .. twoId .. ")" })
+EC.Show_Look({ Look = "Three (" .. threeId .. ")" })
+T.contains("a deleted look's slot keeps its picture until a restart", H.lastIcon().params.icon, "controller://")
+local fourId = H.addLook("Four", H.png("Two"))
+EC.Show_Look({ Look = "Four (" .. fourId .. ")" })
+T.eq("a look with another's picture shows through its state", H.lastIcon().params.icon, twoState)
 T.eq("and Driver Status is Ready", Properties["Driver Status"], "Ready")
+EC.Show_Look({ Look = "Three (" .. threeId .. ")" })
+controllerRestarted()
+local threeState = H.lastIcon().params.icon
+T.truthy("after a controller restart the shown look takes a slot", slotOf(threeState))
+T.eq("with its picture", H.banked(threeState), H.png("Three"))
+T.eq("and Driver Status is Ready again", Properties["Driver Status"], "Ready")
 
 T.section("A renamed driver file")
 function C4:GetDriverFileName()
@@ -306,8 +299,9 @@ function C4:GetDriverFileName()
 end
 H.restart()
 T.contains("shows by address, as the states name the dynamic_button folder", H.lastIcon().params.icon, "controller://")
-H.tab("_DELETE_LOOK", { id = four })
-H.tab("_DELETE_LOOK", { id = three })
+H.tab("_DELETE_LOOK", { id = fourId })
+H.tab("_DELETE_LOOK", { id = threeId })
+H.tab("_DELETE_LOOK", { id = twoId })
 T.eq(
   "and the driver's own icon by its address",
   H.lastIcon().params.icon,
@@ -321,31 +315,24 @@ end
 function C4:GetDevicesByC4iName()
   return { [tostring(H.DEVICE_ID)] = "This button", ["905"] = "Another button", ["903"] = "A third button" }
 end
-told = {}
-local sent
+local told, sent = {}, nil
 function C4:SendToDevice(id, command, params)
   table.insert(told, id .. " " .. command)
   sent = params
 end
--- A fresh bank, never refreshed, so the slot let go below waits whatever the clock's resolution.
-wipe(CLAIMS)
+wipe(RECORDS)
 wipe(PICTURES)
-persist:set("BankRefreshed", nil)
-persist:set("BankWaiting", nil)
+persist:set("BankShown", nil)
 Bank.SIZE = 8
 H.restart()
 H.addLook("Gone")
 local goneState = H.lastIcon().params.icon
 OnDriverRemovedFromProject()
 T.eq("hands its slots to one other Dynamic Button", told, { "903 BANK_ADOPT" })
-T.contains("with the slot it let go", sent.SLOTS, slotOf(goneState) .. ":")
-T.eq("and lets it go", claim(goneState):match("^freed"), "freed")
-persist:set("BankWaiting", nil)
+T.contains("with the slot it sent", sent.SLOTS, slotOf(goneState) .. ":" .. hashOf(H.png("Gone")) .. ":")
+T.eq("whose picture stays", H.banked(goneState), H.png("Gone"))
+persist:set("BankShown", nil)
 EC.BANK_ADOPT(sent)
-local kept = {}
-for _, entry in ipairs(persist:get("BankWaiting", {})) do
-  kept[entry.slot] = true
-end
-T.truthy("a button handed slots keeps them in its own store", kept[tonumber(slotOf(goneState))])
+T.truthy("a button handed slots keeps them in its own store", persist:get("BankShown", {})[slotOf(goneState)])
 
 T.finish()

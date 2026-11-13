@@ -206,6 +206,12 @@ C4.url = function()
   end
   return transfer
 end
+-- The shim has no C4:GetUptime: the controller has been up an hour.
+if not C4.GetUptime then
+  function C4:GetUptime()
+    return 3600
+  end
+end
 local configInfo = C4.GetDriverConfigInfo
 function C4:GetDriverConfigInfo(section)
   if section == "minimum_os_version" then

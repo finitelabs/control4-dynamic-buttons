@@ -3,7 +3,7 @@
 -- One Navigator button (the UI Button proxy on binding 5001) whose picture is one of its looks
 -- (src/dynamic_button/looks.lua). The Button tab draws each look's picture from an icon and sends
 -- it here; the driver keeps it (src/dynamic_button/images.lua) and shows it through a slot of the
--- picture bank (src/dynamic_button/bank.lua), or under a new address when it changes while it shows
+-- picture bank (src/dynamic_button/bank.lua), or by its address when the bank can't take it
 -- (src/dynamic_button/button.lua).
 
 --#ifndef DRIVERCENTRAL
@@ -116,7 +116,7 @@ local button
 local bank
 
 --- What Driver Status says while a look shows by its address because the picture bank is full.
-local BANK_FULL_STATUS = "Picture bank full, run Refresh Navigators"
+local BANK_FULL_STATUS = "Picture bank full until the controller restarts"
 
 --- Whether the shown look is at its address because the picture bank is full.
 local bankFull = false
@@ -680,7 +680,6 @@ function OnDriverLateInit()
   })
   bank = Bank:new({
     store = persist,
-    deviceId = tointeger(C4:GetDeviceID()),
     -- driver.xml's states name the dynamic_button folder: a renamed driver file shows addresses only.
     enabled = driverName() == Bank.DRIVER,
   })
@@ -1472,32 +1471,7 @@ function EC.Reset_Driver(params)
   pushState()
 end
 
---- A look shown at its address for want of a free slot takes one now, if a refresh freed any.
-local function retellIfFull()
-  if bankFull and followAllowed() then
-    button:retell()
-  end
-end
-
---- Refresh every Navigator, then let every Dynamic Button take the picture bank's freed slots.
-function EC.Refresh_Navigators()
-  log:trace("EC.Refresh_Navigators()")
-  RefreshNavs()
-  bank:refreshed()
-  log:info("Navigators refreshed: the picture bank's freed slots can be taken again")
-  for _, id in ipairs(otherButtons()) do
-    SendToDevice(id, "BANK_REFRESHED", {})
-  end
-  retellIfFull()
-end
-
---- Another Dynamic Button refreshed Navigators.
-function EC.BANK_REFRESHED()
-  log:trace("EC.BANK_REFRESHED()")
-  retellIfFull()
-end
-
---- A Dynamic Button leaving the project handed over its picture bank slots that wait for a refresh.
+--- A Dynamic Button leaving the project handed over the picture bank slots it sent since the controller started.
 --- @param params table
 function EC.BANK_ADOPT(params)
   log:trace("EC.BANK_ADOPT(%s)", params)
