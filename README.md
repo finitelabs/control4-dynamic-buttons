@@ -24,6 +24,7 @@ the programming you attach to it.
 - [Installer Setup](#installer-setup)
   - [Driver Installation](#driver-installation)
   - [Showing the Button in Navigator](#showing-the-button-in-navigator)
+  - [Halo and NEEO Remotes](#halo-and-neeo-remotes)
   - [The Button Tab](#the-button-tab)
     - [Properties](#properties)
     - [Looks](#looks)
@@ -111,6 +112,19 @@ A new button starts hidden in every Navigator menu. To show it:
 1. Refresh Navigators.
 
 Until the button has a look, it shows the driver's own icon.
+
+## Halo and NEEO Remotes
+
+Halo and NEEO remotes show the button's look as Navigator does, except a look
+with a live badge or a web picture that refreshes, which shows on a remote with
+no picture.
+
+The Dynamic Buttons in a project share a picture bank of 1,024 pictures. An
+edited or deleted picture keeps its place in the bank until Navigators are
+refreshed. After many edits, run [Refresh Navigators](#refresh-navigators) on
+any Dynamic Button to free those places. While the bank is full, a new picture
+shows in Navigator but not on remotes, and Driver Status reads
+`Picture bank full, run Refresh Navigators`.
 
 ## The Button Tab
 
@@ -631,7 +645,9 @@ and `Prerelease` also installs test builds.
 
 ##### Driver Status (read-only)
 
-Displays `Ready` once the driver has started.
+Displays `Ready` once the driver has started, or
+`Picture bank full, run Refresh Navigators` while the
+[picture bank](#halo-and-neeo-remotes) has no room for a new picture.
 
 ##### Driver Version (read-only)
 
@@ -684,6 +700,12 @@ look takes the same name: choose the new look in that programming.
 **Parameters:**
 
 - **Are You Sure?** \[ **_No_** | Yes \] - Confirmation to reset the driver.
+
+#### Refresh Navigators
+
+Refreshes every Navigator, and frees the places in the
+[picture bank](#halo-and-neeo-remotes) that edited and deleted pictures held.
+Composer's own Refresh Navigators refreshes them but frees nothing.
 
 ## Programming Reference
 
@@ -801,6 +823,18 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 -->
 
 ## Unreleased
+
+### Added
+
+- Added each look's picture on Halo and NEEO remotes, except a look with a live
+  badge or a web picture that refreshes
+- Added a Refresh Navigators action that refreshes every Navigator and frees
+  room for new pictures on remotes
+
+### Fixed
+
+- Fixed the button going blank for a moment when it's pressed or changes look,
+  except on a look with a live badge or a web picture that refreshes
 
 ### Changed
 

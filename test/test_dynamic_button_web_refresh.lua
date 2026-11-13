@@ -545,6 +545,11 @@ local driveway = saveOn("Driveway", webId, { tileShape = "Circle", custom = { ba
 local served = H.served()[driveway .. ".png"]
 T.eq("the served file is the site's JPEG, byte for byte", served, JPEG_A)
 T.truthy("the button shows it", H.lastIcon() and H.lastIcon().params.icon:find("/" .. driveway .. ".png", 1, true))
+T.contains(
+  "by its address, not a picture bank state, as it changes while it shows",
+  H.lastIcon().params.icon,
+  "controller://"
+)
 local look = H.state().looks[#H.state().looks]
 T.eq("drawn with no tile", look.tileShape, "None")
 T.eq("and no badge", look.custom, nil)

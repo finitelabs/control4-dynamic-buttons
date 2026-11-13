@@ -2,8 +2,9 @@
 --
 -- One Navigator button (the UI Button proxy on binding 5001) whose picture is one of its looks
 -- (src/dynamic_button/looks.lua). The Button tab draws each look's picture from an icon and sends
--- it here; the driver keeps it (src/dynamic_button/images.lua) and serves the shown one under a new
--- address on every change (src/dynamic_button/button.lua).
+-- it here; the driver keeps it (src/dynamic_button/images.lua) and shows it through a slot of the
+-- picture bank (src/dynamic_button/bank.lua), or under a new address when it changes while it shows
+-- (src/dynamic_button/button.lua).
 
 --#ifndef DRIVERCENTRAL
 DRIVER_GITHUB_REPO = "finitelabs/control4-dynamic-buttons"
@@ -44,6 +45,7 @@ local Images = require("dynamic_button.images")
 local Pictures = require("dynamic_button.pictures")
 local WebPictures = require("dynamic_button.web_pictures")
 local Button = require("dynamic_button.button")
+local Bank = require("dynamic_button.bank")
 local Iconify = require("dynamic_button.iconify")
 local Follow = require("dynamic_button.follow")
 local ByLink = require("dynamic_button.by_link")
@@ -109,6 +111,20 @@ local images = Images:new()
 
 --- @type Button
 local button
+
+--- @type Bank
+local bank
+
+--- What Driver Status says while a look shows by its address because the picture bank is full.
+local BANK_FULL_STATUS = "Picture bank full, run Refresh Navigators"
+
+--- Whether the shown look is at its address because the picture bank is full.
+local bankFull = false
+
+--- @return string status What Driver Status says while the driver runs.
+local function readyStatus()
+  return bankFull and BANK_FULL_STATUS or "Ready"
+end
 
 --- @type LiveBadges
 local badges
@@ -560,7 +576,7 @@ local function onLicense(licensed)
     log:warn("No active license: the button shows the driver's own icon until there is one")
     badges:watch(nil)
     refresher:watch(nil)
-    sendIcon(Images.ownIcon(driverName()), "")
+    sendIcon(bank.enabled and Bank.OWN_STATE or Images.ownIcon(driverName()), "")
     UpdateProperty("Driver Status", drivercentral.UNLICENSED_STATUS)
     pushState()
     return
@@ -574,7 +590,7 @@ local function onLicense(licensed)
     end
   end
   registerLookIs(lookChoices(), true)
-  UpdateProperty("Driver Status", "Ready")
+  UpdateProperty("Driver Status", readyStatus())
   follow:evaluate()
   byLink:evaluate()
   pushState()
@@ -649,6 +665,13 @@ function OnDriverLateInit()
       return followAllowed()
     end,
   })
+  bank = Bank:new({
+    store = persist,
+    deviceId = tointeger(C4:GetDeviceID()),
+    -- driver.xml's states name the dynamic_button folder: a renamed driver file shows addresses only.
+    enabled = driverName() == Bank.DRIVER,
+  })
+  bank:start()
   button = Button:new({
     looks = looks,
     images = images,
@@ -658,6 +681,13 @@ function OnDriverLateInit()
     sendIcon = sendIcon,
     badges = badges,
     refresher = refresher,
+    bank = bank,
+    onFull = function(full)
+      bankFull = full
+      if gInitialized and followAllowed() then
+        UpdateProperty("Driver Status", readyStatus())
+      end
+    end,
   })
   badges:boot()
   button:restore()
@@ -713,7 +743,7 @@ function OnDriverLateInit()
   })
 
   gInitialized = true
-  UpdateProperty("Driver Status", "Ready")
+  UpdateProperty("Driver Status", readyStatus())
   -- A tab left open through a restart keeps its socket, so nothing else tells it. With none open this costs nothing.
   pushState()
   --#ifdef DRIVERCENTRAL
@@ -1420,8 +1450,37 @@ function EC.Reset_Driver(params)
       UpdateProperty(name, value, true)
     end
   end)
-  UpdateProperty("Driver Status", "Ready")
+  UpdateProperty("Driver Status", readyStatus())
   pushState()
+end
+
+--- A look shown at its address for want of a free slot takes one now, if a refresh freed any.
+local function retellIfFull()
+  if bankFull and followAllowed() then
+    button:retell()
+  end
+end
+
+--- Refresh every Navigator. Navigators and remotes keep a picture bank state's first picture until
+--- a refresh, so the slots any button let go before now can be taken again.
+function EC.Refresh_Navigators()
+  log:trace("EC.Refresh_Navigators()")
+  RefreshNavs()
+  bank:refreshed()
+  log:info("Navigators refreshed: the picture bank's freed slots can be taken again")
+  local myId = C4:GetDeviceID()
+  for id in pairs(C4:GetDevicesByC4iName(C4:GetDriverFileName()) or {}) do
+    if tonumber(id) ~= myId then
+      SendToDevice(tonumber(id), "BANK_REFRESHED", {})
+    end
+  end
+  retellIfFull()
+end
+
+--- Another Dynamic Button refreshed Navigators.
+function EC.BANK_REFRESHED()
+  log:trace("EC.BANK_REFRESHED()")
+  retellIfFull()
 end
 
 --#ifdef DRIVERCENTRAL

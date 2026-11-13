@@ -400,6 +400,13 @@ function H.served()
   return ShimFiles("C4Z/www/buttons/" .. H.DEVICE_ID)
 end
 
+--- @param state string|nil A picture bank state's id.
+--- @return string|nil png The picture its slot holds.
+function H.banked(state)
+  local slot = state and state:match("^p(%d+)$")
+  return slot and ShimFiles("C4Z/www/bank")[slot .. ".png"] or nil
+end
+
 --- @return table<string, string> files The button's stored pictures, by file name.
 function H.stored()
   return ShimFiles("SANDBOX/looks")

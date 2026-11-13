@@ -262,6 +262,14 @@ function Images:served(deviceId, lookId)
   return C4:FileExists(string.format("%d.png", lookId)) == true
 end
 
+--- A look's served picture, as Navigator loads it.
+--- @param deviceId integer
+--- @param lookId integer
+--- @return string|nil png
+function Images:readServed(deviceId, lookId)
+  return Images.readFile("C4Z", servedDir(deviceId), string.format("%d.png", lookId))
+end
+
 --- Stop serving a look's picture.
 --- @param deviceId integer
 --- @param lookId integer

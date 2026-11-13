@@ -256,6 +256,11 @@ T.truthy("a small badge never shrinks its text, only widens", BadgeArt.fits({ pl
 T.section("A live badge's picture")
 H.mark()
 local battery = addLook("Battery", live(LEVEL .. "%"))
+T.contains(
+  "it shows by its address, not a picture bank state, as it changes while it shows",
+  address(),
+  "controller://"
+)
 local key50 = address():match("%-(%x+)$")
 T.truthy("its address names the text", key50 ~= nil and #key50 == 8)
 T.eq("the proxy hears of it", told(), 1)
