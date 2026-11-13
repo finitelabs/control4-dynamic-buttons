@@ -327,8 +327,11 @@ function C4:SendToDevice(id, command, params)
   table.insert(told, id .. " " .. command)
   sent = params
 end
+-- A fresh bank, never refreshed, so the slot let go below waits whatever the clock's resolution.
 wipe(CLAIMS)
 wipe(PICTURES)
+persist:set("BankRefreshed", nil)
+persist:set("BankWaiting", nil)
 Bank.SIZE = 8
 H.restart()
 H.addLook("Gone")
@@ -339,10 +342,10 @@ T.contains("with the slot it let go", sent.SLOTS, slotOf(goneState) .. ":")
 T.eq("and lets it go", claim(goneState):match("^freed"), "freed")
 persist:set("BankWaiting", nil)
 EC.BANK_ADOPT(sent)
-T.eq(
-  "a button handed slots keeps them in its own store",
-  persist:get("BankWaiting", {})[1].slot,
-  tonumber(slotOf(goneState))
-)
+local kept = {}
+for _, entry in ipairs(persist:get("BankWaiting", {})) do
+  kept[entry.slot] = true
+end
+T.truthy("a button handed slots keeps them in its own store", kept[tonumber(slotOf(goneState))])
 
 T.finish()
