@@ -73,15 +73,24 @@ H.start()
 
 T.section("What a tile shows while it waits")
 local xml = assert(io.open(H.XML, "r"))
+local icons = xml:read("*a"):match("<display_icons>(.-)</display_icons>")
+xml:close()
 local placeholders = 0
-for icon in xml:read("*a"):gmatch("<Icon [^>]*>controller://driver/dynamic_button/([^<]*)</Icon>") do
+for icon in icons:gsub("<state .-</state>", ""):gmatch("<Icon [^>]*>controller://driver/dynamic_button/([^<]*)</Icon>") do
   placeholders = placeholders + 1
   T.contains("the proxy's own icon is the placeholder", icon, "icons/placeholder_")
   local png = shipped(icon)
   T.truthy(icon .. " ships, transparent", png and transparent(png))
 end
-xml:close()
 T.eq("in every size the proxy asks for", placeholders, 5)
+
+T.section("A picture applied again")
+-- Measured in the app: an address applied again blanks the tile for a frame unless the item declares a state.
+local state = icons:match('<state id="own">(.-)</state>')
+T.truthy("the proxy declares a state", state)
+for icon in state:gmatch("<Icon [^>]*>controller://driver/dynamic_button/([^<]*)</Icon>") do
+  T.truthy(icon .. " ships", shipped(icon))
+end
 
 T.section("A button with no look")
 T.eq(
