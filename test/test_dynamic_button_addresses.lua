@@ -85,7 +85,6 @@ end
 T.eq("in every size the proxy asks for", placeholders, 5)
 
 T.section("A picture applied again")
--- Measured in the app: an address applied again blanks the tile for a frame unless the item declares a state.
 local state = icons:match('<state id="own">(.-)</state>')
 T.truthy("the proxy declares a state", state)
 for icon in state:gmatch("<Icon [^>]*>controller://driver/dynamic_button/([^<]*)</Icon>") do
