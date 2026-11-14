@@ -1,6 +1,6 @@
---- How a look's picture reaches Navigator. A tile shows the proxy's own icon while it waits for a
---- picture it doesn't have, so a look keeps its address and its file until its picture changes, and
---- the proxy's own icon is transparent rather than the driver's icon.
+--- How a look's picture reaches Navigator. A tile with no picture yet, and every tile on a remote,
+--- shows the proxy's own icon, which is the driver's icon; a look keeps its address and its file
+--- until its picture changes.
 ---
 --- Run from the driver root:
 ---   make test
@@ -71,18 +71,18 @@ end
 
 H.start()
 
-T.section("What a tile shows while it waits")
+T.section("What a tile with no picture shows")
 local xml = assert(io.open(H.XML, "r"))
 local icons = xml:read("*a"):match("<display_icons>(.-)</display_icons>")
 xml:close()
-local placeholders = 0
+local defaults = 0
 for icon in icons:gsub("<state .-</state>", ""):gmatch("<Icon [^>]*>controller://driver/dynamic_button/([^<]*)</Icon>") do
-  placeholders = placeholders + 1
-  T.contains("the proxy's own icon is the placeholder", icon, "icons/placeholder_")
+  defaults = defaults + 1
+  T.contains("the proxy's own icon is the driver's icon", icon, "icons/experience_")
   local png = shipped(icon)
-  T.truthy(icon .. " ships, transparent", png and transparent(png))
+  T.truthy(icon .. " ships, and isn't transparent", png and not transparent(png))
 end
-T.eq("in every size the proxy asks for", placeholders, 5)
+T.eq("in every size the proxy asks for", defaults, 5)
 
 T.section("A picture applied again")
 local state = icons:match('<state id="own">(.-)</state>')
@@ -92,11 +92,7 @@ for icon in state:gmatch("<Icon [^>]*>controller://driver/dynamic_button/([^<]*)
 end
 
 T.section("A button with no look")
-T.eq(
-  "shows the driver's icon by its address, not the proxy's",
-  address(),
-  "controller://driver/dynamic_button/icons/experience_300.png"
-)
+T.eq("shows the driver's icon by its address", address(), "controller://driver/dynamic_button/icons/experience_300.png")
 local logo = shipped("icons/experience_300.png")
 T.truthy("which ships, and isn't transparent", logo and not transparent(logo))
 

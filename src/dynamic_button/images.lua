@@ -2,8 +2,8 @@
 -- storage, and copied into the driver's web folder where Navigator loads the one shown.
 --
 -- Navigator keeps a picture for each address until Navigators refresh, so a new picture is served
--- under a new `?v=` number, and a look keeps its address until then: while a tile waits for a
--- picture it doesn't have, it shows the proxy's own icon.
+-- under a new `?v=` number, and a look keeps its address until then, so the app downloads each
+-- picture once.
 
 local log = require("lib.logging")
 
@@ -281,8 +281,7 @@ function Images.address(driverName, deviceId, lookId, version, key)
   return key and (address .. "-" .. key) or address
 end
 
---- The address of the driver's own icon, for a button with no look. The proxy's own icon is
---- transparent.
+--- The address of the driver's own icon, for a button with no look.
 --- @param driverName string The driver's file name without `.c4z`.
 --- @return string address
 function Images.ownIcon(driverName)
