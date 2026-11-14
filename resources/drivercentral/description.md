@@ -38,3 +38,8 @@ work with no internet connection.
 - Control4 OS 3.3.1+
 - Internet access on the controller for the icon library search and pictures
   from a web address
+
+## Compatibility
+
+On remotes, a button shows the driver's icon for now. Looks on remotes are
+coming soon.

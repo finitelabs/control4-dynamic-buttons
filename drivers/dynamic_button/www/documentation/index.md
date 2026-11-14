@@ -169,8 +169,8 @@ A new button starts hidden in every Navigator menu. To show it:
    with "Show", and select "OK".
 1. Refresh Navigators.
 
-Until the button has a look, it shows the driver's own icon. Remotes always show
-the driver's own icon.
+Until the button has a look, it shows the driver's own icon. Remotes show the
+driver's own icon for now. Looks on remotes are coming soon.
 
 ## The Button Tab
 
