@@ -18,19 +18,19 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Removed
 -->
 
-## Unreleased
+## v20261113 - 2026-11-13
 
 ### Fixed
 
 - Fixed a button's picture going blank for a moment when Navigator draws it
-  again
+  again. Refresh Navigators after the update for the fix to show.
 
 ### Changed
 
 - Changed a badge's text from 5 characters to as many as fit, up to 20, with
   longer text drawn smaller
-- Changed a button on Halo and NEEO remotes, and one whose picture hasn't loaded
-  yet, to show the driver's icon instead of an empty tile
+- Changed a button on remotes, and one whose picture hasn't loaded yet, to show
+  the driver's icon instead of an empty tile
 
 ## v20261112 - 2026-11-12
 
