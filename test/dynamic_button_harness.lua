@@ -206,6 +206,20 @@ C4.url = function()
   end
   return transfer
 end
+-- The shim has no C4:GetUptime: the controller has been up an hour.
+if not C4.GetUptime then
+  function C4:GetUptime()
+    return 3600
+  end
+end
+-- No Director listens for a Navigator refresh under the shim: count them instead.
+require("drivers-common-public.global.lib")
+H.navRefreshes = 0
+function RefreshNavs()
+  H.navRefreshes = H.navRefreshes + 1
+end
+-- A bank the Navigators have learned since the controller started; test_dynamic_button_bank covers a new one.
+ShimFiles("C4Z/bank").refreshed = string.format("%.0f", C4:GetTime())
 local configInfo = C4.GetDriverConfigInfo
 function C4:GetDriverConfigInfo(section)
   if section == "minimum_os_version" then
@@ -398,6 +412,13 @@ end
 --- @return table<string, string> files The button's served pictures, by file name.
 function H.served()
   return ShimFiles("C4Z/www/buttons/" .. H.DEVICE_ID)
+end
+
+--- @param state string|nil A picture bank state's id.
+--- @return string|nil png The picture its slot holds.
+function H.banked(state)
+  local slot = state and state:match("^p(%d+)$")
+  return slot and ShimFiles("C4Z/www/bank")[slot .. ".png"] or nil
 end
 
 --- @return table<string, string> files The button's stored pictures, by file name.

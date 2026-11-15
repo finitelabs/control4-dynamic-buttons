@@ -1,9 +1,11 @@
 -- What the Navigator button shows: one look at a time, or the driver's own icon when no look is
--- ready. Showing a look serves its picture under a new address version and tells the proxy.
+-- ready. Showing a look serves its picture and tells the proxy: through the picture bank's slot for
+-- that picture, or by its address when the bank can't take it.
 
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
 local Looks = require("dynamic_button.looks")
+local Bank = require("dynamic_button.bank")
 
 --- @class Button
 --- @field looks Looks
@@ -14,7 +16,11 @@ local Looks = require("dynamic_button.looks")
 --- @field sendIcon fun(icon: string, description: string) Tells the proxy what to show.
 --- @field badges LiveBadges Draws the shown look's live badge.
 --- @field refresher? WebPictures Refreshes the shown look's picture from its web address.
+--- @field bank Bank The picture bank every Dynamic Button shares.
+--- @field onFull? fun(full: boolean) Hears when a look goes to its address because the bank is full, and back.
 --- @field _badgeKey string|nil Names the shown look's live badge text in its address.
+--- @field _full boolean True while the shown look is at its address because the bank is full.
+--- @field _waiting boolean True while the shown look is at its address until every button has started.
 local Button = {}
 Button.__index = Button
 
@@ -22,7 +28,7 @@ local SHOWN_PERSIST_KEY = "ShownLook"
 local VERSION_PERSIST_KEY = "ImageVersion"
 
 --- Creates a new instance of the Button class.
---- @param opts { looks: Looks, images: Images, store: table, deviceId: integer, driverName: string, sendIcon: fun(icon: string, description: string), badges: LiveBadges, refresher?: WebPictures }
+--- @param opts { looks: Looks, images: Images, store: table, deviceId: integer, driverName: string, sendIcon: fun(icon: string, description: string), badges: LiveBadges, refresher?: WebPictures, bank: Bank, onFull?: fun(full: boolean) }
 --- @return Button button
 function Button:new(opts)
   local instance = setmetatable({}, self)
@@ -34,6 +40,10 @@ function Button:new(opts)
   instance.sendIcon = opts.sendIcon
   instance.badges = opts.badges
   instance.refresher = opts.refresher
+  instance.bank = opts.bank
+  instance.onFull = opts.onFull
+  instance._full = false
+  instance._waiting = false
   return instance
 end
 
@@ -102,10 +112,62 @@ function Button:_lostPicture(look)
   self.images:unserve(self.deviceId, look.id)
 end
 
+--- Whether a look's picture changes while it shows: a live badge, or a picture that refreshes.
 --- @private
 --- @param look Look
-function Button:_tell(look)
+--- @return boolean
+function Button:_live(look)
+  return Looks.liveBadge(look) ~= nil or (self.refresher ~= nil and self.refresher:refreshes(look))
+end
+
+--- The shown look went to its address because the bank is full (true), or no longer waits for a
+--- slot (false).
+--- @private
+--- @param full boolean
+--- @param look? Look The shown look (optional).
+function Button:_noteFull(full, look)
+  if full == self._full then
+    return
+  end
+  self._full = full
+  if full then
+    log:warn("The picture bank is full: look %s shows by its address until the controller restarts", look.name)
+  elseif look then
+    log:info("Look %s shows through the picture bank again", look.name)
+  end
+  if self.onFull then
+    self.onFull(full)
+  end
+end
+
+--- @private
+--- @param look Look
+--- @param picture? string The picture as served, when at hand (optional).
+function Button:_tell(look, picture)
   local version = look.image and look.image.version or 0
+  local state, err
+  if self.bank.enabled then
+    local live = self:_live(look)
+    picture = picture or self.images:readServed(self.deviceId, look.id)
+    state, err = self.bank:slotFor(picture, live and look.id or nil)
+  end
+  self._waiting = err == Bank.WAIT
+  if state then
+    self:_noteFull(false, look)
+    self.sendIcon(state, look.name)
+    return
+  end
+  if err == Bank.FULL then
+    self:_noteFull(true, look)
+  else
+    self:_noteFull(false)
+  end
+  if err == Bank.CAPPED then
+    log:debug("Look %s took its share of the picture bank until the controller restarts", look.name)
+  end
+  if self._waiting then
+    log:debug("Look %s shows by its address until every Dynamic Button has started", look.name)
+  end
   self.sendIcon(Images.address(self.driverName, self.deviceId, look.id, version, self._badgeKey), look.name)
 end
 
@@ -114,7 +176,9 @@ function Button:_showDefault()
   self.store:set(SHOWN_PERSIST_KEY, nil)
   self._badgeKey = nil
   self:_watch(nil)
-  self.sendIcon(Images.ownIcon(self.driverName), "")
+  self:_noteFull(false)
+  self._waiting = false
+  self.sendIcon(self.bank.enabled and Bank.OWN_STATE or Images.ownIcon(self.driverName), "")
 end
 
 --- Show a look. A look already shown is left as it is, unless asked to show it again.
@@ -146,7 +210,7 @@ function Button:show(id, again)
   end
   self.store:set(SHOWN_PERSIST_KEY, look.id)
   self._badgeKey = key
-  self:_tell(look)
+  self:_tell(look, picture)
   self:_watch(look)
   return true
 end
@@ -164,7 +228,15 @@ function Button:redrawBadge()
     return
   end
   self._badgeKey = key
-  self:_tell(look)
+  self:_tell(look, picture)
+end
+
+--- Every Dynamic Button wrote its picture bank records again after an update: a look that waited
+--- for a slot takes one.
+function Button:bankReady()
+  if self._waiting then
+    self:retell()
+  end
 end
 
 --- Tell the proxy the shown look again, after its name changed. The picture is unchanged.
@@ -300,7 +372,7 @@ function Button:restore()
   end
   self.store:set(SHOWN_PERSIST_KEY, look.id)
   self._badgeKey = key
-  self:_tell(look)
+  self:_tell(look, picture)
   self:_watch(look)
 end
 

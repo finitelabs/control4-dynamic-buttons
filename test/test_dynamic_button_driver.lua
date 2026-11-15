@@ -11,8 +11,7 @@
 local T = require("testlib")
 local H = require("dynamic_button_harness")
 
-local ADDRESS = "controller://driver/dynamic_button/buttons/" .. H.DEVICE_ID .. "/"
-local OWN_ICON = "controller://driver/dynamic_button/icons/experience_300.png"
+local OWN_ICON = "own"
 
 --- @return function|nil test The Look Is conditional's test, as programming calls it.
 --- @return string|nil items Its list.
@@ -22,10 +21,10 @@ local function lookIs()
   return entry and TC[entry.name], entry and entry.list_items
 end
 
---- @return integer|nil version The address version of the last picture the proxy was told.
-local function lastVersion()
+--- @return string|nil state The picture bank state of the last picture the proxy was told.
+local function lastState()
   local icon = H.lastIcon()
-  return icon and tonumber(icon.params.icon:match("v=(%d+)$"))
+  return icon and icon.params.icon:match("^p%d+$")
 end
 
 T.section("A fresh button")
@@ -45,7 +44,9 @@ T.section("The first look")
 H.mark()
 local charged = H.addLook("Charged")
 T.eq("the look is saved as id 1", charged, 1)
-T.eq("the proxy is told its address, version 1", H.lastIcon().params.icon, ADDRESS .. "1.png?v=1")
+local chargedState = lastState()
+T.truthy("the proxy is told a picture bank state", chargedState)
+T.eq("whose slot holds the picture", H.banked(chargedState), H.png("Charged"))
 T.eq("with its name as the text line", H.lastIcon().params.icon_description, "Charged")
 T.eq("in a notification", H.lastIcon().message, "NOTIFY")
 T.eq("the picture is stored in the button's storage", H.stored()["look-1.png"], H.png("Charged"))
@@ -117,7 +118,9 @@ T.eq("the command lists the looks by name and id", GCPL.Show_Look("Look"), { "Ch
 T.eq("and nothing for another parameter", GCPL.Show_Look("Other"), {})
 H.mark()
 EC.Show_Look({ Look = "Low (3)" })
-T.eq("the proxy is told the new look, under its picture's version", H.lastIcon().params.icon, ADDRESS .. "3.png?v=4")
+local lowState = lastState()
+T.neq("the proxy is told the new look, under a state of its own", lowState, chargedState)
+T.eq("whose slot holds its picture", H.banked(lowState), H.png("Low"))
 T.eq("the new look is served", H.served()["3.png"], H.png("Low"))
 T.eq("and the old one stays, for coming back to", H.served()["1.png"], H.png("Charged"))
 T.eq("Look Changed fires, then the look's own event", H.fired, { "Look Changed", "Low Shown" })
@@ -139,8 +142,8 @@ T.truthy("NOT_EQUAL turns it round", test("", { VALUE = "Charged (1)", LOGIC = "
 T.section("Renaming the shown look")
 H.mark()
 H.tab("_SAVE_LOOK", H.lookFields("Empty", { id = low }))
-T.eq("the proxy is told the new name, at the same address", H.lastIcon().params, {
-  icon = ADDRESS .. "3.png?v=4",
+T.eq("the proxy is told the new name, under the same state", H.lastIcon().params, {
+  icon = lowState,
   icon_description = "Empty",
 })
 T.eq("the Look variable follows", Variables["Look"], "Empty")
@@ -160,14 +163,15 @@ T.truthy("marks its picture out of date until the new one arrives", H.state().lo
 T.eq("while the proxy keeps the old picture", H.lastIcon(), nil)
 H.sendImage(low, H.png("Empty red"))
 T.falsy("the new picture is current", H.state().looks[2].stale)
-T.eq("and goes out under a new address", H.lastIcon().params.icon, ADDRESS .. "3.png?v=5")
+T.neq("and goes out under a new state", lastState(), lowState)
+T.eq("whose slot holds it", H.banked(lastState()), H.png("Empty red"))
 
 T.section("A Director restart")
-local version = lastVersion()
+local state = lastState()
 H.mark()
 H.restart()
 T.eq("the served picture is still there", H.served()["3.png"], H.png("Empty red"))
-T.eq("the proxy is told the same address", H.lastIcon().params.icon, ADDRESS .. "3.png?v=" .. version)
+T.eq("the proxy is told the same state", lastState(), state)
 T.eq("the Look variable is restored", Variables["Look"], "Empty")
 T.eq("no Look Changed fires at start", #H.fired, 0)
 test = lookIs()
@@ -230,11 +234,12 @@ T.eq("an order missing a look is refused", H.lastUi("ERROR").message, "the order
 
 T.section("Deleting the shown look")
 EC.Show_Look({ Look = "Empty (3)" })
-version = lastVersion() or version
+state = lastState()
 H.mark()
 H.tab("_DELETE_LOOK", { id = low })
-T.contains("the next ready look is shown", H.lastIcon().params.icon, ADDRESS .. "1.png?v=")
-T.truthy("under a new address", lastVersion() > version)
+T.eq("the next ready look is shown", H.lastIcon().params.icon_description, "Charged")
+T.neq("under its own state", lastState(), state)
+T.eq("whose slot holds its picture", H.banked(lastState()), H.png("Charged"))
 T.eq("the deleted look's pictures are gone", { H.served()["3.png"], H.stored()["look-3.png"] }, {})
 T.eq("Look Changed fires, then the shown look's own event", H.fired, { "Look Changed", "Charged Shown" })
 T.eq("the Look variable follows", Variables["Look"], "Charged")
@@ -381,7 +386,11 @@ H.tab(
     custom = { size = 80, badge = { text = "1/2", place = "Under", color = "#FFFFFF", background = "None" } },
   })
 )
-local versionBefore = lastVersion()
+-- Every slot a look took: an app may hold its picture until Navigators refresh.
+local seen = {}
+for name in pairs(ShimFiles("C4Z/bank")) do
+  seen["p" .. name] = true
+end
 Properties["Log Level"] = "5 - Trace"
 Properties["Automatic Updates"] = "Off"
 Properties["Update Channel"] = "Prerelease"
@@ -405,7 +414,7 @@ T.eq("and so does Update Channel", Properties["Update Channel"], "Prerelease")
 T.eq("a new look never takes an old look's number", H.addLook("Again"), lastId + 1)
 H.tab("_GET_STATE")
 T.eq("and none keeps an old look's customization", H.state().looks[1].custom, nil)
-T.truthy("nor an address an app has seen", lastVersion() > versionBefore)
+T.falsy("nor a state an app has seen", seen[lastState()])
 H.mark()
 EC.Show_Look({ Look = "Half (" .. lastId .. ")" })
 T.eq("so programming naming an old look shows nothing", H.lastIcon(), nil)

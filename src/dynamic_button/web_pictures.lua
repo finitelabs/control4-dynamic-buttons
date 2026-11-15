@@ -66,6 +66,13 @@ function WebPictures:_pictureOf(look)
   return picture and picture.every and picture or nil
 end
 
+--- Whether a look's picture refreshes from its web address, so it changes while it shows.
+--- @param look Look
+--- @return boolean
+function WebPictures:refreshes(look)
+  return self:_pictureOf(look) ~= nil
+end
+
 --- The shown look changed, or its fields did. Its picture is fetched when it's due, at once when
 --- it's older than its refresh.
 --- @param look Look|nil

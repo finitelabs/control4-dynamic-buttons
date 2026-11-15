@@ -2,8 +2,9 @@
 --
 -- One Navigator button (the UI Button proxy on binding 5001) whose picture is one of its looks
 -- (src/dynamic_button/looks.lua). The Button tab draws each look's picture from an icon and sends
--- it here; the driver keeps it (src/dynamic_button/images.lua) and serves the shown one under a new
--- address on every change (src/dynamic_button/button.lua).
+-- it here; the driver keeps it (src/dynamic_button/images.lua) and shows it through a slot of the
+-- picture bank (src/dynamic_button/bank.lua), or by its address when the bank can't take it
+-- (src/dynamic_button/button.lua).
 
 --#ifndef DRIVERCENTRAL
 DRIVER_GITHUB_REPO = "finitelabs/control4-dynamic-buttons"
@@ -44,6 +45,7 @@ local Images = require("dynamic_button.images")
 local Pictures = require("dynamic_button.pictures")
 local WebPictures = require("dynamic_button.web_pictures")
 local Button = require("dynamic_button.button")
+local Bank = require("dynamic_button.bank")
 local Iconify = require("dynamic_button.iconify")
 local Follow = require("dynamic_button.follow")
 local ByLink = require("dynamic_button.by_link")
@@ -109,6 +111,33 @@ local images = Images:new()
 
 --- @type Button
 local button
+
+--- @type Bank
+local bank
+
+--- What Driver Status says while a look shows by its address because the picture bank is full.
+local BANK_FULL_STATUS = "Picture bank full until the controller restarts"
+
+--- Whether the shown look is at its address because the picture bank is full.
+local bankFull = false
+
+--- @return string status What Driver Status says while the driver runs.
+local function readyStatus()
+  return bankFull and BANK_FULL_STATUS or "Ready"
+end
+
+--- @return integer[] ids The project's other Dynamic Buttons, which share the picture bank.
+local function otherButtons()
+  local myId = C4:GetDeviceID()
+  local ids = {}
+  for id in pairs(C4:GetDevicesByC4iName(C4:GetDriverFileName()) or {}) do
+    if tointeger(id) ~= myId then
+      table.insert(ids, tointeger(id))
+    end
+  end
+  table.sort(ids)
+  return ids
+end
 
 --- @type LiveBadges
 local badges
@@ -560,7 +589,7 @@ local function onLicense(licensed)
     log:warn("No active license: the button shows the driver's own icon until there is one")
     badges:watch(nil)
     refresher:watch(nil)
-    sendIcon(Images.ownIcon(driverName()), "")
+    sendIcon(bank.enabled and Bank.OWN_STATE or Images.ownIcon(driverName()), "")
     UpdateProperty("Driver Status", drivercentral.UNLICENSED_STATUS)
     pushState()
     return
@@ -574,7 +603,7 @@ local function onLicense(licensed)
     end
   end
   registerLookIs(lookChoices(), true)
-  UpdateProperty("Driver Status", "Ready")
+  UpdateProperty("Driver Status", readyStatus())
   follow:evaluate()
   byLink:evaluate()
   pushState()
@@ -649,6 +678,23 @@ function OnDriverLateInit()
       return followAllowed()
     end,
   })
+  bank = Bank:new({
+    store = persist,
+    -- driver.xml's states name the dynamic_button folder: a renamed driver file shows addresses only.
+    enabled = driverName() == Bank.DRIVER,
+    refresh = RefreshNavs,
+    ready = function()
+      for _, id in ipairs(otherButtons()) do
+        SendToDevice(id, "BANK_READY", {})
+      end
+      if button and followAllowed() then
+        button:bankReady()
+      end
+    end,
+    deviceId = tointeger(C4:GetDeviceID()),
+    buttons = getDriverIds,
+  })
+  bank:start()
   button = Button:new({
     looks = looks,
     images = images,
@@ -658,6 +704,13 @@ function OnDriverLateInit()
     sendIcon = sendIcon,
     badges = badges,
     refresher = refresher,
+    bank = bank,
+    onFull = function(full)
+      bankFull = full
+      if gInitialized and followAllowed() then
+        UpdateProperty("Driver Status", readyStatus())
+      end
+    end,
   })
   badges:boot()
   button:restore()
@@ -713,7 +766,7 @@ function OnDriverLateInit()
   })
 
   gInitialized = true
-  UpdateProperty("Driver Status", "Ready")
+  UpdateProperty("Driver Status", readyStatus())
   -- A tab left open through a restart keeps its socket, so nothing else tells it. With none open this costs nothing.
   pushState()
   --#ifdef DRIVERCENTRAL
@@ -753,6 +806,11 @@ function OnDriverRemovedFromProject()
   end
   if button then
     button:removed()
+  end
+  local slots = bank and bank:handOver() or ""
+  local keeper = otherButtons()[1]
+  if slots ~= "" and keeper then
+    SendToDevice(keeper, "BANK_ADOPT", { SLOTS = slots })
   end
   pictures:clear()
 end
@@ -1420,8 +1478,27 @@ function EC.Reset_Driver(params)
       UpdateProperty(name, value, true)
     end
   end)
-  UpdateProperty("Driver Status", "Ready")
+  UpdateProperty("Driver Status", readyStatus())
   pushState()
+end
+
+--- A Dynamic Button leaving the project handed over the picture bank slots it sent since the controller started.
+--- @param params table
+function EC.BANK_ADOPT(params)
+  log:trace("EC.BANK_ADOPT(%s)", params)
+  bank:adopt(Select(params, "SLOTS"))
+end
+
+--- Every Dynamic Button wrote its picture bank records again after an update.
+function EC.BANK_READY()
+  log:trace("EC.BANK_READY()")
+  if not button then
+    return
+  end
+  bank:ready()
+  if followAllowed() then
+    button:bankReady()
+  end
 end
 
 --#ifdef DRIVERCENTRAL

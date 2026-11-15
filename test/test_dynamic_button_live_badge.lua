@@ -14,6 +14,7 @@ local Png = require("dynamic_button.png")
 local BadgeArt = require("dynamic_button.badge_art")
 local Looks = require("dynamic_button.looks")
 local LiveBadges = require("dynamic_button.live_badges")
+local Bank = require("dynamic_button.bank")
 
 local clock = 1000000
 -- luacheck: push ignore os
@@ -122,7 +123,7 @@ local function stateLook(id)
   error("no look " .. id)
 end
 
---- @return string|nil address The last address the proxy was told.
+--- @return string|nil address The last address or picture bank state the proxy was told.
 local function address()
   local icon = H.lastIcon()
   return icon and icon.params.icon or nil
@@ -256,8 +257,9 @@ T.truthy("a small badge never shrinks its text, only widens", BadgeArt.fits({ pl
 T.section("A live badge's picture")
 H.mark()
 local battery = addLook("Battery", live(LEVEL .. "%"))
-local key50 = address():match("%-(%x+)$")
-T.truthy("its address names the text", key50 ~= nil and #key50 == 8)
+local state50 = address()
+T.truthy("it shows through a picture bank state", state50:match("^p%d+$"))
+T.eq("whose slot holds the picture with the badge", H.banked(state50), served(battery))
 T.eq("the proxy hears of it", told(), 1)
 T.truthy("the picture Navigator loads has the badge", painted(served(battery)) > 0)
 T.eq("the picture the driver keeps doesn't", painted(stored(battery)), 0)
@@ -284,8 +286,8 @@ settle()
 T.eq("at the minute one picture comes", told(), 1)
 T.eq("for all the changes", stateLook(battery).badgeNow, "61%")
 T.neq("and it's different", served(battery), first)
-local key61 = address():match("%-(%x+)$")
-T.neq("under a new address", key61, key50)
+local state61 = address()
+T.neq("through the state for the new picture", state61, state50)
 
 H.mark()
 clock = clock + 300
@@ -295,10 +297,10 @@ H.mark()
 setLevel("62")
 T.eq("after a quiet spell a change shows at once", told(), 1)
 
-T.section("A value seen before goes by its old address")
+T.section("A value seen before goes by its old state")
 clock = clock + 60
 setLevel("61")
-T.eq("so the app needn't load it again", address():match("%-(%x+)$"), key61)
+T.eq("so the app needn't load it again", address(), state61)
 
 T.section("The look's own choice")
 local function saveBadge(id, name, custom)
@@ -364,7 +366,7 @@ T.section("A plain badge is the tab's to draw")
 H.mark()
 local plain = addLook("Plain", live("ON"))
 EC.Show_Look({ Look = "Plain (" .. plain .. ")" })
-T.excludes("its address has no text in it", address(), "-")
+T.eq("it shows through the state for its picture", H.banked(address()), served(plain))
 T.eq("what Navigator loads is what the tab sent", served(plain), stored(plain))
 T.eq("nothing is kept to redraw from", cached(plain), nil)
 T.eq("and the tab hears nothing about it", stateLook(plain).badgeNow, nil)
@@ -378,7 +380,7 @@ H.mark()
 EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
 T.eq("showing it draws at once, whatever the last draw", told(), 1)
 T.eq("with today's value", stateLook(battery).badgeNow, "80%")
-T.contains("and the new address shows", address(), "/" .. battery .. ".png")
+T.eq("and the new picture shows through its state", H.banked(address()), served(battery))
 
 T.section("A variable shared with Show when")
 local high = addLook("High", live(LEVEL .. "%"), { showWhen = LEVEL .. " >= 50" })
@@ -418,7 +420,7 @@ setDevices()
 settle()
 T.eq("when it comes, the badge draws", stateLook(battery).badgeNow, "33%")
 T.eq("once", told(), 1)
-T.contains("under the shown look", address(), "/" .. battery .. ".png")
+T.eq("through the state for the new picture", H.banked(address()), served(battery))
 
 T.section("A restart where the first value isn't the real one")
 saveBadge(battery, "Battery", live(LEVEL .. "%", { every = 3600 }))
@@ -471,14 +473,16 @@ SetTimer = function(name, ...)
   end
 end
 H.restart()
-T.falsy("the address has no text in it yet", address():match("%-%x+$"))
+local unbadged = served(battery)
+T.eq("the picture from before shows through its state", H.banked(address()), unbadged)
 hasLevel = true
 level = "46"
 setDevices()
 Properties["Look Control"] = "By Value"
 OnPropertyChanged("Look Control")
 settle()
-T.truthy("the badge's own retry still finds it and draws", address():match("%-%x+$"))
+T.truthy("the badge's own retry still finds it and draws", served(battery) ~= unbadged)
+T.eq("through the state for the new picture", H.banked(address()), served(battery))
 SetTimer = realSetTimer
 Properties["Look Control"] = "Manual"
 OnPropertyChanged("Look Control")
@@ -558,6 +562,25 @@ T.contains(
   "1 to 20"
 )
 T.contains("an update choice is one of the list", tostring(refused(live(LEVEL, { every = 7 }).badge)), "update choice")
+
+T.section("Past its share of the picture bank")
+Bank.LIVE_CAP = 0
+H.restart()
+EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
+settle()
+H.mark()
+clock = clock + 3600
+setLevel("47")
+T.contains("a new value shows by its address until the controller restarts", address(), "controller://")
+local key47 = address():match("%-(%x+)$")
+T.truthy("which names the text", key47 ~= nil and #key47 == 8)
+T.eq("and Driver Status stays Ready", Properties["Driver Status"], "Ready")
+clock = clock + 3600
+setLevel("46")
+T.truthy("a value seen before still shows through its state", address():match("^p%d+$"))
+Bank.LIVE_CAP = 32
+H.restart()
+settle()
 
 T.section("A device leaving the project")
 EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
