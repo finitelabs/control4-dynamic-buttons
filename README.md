@@ -536,10 +536,15 @@ problem.
 | `round(x, places)`                           | Rounding                                                |
 | `c2f(x)` `f2c(x)`                            | Converting between Celsius and Fahrenheit               |
 | `device_name(id)` `room_name(id)`            | A device's name or room                                 |
+| `json(text, "$.path")`                       | One value from JSON text, at its path                   |
 | `tonumber` `tostring` `type` `math` `string` | Lua's own functions and libraries of those names        |
 
 A value that is a number or `true` or `false` compares as one. Any other value
 compares as text.
+
+A `json` path starts with `$`, then `.name` for a field and `[n]` for an item of
+a list, counted from 0. Text that isn't JSON, or a path that leads nowhere,
+gives no value.
 
 ## Button Links
 
@@ -800,6 +805,13 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 ### Removed
 - Removed
 -->
+
+## Unreleased
+
+### Added
+
+- Added `json(text, "$.path")` to Show when, which reads one value from a
+  variable that holds JSON text
 
 ## v20261113 - 2026-11-13
 

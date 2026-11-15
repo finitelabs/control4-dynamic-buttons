@@ -44,6 +44,7 @@ local function setDevices()
       variables = {
         ["1001"] = { name = "LEVEL", value = "42", type = "NUMBER" },
         ["1002"] = { name = "STATE", value = "Charging", type = "STRING" },
+        ["1003"] = { name = "STATUS", value = '{"battery":{"pct":87}}', type = "STRING" },
       },
     },
     [200] = { deviceName = "Meter", roomName = "Garage", variables = { ["7"] = { name = "WATTS", value = "1500" } } },
@@ -82,6 +83,17 @@ local text, problem = Expressions.substitute("PARAM{100,LEVEL}% and PARAM{100,10
 T.eq("values replace the tokens", text, "42% and Charging")
 T.eq("with no problem", problem, nil)
 T.contains("a token renders as its names", Expressions.render("PARAM{100,1001}"), "LEVEL]")
+local function bracket(value)
+  return "<" .. value .. ">"
+end
+T.eq(
+  "a format reads each value, and the text around them stays",
+  Expressions.substitute("PARAM{100,LEVEL}% and PARAM{100,1002}", "string", bracket),
+  "<42>% and <Charging>"
+)
+text, problem = Expressions.substitute("1 PARAM{200,NOPE}", "string", bracket)
+T.eq("a missing value isn't formatted", text, "1 ERROR_VARIABLE_NOT_FOUND")
+T.truthy("and is still the problem", problem ~= nil)
 
 T.section("Evaluation")
 T.eq("an equation gives a number", Expressions.evaluate("equation", "PARAM{100,LEVEL} * 2").result, 84)
@@ -90,6 +102,11 @@ T.eq("and false counts as a result", Expressions.evaluate("condition", "PARAM{10
 T.eq("a string is its substitution", Expressions.evaluate("string", "at PARAM{100,LEVEL}").result, "at 42")
 T.eq("a global variable's agent reads too", Expressions.evaluate("equation", "PARAM{100001,GLOBAL_LIMIT}").result, 90)
 T.eq("Essentials' helpers work", Expressions.evaluate("equation", "round(c2f(PARAM{100,LEVEL} - 42), 1)").result, 32)
+T.eq(
+  "json() reads a variable's JSON",
+  Expressions.evaluate("equation", 'json(PARAM{100,STATUS}, "$.battery.pct") + 1').result,
+  88
+)
 
 local evaluation = Expressions.evaluate("equation", "PARAM{100,LEVEL} +")
 T.contains("a syntax error says so", evaluation.error, "compile error")
