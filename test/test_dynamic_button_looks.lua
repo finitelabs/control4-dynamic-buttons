@@ -395,6 +395,23 @@ T.eq("so a choice made before a rename still finds it", looks:fromChoice("Charge
 T.eq("a bare name finds a look too", looks:fromChoice("low").id, b.id)
 T.eq("a label whose look is deleted finds nothing", looks:fromChoice("Gone (7)"), nil)
 
+T.section("The text line remotes show after the button's name")
+T.eq("a look named as the button sends none", Looks.description("Battery", "Battery"), "")
+T.eq("in any case", Looks.description("battery", "Battery"), "")
+T.eq(
+  "a look starting with the button's name sends the rest",
+  Looks.description("Porch Light Off", "Porch Light"),
+  "Off"
+)
+T.eq("past a colon", Looks.description("Porch Light: Off", "Porch Light"), "Off")
+T.eq("or a dash", Looks.description("Porch Light - Off", "Porch Light"), "Off")
+T.eq("only at a word's end", Looks.description("Porchlight Off", "Porch"), "Porchlight Off")
+T.eq("a look named otherwise sends its name", Looks.description("Charged", "Battery"), "Charged")
+T.eq("the button's name is read without its spaces", Looks.description("Battery Low", " Battery "), "Low")
+T.eq("a button with no name sends the look's", Looks.description("Charged", ""), "Charged")
+T.eq("as does one whose name can't be read", Looks.description("Charged", nil), "Charged")
+T.eq("no look sends none", Looks.description("", "Battery"), "")
+
 T.section("Ordering looks")
 local c = looks:add(H.lookFields("Charging"))
 T.truthy("a full new order is taken", looks:reorder({ c.id, a.id, b.id }))

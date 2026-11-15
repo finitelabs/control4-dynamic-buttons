@@ -209,6 +209,24 @@ function Looks.label(look)
   return string.format("%s (%d)", look.name, look.id)
 end
 
+--- The text line a look sends with its picture. Remotes show it after the button's name, so it drops
+--- what would repeat: none when the look is named as the button, the rest when it starts with it.
+--- @param name string The look's name.
+--- @param buttonName string|nil The button's name in the project.
+--- @return string description
+function Looks.description(name, buttonName)
+  local button = tostring(buttonName or ""):match("^%s*(.-)%s*$")
+  if button == "" or name:sub(1, #button):lower() ~= button:lower() then
+    return name
+  end
+  local rest = name:sub(#button + 1)
+  -- Only at a word's end: "Porchlight" doesn't start with the button "Porch".
+  if rest ~= "" and not rest:match("^[%s:%-|/,]") then
+    return name
+  end
+  return (rest:match("^[%s:%-|/,]*(.-)%s*$"))
+end
+
 --- The look a programming choice names: by the id in its label, else by its name.
 --- @param choice string|nil
 --- @return Look|nil look

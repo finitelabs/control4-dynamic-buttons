@@ -119,6 +119,10 @@ Halo and NEEO remotes show the button's look as Navigator does. The first time
 Dynamic Buttons start in a project, the driver refreshes Navigators about a
 minute later, and remotes show looks from then.
 
+A remote lists the button by its name, then the shown look's name. A look named
+as the button adds nothing after it, and a look whose name starts with the
+button's adds only the rest.
+
 The Dynamic Buttons in a project share a picture bank of 512 slots, and looks
 with the same picture share one slot. A slot keeps its picture until the
 controller restarts, even after its look is edited or deleted. After a
@@ -858,6 +862,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 ### Fixed
 
 - Fixed the button going blank for a moment when it's pressed or changes look
+- Fixed remotes repeating the button's name when the shown look is named as the
+  button or its name starts with the button's
 
 ## v20261113 - 2026-11-13
 
