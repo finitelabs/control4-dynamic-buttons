@@ -206,10 +206,12 @@ C4.url = function()
   end
   return transfer
 end
--- The shim has no C4:GetUptime: the controller has been up an hour.
+-- The shim has no C4:GetUptime: the controller started an hour before the tests and stays up
+-- however far a test moves the clock, which C4:GetTime follows without luasocket.
 if not C4.GetUptime then
+  local startedAt = C4:GetTime() - 3600000
   function C4:GetUptime()
-    return 3600
+    return (C4:GetTime() - startedAt) / 1000
   end
 end
 -- No Director listens for a Navigator refresh under the shim: count them instead.

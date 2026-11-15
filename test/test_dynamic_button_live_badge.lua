@@ -7,6 +7,14 @@
 --- or:
 ---   ./test/run_test.sh test_dynamic_button_live_badge.lua
 
+-- Pinned before the harness loads, which reads the controller's start from it without luasocket.
+local clock = 1000000
+-- luacheck: push ignore os
+os.time = function()
+  return clock
+end
+-- luacheck: pop
+
 local T = require("testlib")
 local H = require("dynamic_button_harness")
 local LibDeflate = require("LibDeflate")
@@ -15,13 +23,6 @@ local BadgeArt = require("dynamic_button.badge_art")
 local Looks = require("dynamic_button.looks")
 local LiveBadges = require("dynamic_button.live_badges")
 local Bank = require("dynamic_button.bank")
-
-local clock = 1000000
--- luacheck: push ignore os
-os.time = function()
-  return clock
-end
--- luacheck: pop
 
 local BATTERY = 100
 local LEVEL = "PARAM{100,1001}"
@@ -595,12 +596,17 @@ local gaugeFields = H.lookFields("Gauge", { budget = 10 })
 gaugeFields.id = gauge
 gaugeFields.custom = live(LEVEL .. "%")
 H.tab("_SAVE_LOOK", gaugeFields)
+-- Every slot sent at the last Navigator refresh, so none can take a new picture. The refresh, not
+-- now: the clock set back above is behind it.
 local records, filled = ShimFiles("C4Z/bank"), {}
+local sentAt = records.refreshed
 for slot = 1, Bank.SIZE do
-  if not records[tostring(slot)] then
-    records[tostring(slot)] = string.format("%s %.0f", string.rep("f", 64), C4:GetTime())
-    table.insert(filled, tostring(slot))
+  local key = tostring(slot)
+  local hash = (records[key] or ""):match("^(%x+) %d+$")
+  if not hash then
+    table.insert(filled, key)
   end
+  records[key] = (hash or string.rep("f", 64)) .. " " .. sentAt
 end
 clock = clock + 3600
 setLevel("49")
