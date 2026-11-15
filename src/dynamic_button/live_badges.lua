@@ -61,6 +61,38 @@ local function rounded(value, places)
   return string.format("%." .. places .. "f", value < 0 and magnitude > 0 and -magnitude or magnitude)
 end
 
+--- How many decimals a number rounded to each step keeps.
+local ROUND_PLACES = { [0.01] = 2, [0.1] = 1 }
+
+--- A variable's value as a live badge rounds it: a number to the nearest step, anything else as it is.
+--- @param value string
+--- @param step number One of `Looks.BADGE_ROUNDS`.
+--- @return string text
+function LiveBadges.round(value, step)
+  local number = tonumber(value:match("^%s*(%-?%d*%.?%d+)%s*$"))
+  -- Past this, %.0f writes digits a double doesn't hold.
+  if not number or math.abs(number) >= 1e15 then
+    return value
+  end
+  local places = ROUND_PLACES[step]
+  if places then
+    return rounded(number, places)
+  end
+  local magnitude = math.floor(math.abs(number) / step + 0.5) * step
+  return string.format("%.0f", number < 0 and magnitude > 0 and -magnitude or magnitude)
+end
+
+--- What a live badge's variables read now, each number rounded as the badge asks.
+--- @param text string The badge's text, with its variables.
+--- @param step? number One of `Looks.BADGE_ROUNDS` (optional; as each reads).
+--- @return string text
+--- @return string|nil err Which variable is missing.
+function LiveBadges.substitute(text, step)
+  return Expressions.substitute(text, "string", step and function(value)
+    return LiveBadges.round(value, step)
+  end or nil)
+end
+
 --- The text a live badge reads now, with only the characters the face has, before it is fitted.
 --- @param text string
 --- @return string kept
@@ -107,11 +139,11 @@ end
 --- @return string|nil text Nil when a variable is missing.
 --- @return string|nil err Which one.
 function LiveBadges.read(badge)
-  local evaluation = Expressions.evaluate("string", badge.text)
-  if evaluation.error then
-    return nil, evaluation.error
+  local text, err = LiveBadges.substitute(badge.text, badge.round)
+  if err then
+    return nil, err
   end
-  return LiveBadges.fit(tostring(evaluation.result), badge), nil
+  return LiveBadges.fit(text, badge), nil
 end
 
 --- @param text string|nil

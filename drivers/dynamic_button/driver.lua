@@ -1594,11 +1594,16 @@ expressionTab.serve({
     end
     return nil
   end,
-  extra = function(evaluation, mode)
-    -- The tab fits the text to the badge it is editing, whose size and place the driver hasn't yet.
-    return {
-      fitted = mode == "string" and evaluation.result and LiveBadges.drawable(tostring(evaluation.result)) or nil,
-    }
+  extra = function(evaluation, mode, expression)
+    if mode ~= "string" or not evaluation.result then
+      return nil
+    end
+    -- The tab fits the text to the badge it is editing, whose size, place and rounding the driver hasn't yet.
+    local rounded = {}
+    for _, step in ipairs(Looks.BADGE_ROUNDS) do
+      rounded[tostring(step)] = LiveBadges.drawable((LiveBadges.substitute(expression, step)))
+    end
+    return { fitted = LiveBadges.drawable(tostring(evaluation.result)), rounded = rounded }
   end,
   wrap = tabGate,
 })

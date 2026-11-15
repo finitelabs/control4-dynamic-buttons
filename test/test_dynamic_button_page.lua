@@ -589,7 +589,30 @@ T.truthy("and still names every collection", has("<summary>Icon licenses</summar
 T.section("A badge's answer")
 T.truthy(
   "is the kit's, with the driver's text fitted to the badge being edited",
-  has("now = result.error ? '' : fitBadge(Kit.str(result.fitted), badgeOf(gEditor.look))")
+  has("now = result.error ? '' : fitBadge(badgeReading(result, badgeOf(gEditor.look)), badgeOf(gEditor.look))")
+)
+T.truthy(
+  "rounded as the badge asks, by the driver's own reading",
+  has("var rounded = b && b.round && result.rounded ? result.rounded[String(b.round)] : null;")
+    and has("return Kit.str(rounded != null ? rounded : result.fitted);")
+)
+T.eq(
+  "the round choices are the driver's",
+  page:match("BADGE_ROUNDS = %[([%d., ]+)%]"),
+  table.concat(Looks.BADGE_ROUNDS, ", ")
+)
+T.truthy("the row shows for a live badge", has("$('fld-c-round').hidden = !live;"))
+T.truthy(
+  "a new choice fits the badge again",
+  has("badgeOf(gEditor.look).round = $('c-round').value ? Number($('c-round').value) : null;\n  refitBadge();")
+)
+T.truthy(
+  "the look keeps it for a live badge only",
+  has("if (text && isLiveText(text) && b.round) c.badge.round = Number(b.round);")
+)
+T.truthy(
+  "a file's choice must be one of them",
+  has("if (live && b.round != null && BADGE_ROUNDS.indexOf(Number(b.round)) < 0)")
 )
 T.truthy("and its error in plain words", has("note.textContent = result.error ? result.message"))
 
@@ -630,7 +653,7 @@ T.truthy(
   "the row shows for a look whose picture changes",
   has("$('fld-budget').hidden = !web && !isLiveText(badgeEditor.value());")
 )
-T.truthy("the badge's text and the picture both decide it", has("$('fld-c-every').hidden = !live;\n  syncBudgetRow();"))
+T.truthy("the badge's text and the picture both decide it", has("$('fld-c-round').hidden = !live;\n  syncBudgetRow();"))
 T.truthy("the save sends it", has("Object.assign(fields, budgetFields());"))
 T.truthy(
   "only when it isn't the default",
