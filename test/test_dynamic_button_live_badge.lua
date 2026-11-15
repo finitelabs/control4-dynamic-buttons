@@ -569,7 +569,27 @@ T.eq(
   { LiveBadges.round("On", 1), LiveBadges.round("0x1F", 1), LiveBadges.round("1e5", 1), LiveBadges.round("4.", 1) },
   { "On", "0x1F", "1e5", "4." }
 )
-T.eq("so does a number too large to round", LiveBadges.round("1234567890123456", 10), "1234567890123456")
+T.eq("a half in the third decimal rounds away from zero, though a double can't hold it", {
+  LiveBadges.round("1.005", 0.01),
+  LiveBadges.round("0.145", 0.01),
+  LiveBadges.round("0.285", 0.01),
+  LiveBadges.round("-1.015", 0.01),
+}, { "1.01", "0.15", "0.29", "-1.02" })
+local wrongHalves = 0
+for hundredths = 0, 9999 do
+  local half = string.format("%d.%02d5", math.floor(hundredths / 100), hundredths % 100)
+  local up = string.format("%d.%02d", math.floor((hundredths + 1) / 100), (hundredths + 1) % 100)
+  if LiveBadges.round(half, 0.01) ~= up then
+    wrongHalves = wrongHalves + 1
+  end
+end
+T.eq("every half from 0.005 to 99.995 rounds up", wrongHalves, 0)
+T.eq(
+  "a value under half a step is zero, and one past it carries",
+  { LiveBadges.round("-0.004", 0.01), LiveBadges.round("4", 1000), LiveBadges.round("999.96", 0.1) },
+  { "0.00", "0", "1000.0" }
+)
+T.eq("a long number rounds on its digits", LiveBadges.round("1234567890123456", 10), "1234567890123460")
 
 T.section("A badge that rounds")
 EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
