@@ -39,6 +39,7 @@
   .timerrow { flex-wrap: wrap; }
   .timerrow select { width: auto; }
   #f-timer-n { width: 76px; }
+  #f-budget { width: 90px; }
   #f-timer-show { max-width: 220px; }
   #f-while { width: auto; }
   .timer-then { margin-left: -6px; color: var(--text); }
@@ -203,6 +204,11 @@
               <select id="f-timer-show" aria-label="Then show" hidden></select>
             </div>
             <div class="kit-form-note" id="timer-note" hidden></div>
+          </div>
+          <div class="kit-form-row" id="fld-budget" hidden>
+            <label for="f-budget">Budget</label>
+            <div class="kit-form-ctl"><input type="number" id="f-budget" min="1" max="512" step="1" value="101" aria-label="New pictures"> new pictures</div>
+            <div class="kit-form-note" id="budget-note"></div>
           </div>
           <div class="kit-form-row" id="fld-while" hidden>
             <label for="f-while">Show while</label>
@@ -2205,6 +2211,7 @@ function badgeProblem(b) {
 function syncBadgeNote() {
   var text = badgeEditor.value(), live = isLiveText(text);
   $('fld-c-every').hidden = !live;
+  syncBudgetRow();
   if (live) return;
   var problem = badgeProblem(Object.assign({}, badgeOf(gEditor.look), { text: text }));
   gEditor.look.badgeNow = null;
@@ -2310,6 +2317,7 @@ function preview() {
   ['color', 'body', 'tile', 'symbol'].forEach(function(key) { $('fld-c-' + key).hidden = keys.indexOf(key) < 0; });
   $('fld-c-glowcolor').hidden = keys.indexOf('glowColor') < 0 || !!l.grayscale;
   $('c-glow-note').hidden = !pictureKind(l.icon).glowFollows;
+  syncBudgetRow();
   ['fld-c-badge-size', 'fld-c-place', 'fld-c-textcolor', 'fld-c-bg'].forEach(function(id) { $(id).hidden = !badgeOn; });
   $('c-reset').textContent = whole ? 'Reset to the pack\u2019s look' : (isPicture(l.icon) ? 'Reset' : 'Reset to the icon\u2019s look');
   $('f-glow-v').textContent = $('f-glow').value + '%';
@@ -2368,6 +2376,7 @@ function openEditor(look, title) {
   $('f-tile-color').value = gEditor.look.tileColor.toLowerCase();
   $('f-in-cycle').checked = gEditor.look.inCycle !== false;
   openTimer(gEditor.look);
+  openBudget(gEditor.look);
   $('f-glow').value = gEditor.look.glow;
   $('f-grayscale').checked = gEditor.look.grayscale;
   gEditor.look.isDefault = !!look && look.id != null && gState.defaultLook === look.id;
@@ -2419,6 +2428,9 @@ function checkLook(l) {
   var timer = timerProblem();
   $('f-timer-n').classList.toggle('input-error', !!timer);
   if (timer) return timer;
+  var budget = budgetProblem();
+  $('f-budget').classList.toggle('input-error', !!budget);
+  if (budget) return budget;
   return null;
 }
 
@@ -2458,6 +2470,7 @@ async function saveLook() {
       glow: savedGlow(l), grayscale: !!l.grayscale, showWhile: whileOf(l), showWhen: l.showWhen || '', isDefault: !!l.isDefault };
     if (custom) fields.custom = custom;
     Object.assign(fields, timerFields());
+    Object.assign(fields, budgetFields());
     if (!Kit.apiHost) {
       demoSave(fields);
       setStatus('Saved here only: this page is not open in Composer.');
@@ -2674,7 +2687,7 @@ async function linkChunks(link, cmd, b64, fields, expect) {
 function lookFields(l) {
   return { id: l.id, name: l.name, icon: l.icon, iconColor: l.iconColor, tileShape: l.tileShape, tileColor: l.tileColor,
     inCycle: l.inCycle !== false, glow: savedGlow(l), grayscale: !!l.grayscale, showWhile: whileOf(l), showWhen: l.showWhen || '', custom: l.custom || {},
-    timerAfter: l.timerAfter || null, timerShow: l.timerAfter ? (l.timerShow == null ? 'before' : l.timerShow) : null };
+    timerAfter: l.timerAfter || null, timerShow: l.timerAfter ? (l.timerShow == null ? 'before' : l.timerShow) : null, budget: l.budget || null };
 }
 async function sourcesReady(ids) {
   ids.forEach(requestPicture);
@@ -2794,6 +2807,7 @@ async function giveLook(link, item, names, given, replace, ids) {
   var timerLook = look.timerAfter && look.timerShow != null && String(look.timerShow) !== 'before' ? String(look.timerShow) : null;
   fields.timerAfter = look.timerAfter || null;
   fields.timerShow = !look.timerAfter ? null : timerLook && ids[timerLook] ? ids[timerLook] : 'before';
+  fields.budget = look.budget || null;
   var saved = await linkCall(link, '_SAVE_LOOK', fields, 'SAVED', 10000);
   if (saved.error || !saved.look) return { error: saved.error || 'it wasn’t saved' };
   if (b64) {
@@ -2989,6 +3003,7 @@ function lookProblem(l, refreshes) {
   if (typeof l.showWhen === 'string' && utf8Bytes(l.showWhen.trim()) > 2000) return 'its Show when is longer than 2000 characters';
   if (l.showWhile != null && l.showWhile !== 'on' && l.showWhile !== 'off') return 'its Show while isn’t on or off';
   if (l.timerAfter != null && !wholeIn(l.timerAfter, 1, TIMER_MAX)) return 'its timer isn’t from 1 second to 24 hours';
+  if (l.budget != null && !wholeIn(l.budget, 1, BUDGET_MAX)) return 'its budget isn’t from 1 to ' + BUDGET_MAX + ' pictures';
   if (refreshes) return null;
   if (SHAPES.indexOf(l.tileShape) < 0) return 'its tile shape isn’t one the driver knows';
   if (l.glow != null && !wholeIn(l.glow, 0, 200)) return 'its glow isn’t a whole percent from 0 to 200';
@@ -3055,7 +3070,8 @@ async function readLooksFile(file) {
     var look = { name: String(l.name).trim(), icon: icon, iconColor: l.iconColor.toUpperCase(), tileShape: refreshes ? 'None' : l.tileShape,
       tileColor: l.tileColor.toUpperCase(), inCycle: l.inCycle !== false, glow: l.glow == null ? 100 : l.glow, grayscale: l.grayscale === true,
       showWhile: whileOf(l), showWhen: typeof l.showWhen === 'string' ? l.showWhen.trim() : '', custom: l.custom ? JSON.parse(JSON.stringify(l.custom)) : {},
-      timerAfter: l.timerAfter == null ? null : l.timerAfter, timerShow: l.timerAfter == null ? null : String(l.timerShow == null ? 'before' : l.timerShow) };
+      timerAfter: l.timerAfter == null ? null : l.timerAfter, timerShow: l.timerAfter == null ? null : String(l.timerShow == null ? 'before' : l.timerShow),
+      budget: l.budget == null ? null : l.budget };
     var picture = key ? Object.assign({ key: 'file:' + key }, pictures[key]) : null;
     items.push({ key: l.id == null ? '#' + i : String(l.id), look: look, picture: picture, isDefault: data.defaultLook != null && String(l.id) === String(data.defaultLook) });
   }
@@ -3191,6 +3207,30 @@ function timerFields() {
 }
 $('f-timer').addEventListener('change', syncTimerRow);
 $('f-timer-n').addEventListener('input', function() { $('f-timer-n').classList.remove('input-error'); });
+
+// ---- Budget: the new pictures a look whose picture changes adds between controller restarts ----
+var BUDGET = 101, BUDGET_MAX = 512;
+function openBudget(l) {
+  $('f-budget').value = String(l.budget || BUDGET);
+  $('f-budget').classList.remove('input-error');
+}
+function syncBudgetRow() {
+  var l = gEditor.look, web = !!pictureEvery(l.icon);
+  $('fld-budget').hidden = !web && !isLiveText(badgeEditor.value());
+  $('budget-note').textContent = 'Each new ' + (web ? 'picture' : 'value') + ' since the controller restarted takes one. Past that, '
+    + (web ? 'remotes show the driver icon' : 'the badge shows a dot') + ' until the next restart.'
+    + (l.bankUsed != null ? ' Used since the last restart: ' + l.bankUsed + '.' : '');
+}
+function budgetProblem() {
+  if ($('fld-budget').hidden) return null;
+  return wholeIn(Number($('f-budget').value), 1, BUDGET_MAX) ? null : 'A budget is from 1 to ' + BUDGET_MAX + ' pictures, in whole numbers.';
+}
+// The budget the driver keeps when it isn't the default, and none for a look whose picture stays.
+function budgetFields() {
+  var n = Number($('f-budget').value);
+  return { budget: !$('fld-budget').hidden && n !== BUDGET ? n : null };
+}
+$('f-budget').addEventListener('input', function() { $('f-budget').classList.remove('input-error'); });
 
 // ============================================================
 // Show when: what By Value reads for each look

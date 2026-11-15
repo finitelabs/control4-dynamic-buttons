@@ -19,13 +19,12 @@ local Images = require("dynamic_button.images")
 
 --- @class BankLive
 --- @field since integer The controller start the counts are for, in ms since the epoch.
---- @field counts table<string, integer> New slots each live look took since then, by look id.
+--- @field counts table<string, integer> New slots each look whose picture changes took since then, by look id.
 
 --- @class Bank
 --- @field store table A persist-like store with get(key, default) and set(key, value).
 --- @field enabled boolean False when the driver's folder isn't the one driver.xml's states name.
 --- @field _size integer
---- @field _liveCap integer
 --- @field _now fun(): integer The clock, in ms since the epoch.
 --- @field _uptime fun(): number Seconds since the controller started.
 --- @field _refresh fun() Refreshes the Navigators.
@@ -38,10 +37,7 @@ local Bank = {}
 Bank.__index = Bank
 
 --- The states driver.xml declares (tools/gen_bank.py SIZE).
-Bank.SIZE = 256
-
---- New slots a live look can take between controller restarts.
-Bank.LIVE_CAP = 32
+Bank.SIZE = 512
 
 --- The driver folder the states' pictures are in.
 Bank.DRIVER = "dynamic_button"
@@ -52,7 +48,8 @@ Bank.OWN_STATE = "own"
 --- What slotFor answers when no slot can take a new picture.
 Bank.FULL = "full"
 
---- What slotFor answers when a live look took its share of new slots since the controller started.
+--- What slotFor answers when a look whose picture changes took its budget of new slots since the
+--- controller started.
 Bank.CAPPED = "capped"
 
 --- What slotFor answers until every button has started: after an update emptied the bank's folder,
@@ -93,14 +90,13 @@ Bank.RELOAD_MS = 5000
 local REFRESH_TIMER = "BankRefresh"
 
 --- Creates a new instance of the Bank class.
---- @param opts { store: table, enabled: boolean, refresh: fun(), ready: fun(), deviceId: integer, buttons: fun(): integer[], size?: integer, liveCap?: integer, now?: fun(): integer, uptime?: fun(): number, setTimer?: fun(name: string, ms: integer, fn: fun()) }
+--- @param opts { store: table, enabled: boolean, refresh: fun(), ready: fun(), deviceId: integer, buttons: fun(): integer[], size?: integer, now?: fun(): integer, uptime?: fun(): number, setTimer?: fun(name: string, ms: integer, fn: fun()) }
 --- @return Bank bank
 function Bank:new(opts)
   local instance = setmetatable({}, self)
   instance.store = opts.store
   instance.enabled = opts.enabled
   instance._size = opts.size or Bank.SIZE
-  instance._liveCap = opts.liveCap or Bank.LIVE_CAP
   instance._now = opts.now or function()
     return C4:GetTime()
   end
@@ -393,7 +389,7 @@ function Bank:_bind(slot, hash, png)
 end
 
 --- @private
---- @return BankLive live The live looks' counts since the controller started.
+--- @return BankLive live The counts since the controller started.
 function Bank:_live()
   local startedAt = self:startedAt()
   local live = self.store:get(LIVE_KEY, {})
@@ -403,12 +399,20 @@ function Bank:_live()
   return live
 end
 
+--- New slots a look whose picture changes took since the controller started.
+--- @param lookId integer
+--- @return integer used
+function Bank:used(lookId)
+  return self:_live().counts[tostring(lookId)] or 0
+end
+
 --- The state that shows a picture: the slot already holding it, or one that can take it.
 --- @param png string The picture, as it is served.
 --- @param liveLookId? integer The look, when its picture changes while it shows (optional).
---- @return string|nil state Nil when the bank is off, full, or the look took its share.
---- @return string|nil err Bank.FULL or Bank.CAPPED.
-function Bank:slotFor(png, liveLookId)
+--- @param budget? integer The new slots that look can take between restarts (with liveLookId).
+--- @return string|nil state Nil when the bank is off, full, or the look took its budget.
+--- @return string|nil err Bank.FULL, Bank.CAPPED or Bank.WAIT.
+function Bank:slotFor(png, liveLookId, budget)
   if not self.enabled or not png then
     return nil
   end
@@ -447,7 +451,7 @@ function Bank:slotFor(png, liveLookId)
   end
   local live = liveLookId and self:_live()
   local key = liveLookId and tostring(liveLookId)
-  if live and (live.counts[key] or 0) >= self._liveCap then
+  if live and (live.counts[key] or 0) >= budget then
     return nil, Bank.CAPPED
   end
   for _, candidate in ipairs(open) do

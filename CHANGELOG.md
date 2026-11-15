@@ -22,8 +22,16 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 ### Added
 
+- Added each look's picture on Halo and NEEO remotes
+- Added a budget for each look whose picture changes, the new pictures it can
+  add between controller restarts, with Driver Status showing how many it has
+  used
 - Added `json(text, "$.path")` to Show when, which reads one value from a
   variable that holds JSON text
+
+### Fixed
+
+- Fixed the button going blank for a moment when it's pressed or changes look
 
 ## v20261113 - 2026-11-13
 
@@ -31,14 +39,6 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 - Fixed a button's picture going blank for a moment when Navigator draws it
   again. Refresh Navigators after the update for the fix to show.
-
-### Added
-
-- Added each look's picture on Halo and NEEO remotes
-
-### Fixed
-
-- Fixed the button going blank for a moment when it's pressed or changes look
 
 ### Changed
 

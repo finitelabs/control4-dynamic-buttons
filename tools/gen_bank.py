@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FRAGMENT = ROOT / "drivers" / "dynamic_button" / "generated" / "picture_bank.xml"
 
 # Bank.SIZE in src/dynamic_button/bank.lua.
-SIZE = 256
+SIZE = 512
 # The driver's folder on the controller, which names the pictures' addresses.
 DRIVER = "dynamic_button"
 # One Icon per state: every state goes to every Navigator for every button, so the bank's size is

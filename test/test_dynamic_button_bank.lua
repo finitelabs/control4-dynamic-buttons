@@ -92,11 +92,10 @@ end
 
 --- @param size integer
 --- @param store? table
---- @param liveCap? integer
 --- @param id? integer The button (optional; 1).
 --- @param buttons? fun(): integer[] The project's Dynamic Buttons (optional; none to wait on).
 --- @return Bank bank
-local function newBank(size, store, liveCap, id, buttons)
+local function newBank(size, store, id, buttons)
   return Bank:new({
     store = store or memoryStore(),
     enabled = true,
@@ -114,7 +113,6 @@ local function newBank(size, store, liveCap, id, buttons)
       return {}
     end,
     size = size,
-    liveCap = liveCap,
     now = now,
     uptime = uptime,
   })
@@ -224,18 +222,23 @@ T.eq("so the bank is full again until the next one", select(2, b:slotFor("Two"))
 T.section("A look whose picture changes while it shows")
 wipe(RECORDS)
 wipe(PICTURES)
-local live = newBank(8, nil, 2)
+local live = newBank(8)
 live:start()
 settle()
-local first = live:slotFor("Badge 1", 7)
-T.truthy("takes slots for its pictures", slotOf(first) and slotOf(live:slotFor("Badge 2", 7)))
-none, err = live:slotFor("Badge 3", 7)
-T.eq("up to its share between restarts", { none, err }, { nil, Bank.CAPPED })
-T.eq("a picture it showed before keeps its slot", live:slotFor("Badge 1", 7), first)
-T.truthy("another such look has a share of its own", slotOf(live:slotFor("Badge 3", 8)))
-T.truthy("and a look whose picture stays has no share", slotOf(live:slotFor("Still")))
+local first = live:slotFor("Badge 1", 7, 2)
+T.truthy("takes slots for its pictures", slotOf(first) and slotOf(live:slotFor("Badge 2", 7, 2)))
+T.eq("and counts them", live:used(7), 2)
+none, err = live:slotFor("Badge 3", 7, 2)
+T.eq("up to its budget between restarts", { none, err }, { nil, Bank.CAPPED })
+T.eq("a picture it showed before keeps its slot", live:slotFor("Badge 1", 7, 2), first)
+T.eq("and costs nothing", live:used(7), 2)
+T.truthy("a larger budget takes more", slotOf(live:slotFor("Badge 3", 7, 3)))
+T.truthy("another such look has a budget of its own", slotOf(live:slotFor("Badge 4", 8, 2)))
+T.eq("counted apart", live:used(8), 1)
+T.truthy("and a look whose picture stays has none", slotOf(live:slotFor("Still")))
 restartController()
-T.truthy("a restart gives the look its share again", slotOf(live:slotFor("Badge 4", 7)))
+T.eq("a restart starts the count again", live:used(7), 0)
+T.truthy("so the look takes new slots again", slotOf(live:slotFor("Badge 5", 7, 2)))
 
 T.section("An update, which replaces the folder")
 wipe(RECORDS)
@@ -276,8 +279,8 @@ local both = function()
   return { 1, 2 }
 end
 local firstStore, lastStore = memoryStore(), memoryStore()
-local firstBank = newBank(8, firstStore, nil, 1, both)
-local lastBank = newBank(8, lastStore, nil, 2, both)
+local firstBank = newBank(8, firstStore, 1, both)
+local lastBank = newBank(8, lastStore, 2, both)
 refreshesBefore, readiesBefore = refreshes, readies
 firstBank:start()
 none, err = firstBank:slotFor("Early")
@@ -301,21 +304,21 @@ end
 T.truthy("(a picture whose path starts on another button's slot)", onTheirs)
 wipe(RECORDS)
 wipe(PICTURES)
-firstBank = newBank(8, firstStore, nil, 1, both)
+firstBank = newBank(8, firstStore, 1, both)
 readiesBefore = readies
 firstBank:start()
 T.eq("the first button to start doesn't make the bank whole", readies, readiesBefore)
 none, err = firstBank:slotFor(onTheirs)
 T.eq("so a new picture waits rather than take a slot whose record isn't back", { none, err }, { nil, Bank.WAIT })
 T.eq("and the other button's slot is left alone", { record(theirs), H.banked(theirs) }, {})
-lastBank = newBank(8, lastStore, nil, 2, both)
+lastBank = newBank(8, lastStore, 2, both)
 lastBank:start()
 T.eq("the last button to start makes it whole, and lets the others take slots", readies, readiesBefore + 1)
 T.eq("with its slot's record back", record(theirs), recordOf("Theirs", theirsAt))
 local after = firstBank:slotFor(onTheirs)
 T.truthy("then the picture takes another slot", slotOf(after) and after ~= theirs)
 T.eq("and the other button keeps its own", lastBank:slotFor("Theirs"), theirs)
-lastBank = newBank(8, lastStore, nil, 2, both)
+lastBank = newBank(8, lastStore, 2, both)
 lastBank:start()
 T.eq("a start with the bank already whole has no one to tell", readies, readiesBefore + 1)
 T.eq("(and no timer)", #pending, 0)

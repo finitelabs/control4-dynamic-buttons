@@ -115,15 +115,9 @@ local button
 --- @type Bank
 local bank
 
---- What Driver Status says while a look shows by its address because the picture bank is full.
-local BANK_FULL_STATUS = "Picture bank full until the controller restarts"
-
---- Whether the shown look is at its address because the picture bank is full.
-local bankFull = false
-
 --- @return string status What Driver Status says while the driver runs.
 local function readyStatus()
-  return bankFull and BANK_FULL_STATUS or "Ready"
+  return button and button:bankStatus() or "Ready"
 end
 
 --- @return integer[] ids The project's other Dynamic Buttons, which share the picture bank.
@@ -373,6 +367,8 @@ local function tabState()
       showWhile = Looks.showsWhileOn(look) and Looks.SHOW_WHILE_ON or Looks.SHOW_WHILE_OFF,
       timerAfter = look.timerAfter,
       timerShow = look.timerShow,
+      budget = Looks.budget(look),
+      bankUsed = bank and bank.enabled and bank:used(look.id) or nil,
       showWhenText = byValue and look.showWhen and Expressions.render(look.showWhen, "condition") or nil,
       whenError = byValue and follow:whenError(look.id) or nil,
       badgeNow = badgeNow,
@@ -705,8 +701,7 @@ function OnDriverLateInit()
     badges = badges,
     refresher = refresher,
     bank = bank,
-    onFull = function(full)
-      bankFull = full
+    onStatus = function()
       if gInitialized and followAllowed() then
         UpdateProperty("Driver Status", readyStatus())
       end

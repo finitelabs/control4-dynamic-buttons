@@ -9,6 +9,7 @@
 local T = require("testlib")
 local H = require("dynamic_button_harness")
 local Looks = require("dynamic_button.looks")
+local Bank = require("dynamic_button.bank")
 require("lib.utils")
 
 --- A persist-like store that hands out copies, as lib.persist does, so a change that is not saved
@@ -499,6 +500,29 @@ T.eq(
   "without the ids, any device's variable is kept",
   select(2, looks:add(H.lookFields("Unguarded", { showWhen = "PARAM{4242,1} == 1" }))),
   nil
+)
+
+T.section("A look's budget of picture bank slots")
+local budgeted = Looks:new(memoryStore())
+local plain = budgeted:add(H.lookFields("Plain"))
+T.eq("a look has the default without the field", Looks.budget(plain), Looks.BUDGET)
+T.eq("which is a whole 0 to 100 badge", Looks.BUDGET, 101)
+T.eq("and keeps no field for it", budgeted:add(H.lookFields("Default", { budget = Looks.BUDGET })).budget, nil)
+local wide = budgeted:add(H.lookFields("Wide", { budget = Looks.MAX_BUDGET }))
+T.eq("up to the whole bank", Looks.budget(wide), Bank.SIZE)
+T.eq("as low as one", Looks.budget(budgeted:add(H.lookFields("Narrow", { budget = 1 }))), 1)
+for _, case in ipairs({
+  { "none", 0 },
+  { "more than the bank", Bank.SIZE + 1 },
+  { "part of a slot", 2.5 },
+  { "text", "50" },
+}) do
+  T.contains("refuses " .. case[1], select(2, budgeted:add(H.lookFields("Odd", { budget = case[2] }))), "budget")
+end
+budgeted:setImage(wide.id, 100)
+T.falsy(
+  "a new budget doesn't change the picture",
+  budgeted:update(wide.id, H.lookFields("Wide", { budget = 50 })).image.stale
 )
 
 T.finish()

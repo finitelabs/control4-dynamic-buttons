@@ -563,23 +563,63 @@ T.contains(
 )
 T.contains("an update choice is one of the list", tostring(refused(live(LEVEL, { every = 7 }).badge)), "update choice")
 
-T.section("Past its share of the picture bank")
-Bank.LIVE_CAP = 0
-H.restart()
-EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
+T.section("Past its budget of picture bank slots")
+local gauge = addLook("Gauge", live(LEVEL .. "%"), { budget = 2 })
+EC.Show_Look({ Look = "Gauge (" .. gauge .. ")" })
 settle()
-H.mark()
 clock = clock + 3600
 setLevel("47")
-T.contains("a new value shows by its address until the controller restarts", address(), "controller://")
-local key47 = address():match("%-(%x+)$")
-T.truthy("which names the text", key47 ~= nil and #key47 == 8)
-T.eq("and Driver Status stays Ready", Properties["Driver Status"], "Ready")
+local state47 = address()
+T.truthy("a value takes a slot", state47:match("^p%d+$"))
+T.eq("Driver Status counts the new ones", Properties["Driver Status"], "Ready, shown look used 2 of 2 picture slots")
+T.eq("and so does the tab", stateLook(gauge).bankUsed, 2)
 clock = clock + 3600
-setLevel("46")
-T.truthy("a value seen before still shows through its state", address():match("^p%d+$"))
-Bank.LIVE_CAP = 32
-H.restart()
+setLevel("48")
+local dot = address()
+T.truthy("a new value past it shows through a state too", dot:match("^p%d+$") and dot ~= state47)
+T.truthy("a dot: the look's picture with its badge empty", painted(H.banked(dot)) > 0)
+T.truthy("smaller than a badge with text", painted(H.banked(dot)) < painted(H.banked(state47)))
+T.eq("which took none of the budget", stateLook(gauge).bankUsed, 2)
+T.eq(
+  "Driver Status says so",
+  Properties["Driver Status"],
+  "Shown look used 2 of 2 picture slots until the controller restarts"
+)
+clock = clock + 3600
+setLevel("47")
+T.eq("a value seen before shows through its state", address(), state47)
+T.eq("and Driver Status counts again", Properties["Driver Status"], "Ready, shown look used 2 of 2 picture slots")
+
+T.section("A full picture bank")
+local gaugeFields = H.lookFields("Gauge", { budget = 10 })
+gaugeFields.id = gauge
+gaugeFields.custom = live(LEVEL .. "%")
+H.tab("_SAVE_LOOK", gaugeFields)
+local records, filled = ShimFiles("C4Z/bank"), {}
+for slot = 1, Bank.SIZE do
+  if not records[tostring(slot)] then
+    records[tostring(slot)] = string.format("%s %.0f", string.rep("f", 64), C4:GetTime())
+    table.insert(filled, tostring(slot))
+  end
+end
+clock = clock + 3600
+setLevel("49")
+T.eq("a new value shows the look's dot", address(), dot)
+T.eq(
+  "and Driver Status names the full bank",
+  Properties["Driver Status"],
+  "Picture bank full until the controller restarts"
+)
+T.truthy("the log says", warned("picture bank is full") > 0)
+for _, slot in ipairs(filled) do
+  records[slot] = nil
+end
+clock = clock + 3600
+setLevel("50")
+T.truthy("once a slot is free, the value takes it", address():match("^p%d+$") and address() ~= dot)
+T.eq("within the look's own budget", Properties["Driver Status"], "Ready, shown look used 3 of 10 picture slots")
+H.tab("_DELETE_LOOK", { id = gauge })
+EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
 settle()
 
 T.section("A device leaving the project")

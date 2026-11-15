@@ -111,8 +111,7 @@ A new button starts hidden in every Navigator menu. To show it:
    with "Show", and select "OK".
 1. Refresh Navigators.
 
-Until the button has a look, it shows the driver's own icon. Remotes show the
-driver's own icon for now. Looks on remotes are coming soon.
+Until the button has a look, it shows the driver's own icon.
 
 ## Halo and NEEO Remotes
 
@@ -120,14 +119,21 @@ Halo and NEEO remotes show the button's look as Navigator does. The first time
 Dynamic Buttons start in a project, the driver refreshes Navigators about a
 minute later, and remotes show looks from then.
 
-The Dynamic Buttons in a project share a picture bank of 256 pictures, and looks
-with the same picture share one place in it. A place keeps its picture until the
+The Dynamic Buttons in a project share a picture bank of 512 slots, and looks
+with the same picture share one slot. A slot keeps its picture until the
 controller restarts, even after its look is edited or deleted. After a
-controller restart the driver refreshes Navigators once, which frees those
-places for new pictures. A look with a live badge or a web picture that
-refreshes takes up to 32 new places between restarts, and past that its new
-pictures show in Navigator but not on remotes. While the bank is full, a new
-picture shows in Navigator but not on remotes, and Driver Status reads
+controller restart the driver refreshes Navigators once, which frees those slots
+for new pictures.
+
+A look with a live badge or a web picture that refreshes takes a new slot for
+each value it hasn't shown since the controller restarted, up to its `Budget`,
+101 by default. A value it showed before takes none. Past its budget, a look
+with a live badge shows its picture with an empty badge, a dot, until the next
+restart, and a web picture shows in Navigator but not on remotes. Driver Status
+shows how many slots the shown look has used.
+
+While the bank is full, a look with a live badge shows its dot, other new
+pictures show in Navigator but not on remotes, and Driver Status reads
 `Picture bank full until the controller restarts`.
 
 ## The Button Tab
@@ -193,6 +199,10 @@ the button's looks.
 1. **Timer** - `Stay`, the default, keeps the look until something else changes
    it. `After` shows another look once a set time has passed, as
    [Timed Looks](#timed-looks) describes.
+1. **Budget** - shows when the look has a badge with a variable or a web picture
+   that refreshes: the new slots in the [picture bank](#halo-and-neeo-remotes)
+   the look can take between controller restarts, from `1` to `512`, `101` by
+   default. The note says how many it has used since the last restart.
 1. **Show while** - shows under `By Link` only: `its link is on` or
    `its link is off`, as [Following a Button Link](#following-a-button-link)
    describes.
@@ -654,9 +664,12 @@ and `Prerelease` also installs test builds.
 
 ##### Driver Status (read-only)
 
-Displays `Ready` once the driver has started, or
-`Picture bank full until the controller restarts` while the
-[picture bank](#halo-and-neeo-remotes) has no room for a new picture.
+Displays `Ready` once the driver has started. While the shown look has a live
+badge or a web picture that refreshes, it also counts the
+[picture bank](#halo-and-neeo-remotes) slots the look has used against its
+`Budget`, and says when the look has used them all. It reads
+`Picture bank full until the controller restarts` while the bank has no room for
+a new picture.
 
 ##### Driver Version (read-only)
 
@@ -829,8 +842,16 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 ### Added
 
+- Added each look's picture on Halo and NEEO remotes
+- Added a budget for each look whose picture changes, the new pictures it can
+  add between controller restarts, with Driver Status showing how many it has
+  used
 - Added `json(text, "$.path")` to Show when, which reads one value from a
   variable that holds JSON text
+
+### Fixed
+
+- Fixed the button going blank for a moment when it's pressed or changes look
 
 ## v20261113 - 2026-11-13
 
@@ -838,14 +859,6 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 - Fixed a button's picture going blank for a moment when Navigator draws it
   again. Refresh Navigators after the update for the fix to show.
-
-### Added
-
-- Added each look's picture on Halo and NEEO remotes
-
-### Fixed
-
-- Fixed the button going blank for a moment when it's pressed or changes look
 
 ### Changed
 

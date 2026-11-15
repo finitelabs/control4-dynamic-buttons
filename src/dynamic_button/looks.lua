@@ -4,6 +4,7 @@
 
 local log = require("lib.logging")
 local Expressions = require("lib.expressions")
+local Bank = require("dynamic_button.bank")
 
 --- @class LookIcon
 --- @field id string The icon's Iconify name, `<pack>:<name>`, or the id of one of the button's own pictures.
@@ -32,6 +33,8 @@ local Expressions = require("lib.expressions")
 --- @field timerAfter? integer Seconds after the look shows that the button shows another, `Looks.MAX_TIMER` at most;
 --- the look stays without the field.
 --- @field timerShow? "before"|integer What its timer shows: the look shown before it, or another look on the button.
+--- @field budget? integer For a look whose picture changes while it shows, the new picture bank slots it can take
+--- between controller restarts, 1 to `Looks.MAX_BUDGET`; `Looks.BUDGET` without the field.
 --- @field image? { bytes: integer, stale?: boolean, version?: integer, source?: string } The drawn picture,
 --- once the Button tab has sent it; stale while the look's fields have changed since it was drawn. Its
 --- version is the number it's served under; for a refreshing picture, its source names the bytes.
@@ -120,6 +123,13 @@ Looks.MAX_TIMER = 86400
 
 --- A timer that shows the look shown before the timed one.
 Looks.TIMER_BEFORE = "before"
+
+--- The new picture bank slots a look whose picture changes can take between controller restarts
+--- when it doesn't say: each value from 0 to 100.
+Looks.BUDGET = 101
+
+--- The most it can ask for: the whole bank.
+Looks.MAX_BUDGET = Bank.SIZE
 
 --- What a look's Show while can be: By Link shows it while its Button Link is on, or while it is off.
 Looks.SHOW_WHILE_ON = "on"
@@ -512,6 +522,9 @@ function Looks:_check(fields, exceptId)
   if showWhile ~= Looks.SHOW_WHILE_ON and showWhile ~= Looks.SHOW_WHILE_OFF then
     return nil, '"Show while" is "on" or "off"'
   end
+  if fields.budget ~= nil and not wholeBetween(fields.budget, 1, Looks.MAX_BUDGET) then
+    return nil, string.format("a look's budget is a whole number of picture slots from 1 to %d", Looks.MAX_BUDGET)
+  end
   local timerAfter, timerShow = fields.timerAfter, nil
   if timerAfter ~= nil then
     if not wholeBetween(timerAfter, 1, Looks.MAX_TIMER) then
@@ -549,6 +562,7 @@ function Looks:_check(fields, exceptId)
     showWhile = showWhile,
     timerAfter = timerAfter,
     timerShow = timerShow,
+    budget = fields.budget ~= Looks.BUDGET and fields.budget or nil,
   }
 end
 
@@ -592,6 +606,13 @@ end
 --- @return boolean on True while its link is on, false while it is off.
 function Looks.showsWhileOn(look)
   return look.showWhile ~= Looks.SHOW_WHILE_OFF
+end
+
+--- The new picture bank slots a look whose picture changes can take between controller restarts.
+--- @param look Look
+--- @return integer budget
+function Looks.budget(look)
+  return tonumber(look.budget) or Looks.BUDGET
 end
 
 --- Whether stepping through the cycle can land on a look.
