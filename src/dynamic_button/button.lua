@@ -1,7 +1,6 @@
 -- What the Navigator button shows: one look at a time, or the driver's own icon when no look is
 -- ready. Showing a look serves its picture and tells the proxy: through the picture bank's slot for
--- that picture, or by its address when the bank can't take it. A look with a live badge first takes
--- a slot for its picture with an empty badge, a dot, which it shows once its values can't take one.
+-- that picture, or by its address when the bank can't take it.
 
 local log = require("lib.logging")
 local Images = require("dynamic_button.images")
