@@ -7,6 +7,14 @@
 --- or:
 ---   ./test/run_test.sh test_dynamic_button_live_badge.lua
 
+-- Pinned before the harness loads, which reads the controller's start from it without luasocket.
+local clock = 1000000
+-- luacheck: push ignore os
+os.time = function()
+  return clock
+end
+-- luacheck: pop
+
 local T = require("testlib")
 local H = require("dynamic_button_harness")
 local LibDeflate = require("LibDeflate")
@@ -14,13 +22,7 @@ local Png = require("dynamic_button.png")
 local BadgeArt = require("dynamic_button.badge_art")
 local Looks = require("dynamic_button.looks")
 local LiveBadges = require("dynamic_button.live_badges")
-
-local clock = 1000000
--- luacheck: push ignore os
-os.time = function()
-  return clock
-end
--- luacheck: pop
+local Bank = require("dynamic_button.bank")
 
 local BATTERY = 100
 local LEVEL = "PARAM{100,1001}"
@@ -122,7 +124,7 @@ local function stateLook(id)
   error("no look " .. id)
 end
 
---- @return string|nil address The last address the proxy was told.
+--- @return string|nil address The last address or picture bank state the proxy was told.
 local function address()
   local icon = H.lastIcon()
   return icon and icon.params.icon or nil
@@ -256,8 +258,9 @@ T.truthy("a small badge never shrinks its text, only widens", BadgeArt.fits({ pl
 T.section("A live badge's picture")
 H.mark()
 local battery = addLook("Battery", live(LEVEL .. "%"))
-local key50 = address():match("%-(%x+)$")
-T.truthy("its address names the text", key50 ~= nil and #key50 == 8)
+local state50 = address()
+T.truthy("it shows through a picture bank state", state50:match("^p%d+$"))
+T.eq("whose slot holds the picture with the badge", H.banked(state50), served(battery))
 T.eq("the proxy hears of it", told(), 1)
 T.truthy("the picture Navigator loads has the badge", painted(served(battery)) > 0)
 T.eq("the picture the driver keeps doesn't", painted(stored(battery)), 0)
@@ -284,8 +287,8 @@ settle()
 T.eq("at the minute one picture comes", told(), 1)
 T.eq("for all the changes", stateLook(battery).badgeNow, "61%")
 T.neq("and it's different", served(battery), first)
-local key61 = address():match("%-(%x+)$")
-T.neq("under a new address", key61, key50)
+local state61 = address()
+T.neq("through the state for the new picture", state61, state50)
 
 H.mark()
 clock = clock + 300
@@ -295,10 +298,10 @@ H.mark()
 setLevel("62")
 T.eq("after a quiet spell a change shows at once", told(), 1)
 
-T.section("A value seen before goes by its old address")
+T.section("A value seen before goes by its old state")
 clock = clock + 60
 setLevel("61")
-T.eq("so the app needn't load it again", address():match("%-(%x+)$"), key61)
+T.eq("so the app needn't load it again", address(), state61)
 
 T.section("The look's own choice")
 local function saveBadge(id, name, custom)
@@ -364,7 +367,7 @@ T.section("A plain badge is the tab's to draw")
 H.mark()
 local plain = addLook("Plain", live("ON"))
 EC.Show_Look({ Look = "Plain (" .. plain .. ")" })
-T.excludes("its address has no text in it", address(), "-")
+T.eq("it shows through the state for its picture", H.banked(address()), served(plain))
 T.eq("what Navigator loads is what the tab sent", served(plain), stored(plain))
 T.eq("nothing is kept to redraw from", cached(plain), nil)
 T.eq("and the tab hears nothing about it", stateLook(plain).badgeNow, nil)
@@ -378,7 +381,7 @@ H.mark()
 EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
 T.eq("showing it draws at once, whatever the last draw", told(), 1)
 T.eq("with today's value", stateLook(battery).badgeNow, "80%")
-T.contains("and the new address shows", address(), "/" .. battery .. ".png")
+T.eq("and the new picture shows through its state", H.banked(address()), served(battery))
 
 T.section("A variable shared with Show when")
 local high = addLook("High", live(LEVEL .. "%"), { showWhen = LEVEL .. " >= 50" })
@@ -418,7 +421,7 @@ setDevices()
 settle()
 T.eq("when it comes, the badge draws", stateLook(battery).badgeNow, "33%")
 T.eq("once", told(), 1)
-T.contains("under the shown look", address(), "/" .. battery .. ".png")
+T.eq("through the state for the new picture", H.banked(address()), served(battery))
 
 T.section("A restart where the first value isn't the real one")
 saveBadge(battery, "Battery", live(LEVEL .. "%", { every = 3600 }))
@@ -471,14 +474,16 @@ SetTimer = function(name, ...)
   end
 end
 H.restart()
-T.falsy("the address has no text in it yet", address():match("%-%x+$"))
+local unbadged = served(battery)
+T.eq("the picture from before shows through its state", H.banked(address()), unbadged)
 hasLevel = true
 level = "46"
 setDevices()
 Properties["Look Control"] = "By Value"
 OnPropertyChanged("Look Control")
 settle()
-T.truthy("the badge's own retry still finds it and draws", address():match("%-%x+$"))
+T.truthy("the badge's own retry still finds it and draws", served(battery) ~= unbadged)
+T.eq("through the state for the new picture", H.banked(address()), served(battery))
 SetTimer = realSetTimer
 Properties["Look Control"] = "Manual"
 OnPropertyChanged("Look Control")
@@ -558,6 +563,70 @@ T.contains(
   "1 to 20"
 )
 T.contains("an update choice is one of the list", tostring(refused(live(LEVEL, { every = 7 }).badge)), "update choice")
+
+T.section("Past its budget of picture bank slots")
+local gauge = addLook("Gauge", live(LEVEL .. "%"), { budget = 2 })
+EC.Show_Look({ Look = "Gauge (" .. gauge .. ")" })
+settle()
+clock = clock + 3600
+setLevel("47")
+local state47 = address()
+T.truthy("a value takes a slot", state47:match("^p%d+$"))
+T.eq("Driver Status counts the new ones", Properties["Driver Status"], "Ready, shown look used 2 of 2 picture slots")
+T.eq("and so does the tab", stateLook(gauge).bankUsed, 2)
+clock = clock + 3600
+setLevel("48")
+local dot = address()
+T.truthy("a new value past it shows through a state too", dot:match("^p%d+$") and dot ~= state47)
+T.truthy("a dot: the look's picture with its badge empty", painted(H.banked(dot)) > 0)
+T.truthy("smaller than a badge with text", painted(H.banked(dot)) < painted(H.banked(state47)))
+T.eq("which took none of the budget", stateLook(gauge).bankUsed, 2)
+T.eq(
+  "Driver Status says so",
+  Properties["Driver Status"],
+  "Shown look used 2 of 2 picture slots until the controller restarts"
+)
+clock = clock + 3600
+setLevel("47")
+T.eq("a value seen before shows through its state", address(), state47)
+T.eq("and Driver Status counts again", Properties["Driver Status"], "Ready, shown look used 2 of 2 picture slots")
+
+T.section("A full picture bank")
+local gaugeFields = H.lookFields("Gauge", { budget = 10 })
+gaugeFields.id = gauge
+gaugeFields.custom = live(LEVEL .. "%")
+H.tab("_SAVE_LOOK", gaugeFields)
+-- Every slot sent at the last Navigator refresh, so none can take a new picture. The refresh, not
+-- now: the clock set back above is behind it.
+local records, filled = ShimFiles("C4Z/bank"), {}
+local sentAt = records.refreshed
+for slot = 1, Bank.SIZE do
+  local key = tostring(slot)
+  local hash = (records[key] or ""):match("^(%x+) %d+$")
+  if not hash then
+    table.insert(filled, key)
+  end
+  records[key] = (hash or string.rep("f", 64)) .. " " .. sentAt
+end
+clock = clock + 3600
+setLevel("49")
+T.eq("a new value shows the look's dot", address(), dot)
+T.eq(
+  "and Driver Status names the full bank",
+  Properties["Driver Status"],
+  "Picture bank full until the controller restarts"
+)
+T.truthy("the log says", warned("picture bank is full") > 0)
+for _, slot in ipairs(filled) do
+  records[slot] = nil
+end
+clock = clock + 3600
+setLevel("50")
+T.truthy("once a slot is free, the value takes it", address():match("^p%d+$") and address() ~= dot)
+T.eq("within the look's own budget", Properties["Driver Status"], "Ready, shown look used 3 of 10 picture slots")
+H.tab("_DELETE_LOOK", { id = gauge })
+EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
+settle()
 
 T.section("A device leaving the project")
 EC.Show_Look({ Look = "Battery (" .. battery .. ")" })

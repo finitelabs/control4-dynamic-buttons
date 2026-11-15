@@ -620,6 +620,30 @@ T.truthy(
 T.truthy("and a number too large to round is only cut", has("if (m && Math.abs(Number(m[2])) < 1e21) {"))
 T.truthy("the size and the place change what fits", has("refitBadge();\n});\n$('c-badge-size')"))
 
+T.section("A look's budget of picture bank slots")
+T.truthy(
+  "the default and the most are the driver's",
+  has("var BUDGET = " .. Looks.BUDGET .. ", BUDGET_MAX = " .. Looks.MAX_BUDGET .. ";")
+    and has('id="f-budget" min="1" max="' .. Looks.MAX_BUDGET .. '" step="1" value="' .. Looks.BUDGET .. '"')
+)
+T.truthy(
+  "the row shows for a look whose picture changes",
+  has("$('fld-budget').hidden = !web && !isLiveText(badgeEditor.value());")
+)
+T.truthy("the badge's text and the picture both decide it", has("$('fld-c-every').hidden = !live;\n  syncBudgetRow();"))
+T.truthy("the save sends it", has("Object.assign(fields, budgetFields());"))
+T.truthy(
+  "only when it isn't the default",
+  has("return { budget: !$('fld-budget').hidden && n !== BUDGET ? n : null };")
+)
+T.truthy("the note says how many the look used", has("' Used since the last restart: ' + l.bankUsed + '.'"))
+T.truthy(
+  "a copy and a file carry it",
+  has("budget: l.budget || null };")
+    and has("fields.budget = look.budget || null;")
+    and has("if (l.budget != null && !wholeIn(l.budget, 1, BUDGET_MAX))")
+)
+
 T.section("A sentence names the field in quotes")
 T.truthy("under Look Control", has([['The first look whose "Show when" is true shows.']]))
 T.truthy("beside Default look", has([[Show this look when no "Show when" is true]]))

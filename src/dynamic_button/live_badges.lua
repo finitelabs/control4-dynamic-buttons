@@ -249,6 +249,15 @@ function LiveBadges:picture(look, png)
   return drawn or png, addressKey(drawn and text or nil)
 end
 
+--- A look's picture with its live badge empty: a dot in the badge's place and color.
+--- @param look Look
+--- @param png string The look's stored picture.
+--- @return string|nil dot Nil for a look without a live badge, or when it can't be drawn.
+function LiveBadges:dot(look, png)
+  local badge = Looks.liveBadge(look)
+  return badge and (self:_draw(look, badge, png, "")) or nil
+end
+
 --- A watched variable changed: draw the badge again if its text did and its time has come. The
 --- value read when the time comes is the one drawn, so a burst of changes costs one picture.
 function LiveBadges:check()
