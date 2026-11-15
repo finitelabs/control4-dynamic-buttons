@@ -174,8 +174,10 @@ end
 
 --- Tell the proxy what to show: a picture's address, or "" for the driver's own icon.
 --- @param icon string
---- @param description string The text list Navigators show in place of the picture.
-local function sendIcon(icon, description)
+--- @param name string The shown look's name, or "" for none.
+local function sendIcon(icon, name)
+  local proxyId = C4:GetProxyDevices()
+  local description = Looks.description(name, proxyId and C4:GetDeviceDisplayName(proxyId))
   -- A notification: the proxy ignores ICON_CHANGED sent as a command. Empty values allowed: a
   -- button with no look has no description.
   SendToProxy(PROXY_BINDING, "ICON_CHANGED", { icon = icon, icon_description = description }, "NOTIFY", true)

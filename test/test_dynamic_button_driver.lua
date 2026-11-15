@@ -156,6 +156,21 @@ EC.Show_Look({ Look = "Charged (1)" })
 EC.Show_Look({ Look = "Low (3)" })
 T.eq("Show Look with the old label finds it too", H.lastIcon().params.icon_description, "Empty")
 
+T.section("A text line that would repeat the button's name")
+ShimSetDevices({
+  [H.DEVICE_ID] = { deviceName = "Battery", proxies = { [H.DEVICE_ID + 1] = true } },
+  [H.DEVICE_ID + 1] = { deviceName = "Battery" },
+})
+H.mark()
+H.tab("_SAVE_LOOK", H.lookFields("Battery", { id = low }))
+T.eq("a look named as the button sends no text line", H.lastIcon().params.icon_description, "")
+H.tab("_SAVE_LOOK", H.lookFields("Battery Low", { id = low }))
+T.eq("one starting with the button's name sends the rest", H.lastIcon().params.icon_description, "Low")
+H.tab("_SAVE_LOOK", H.lookFields("Empty", { id = low }))
+T.eq("another sends its name", H.lastIcon().params.icon_description, "Empty")
+T.eq("the Look variable keeps the look's full name", Variables["Look"], "Empty")
+ShimResetDevices()
+
 T.section("Editing how a look is drawn")
 H.mark()
 H.tab("_SAVE_LOOK", H.lookFields("Empty", { id = low, tileColor = "#DC2626" }))

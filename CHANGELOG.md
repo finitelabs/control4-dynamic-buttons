@@ -34,6 +34,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 ### Fixed
 
 - Fixed the button going blank for a moment when it's pressed or changes look
+- Fixed remotes repeating the button's name when the shown look is named as the
+  button or its name starts with the button's
 
 ## v20261113 - 2026-11-13
 
