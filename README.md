@@ -24,7 +24,7 @@ the programming you attach to it.
 - [Installer Setup](#installer-setup)
   - [Driver Installation](#driver-installation)
   - [Showing the Button in Navigator](#showing-the-button-in-navigator)
-  - [Halo and NEEO Remotes](#halo-and-neeo-remotes)
+  - [Android, Touchscreens and Remotes](#android-touchscreens-and-remotes)
   - [The Button Tab](#the-button-tab)
     - [Properties](#properties)
     - [Looks](#looks)
@@ -113,11 +113,12 @@ A new button starts hidden in every Navigator menu. To show it:
 
 Until the button has a look, it shows the driver's own icon.
 
-## Halo and NEEO Remotes
+## Android, Touchscreens and Remotes
 
-Halo and NEEO remotes show the button's look as Navigator does. The first time
-Dynamic Buttons start in a project, the driver refreshes Navigators about a
-minute later, and remotes show looks from then.
+The Android app, touchscreens, and Halo and NEEO remotes show the button's look
+as the iOS and Mac apps do. The first time Dynamic Buttons start in a project,
+the driver refreshes Navigators about a minute later, and they show looks from
+then.
 
 A remote lists the button by its name, then the shown look's name. A look named
 as the button adds nothing after it, and a look whose name starts with the
@@ -133,12 +134,13 @@ A look with a live badge or a web picture that refreshes takes a new slot for
 each value it hasn't shown since the controller restarted, up to its `Budget`,
 101 by default. A value it showed before takes none. Past its budget, a look
 with a live badge shows its picture with an empty badge, a dot, until the next
-restart, and a web picture shows in Navigator but not on remotes. Driver Status
-shows how many slots the shown look has used.
+restart, and a web picture's new pictures show in the iOS and Mac apps and the
+driver's icon elsewhere. Driver Status shows how many slots the shown look has
+used.
 
 While the bank is full, a look with a live badge shows its dot, other new
-pictures show in Navigator but not on remotes, and Driver Status reads
-`Picture bank full until the controller restarts`.
+pictures show in the iOS and Mac apps and the driver's icon elsewhere, and
+Driver Status reads `Picture bank full until the controller restarts`.
 
 ## The Button Tab
 
@@ -204,9 +206,10 @@ the button's looks.
    it. `After` shows another look once a set time has passed, as
    [Timed Looks](#timed-looks) describes.
 1. **Budget** - shows when the look has a badge with a variable or a web picture
-   that refreshes: the new slots in the [picture bank](#halo-and-neeo-remotes)
-   the look can take between controller restarts, from `1` to `512`, `101` by
-   default. The note says how many it has used since the last restart.
+   that refreshes: the new slots in the
+   [picture bank](#android-touchscreens-and-remotes) the look can take between
+   controller restarts, from `1` to `512`, `101` by default. The note says how
+   many it has used since the last restart.
 1. **Show while** - shows under `By Link` only: `its link is on` or
    `its link is off`, as [Following a Button Link](#following-a-button-link)
    describes.
@@ -288,7 +291,7 @@ look that has a badge.
 1. **Round** - shows when the text holds a variable: `Off`, the default, or
    `Nearest 0.01`, `0.1`, `1`, `10`, `100` or `1000`. A number a variable reads
    draws rounded, and the rest of the text draws as written. Fewer values take
-   fewer [picture bank](#halo-and-neeo-remotes) slots.
+   fewer [picture bank](#android-touchscreens-and-remotes) slots.
 1. **Size** - the badge's size, from `50%` to `150%`.
 1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
 1. **Text color** - the color of the badge's text.
@@ -674,8 +677,8 @@ and `Prerelease` also installs test builds.
 
 Displays `Ready` once the driver has started. While the shown look has a live
 badge or a web picture that refreshes, it also counts the
-[picture bank](#halo-and-neeo-remotes) slots the look has used against its
-`Budget`, and says when the look has used them all. It reads
+[picture bank](#android-touchscreens-and-remotes) slots the look has used
+against its `Budget`, and says when the look has used them all. It reads
 `Picture bank full until the controller restarts` while the bank has no room for
 a new picture.
 
@@ -846,7 +849,7 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Removed
 -->
 
-## Unreleased
+## v20261115 - 2026-11-15
 
 ### Added
 
@@ -861,6 +864,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 ### Fixed
 
+- Fixed the Android app and touchscreens showing the driver's icon instead of
+  the button's look
 - Fixed the button going blank for a moment when it's pressed or changes look
 - Fixed remotes repeating the button's name when the shown look is named as the
   button or its name starts with the button's
