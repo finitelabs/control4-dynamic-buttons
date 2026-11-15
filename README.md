@@ -281,6 +281,10 @@ look that has a badge.
    badge changes at most this often, and a change after a quiet spell shows at
    once. Each update writes to the controller's storage and every Navigator
    loads the new picture, so less often is better.
+1. **Round** - shows when the text holds a variable: `Off`, the default, or
+   `Nearest 0.01`, `0.1`, `1`, `10`, `100` or `1000`. A number a variable reads
+   draws rounded, and the rest of the text draws as written. Fewer values take
+   fewer [picture bank](#halo-and-neeo-remotes) slots.
 1. **Size** - the badge's size, from `50%` to `150%`.
 1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
 1. **Text color** - the color of the badge's text.
@@ -848,6 +852,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   used
 - Added `json(text, "$.path")` to Show when, which reads one value from a
   variable that holds JSON text
+- Added a Round choice for a live badge, so the number it shows rounds to the
+  nearest 0.01, 0.1, 1, 10, 100 or 1000
 
 ### Fixed
 

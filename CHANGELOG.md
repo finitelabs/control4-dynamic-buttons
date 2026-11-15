@@ -28,6 +28,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
   used
 - Added `json(text, "$.path")` to Show when, which reads one value from a
   variable that holds JSON text
+- Added a Round choice for a live badge, so the number it shows rounds to the
+  nearest 0.01, 0.1, 1, 10, 100 or 1000
 
 ### Fixed
 

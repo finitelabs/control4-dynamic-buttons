@@ -75,7 +75,7 @@
   /* The reset link sits on the open summary's line. */
   .custom-head { display: flex; justify-content: flex-end; margin: -28px 0 8px; }
   #badge-ed { flex: 0 1 260px; min-width: 0; }
-  #c-every { width: 190px; }
+  #c-every, #c-round { width: 190px; }
   #c-badge-note.bad { color: var(--danger); }
   #fld-c-size .kit-range, #fld-c-badge-size .kit-range { width: 280px; max-width: 100%; }
   #c-pos code { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
@@ -405,6 +405,21 @@
                 </select>
               </div>
               <div class="kit-form-note">At most this often. Each update writes to the controller's storage and every Navigator loads the new picture, so less often is better.</div>
+            </div>
+            <div class="kit-form-row" id="fld-c-round" hidden>
+              <label for="c-round">Round</label>
+              <div class="kit-form-ctl">
+                <select id="c-round">
+                  <option value="">Off</option>
+                  <option value="0.01">Nearest 0.01</option>
+                  <option value="0.1">Nearest 0.1</option>
+                  <option value="1">Nearest 1</option>
+                  <option value="10">Nearest 10</option>
+                  <option value="100">Nearest 100</option>
+                  <option value="1000">Nearest 1000</option>
+                </select>
+              </div>
+              <div class="kit-form-note">Rounds the numbers the variables read. Fewer values make fewer pictures.</div>
             </div>
             <div class="kit-form-row" id="fld-c-badge-size">
               <label for="c-badge-size">Size</label>
@@ -759,6 +774,7 @@ function cleanCustom(icon, raw) {
   if (text) c.badge = { text: text, place: b.place || 'Top Right', color: (b.color || '#FFFFFF').toUpperCase(), background: b.background === 'None' ? 'None' : (b.background || '#DC2626').toUpperCase() };
   if (text && b.size && Number(b.size) !== 100) c.badge.size = Number(b.size);
   if (text && isLiveText(text) && b.every && Number(b.every) !== BADGE_EVERY) c.badge.every = Number(b.every);
+  if (text && isLiveText(text) && b.round) c.badge.round = Number(b.round);
   return Object.keys(c).length ? c : null;
 }
 function customKey(look) {
@@ -2124,6 +2140,7 @@ function syncCustom() {
   badgeEditor.setValue(b.text);
   syncBadgeNote();
   $('c-every').value = String(b.every || BADGE_EVERY);
+  $('c-round').value = b.round ? String(b.round) : '';
   $('c-badge-size').value = b.size || 100;
   $('c-badge-size-v').textContent = (b.size || 100) + '%';
   $('c-place').innerHTML = BADGE_PLACES.map(function(p) { return '<button type="button" data-place="' + p + '"' + (p === b.place ? ' class="on"' : '') + '>' + p + '</button>'; }).join('');
@@ -2184,6 +2201,10 @@ $('c-pos').addEventListener('click', function(e) {
   preview();
 });
 $('c-every').addEventListener('change', function() { badgeOf(gEditor.look).every = Number($('c-every').value); });
+$('c-round').addEventListener('change', function() {
+  badgeOf(gEditor.look).round = $('c-round').value ? Number($('c-round').value) : null;
+  refitBadge();
+});
 $('badge-insert').addEventListener('click', function() { toggleVarBrowser('c-badge', $('fld-c-badge')); });
 
 // A badge's text, on one line, colors only its variables: the rest is words, not code. It previews while it reads one.
@@ -2211,6 +2232,7 @@ function badgeProblem(b) {
 function syncBadgeNote() {
   var text = badgeEditor.value(), live = isLiveText(text);
   $('fld-c-every').hidden = !live;
+  $('fld-c-round').hidden = !live;
   syncBudgetRow();
   if (live) return;
   var problem = badgeProblem(Object.assign({}, badgeOf(gEditor.look), { text: text }));
@@ -2220,11 +2242,16 @@ function syncBadgeNote() {
   $('c-badge-note').classList.toggle('bad', !!problem);
   $('c-badge-note').title = '';
 }
+// The driver's reading of a live badge, rounded as the badge asks, before it is fitted.
+function badgeReading(result, b) {
+  var rounded = b && b.round && result.rounded ? result.rounded[String(b.round)] : null;
+  return Kit.str(rounded != null ? rounded : result.fitted);
+}
 // What the driver answers about a live badge's text.
 function onBadgeResult(result) {
   gEditor.badgeResult = result;
   if (!gEditor.look) return;
-  var note = $('c-badge-note'), now = result.error ? '' : fitBadge(Kit.str(result.fitted), badgeOf(gEditor.look));
+  var note = $('c-badge-note'), now = result.error ? '' : fitBadge(badgeReading(result, badgeOf(gEditor.look)), badgeOf(gEditor.look));
   note.classList.toggle('bad', !!result.error);
   note.textContent = result.error ? result.message : 'Shows ' + (now || 'nothing') + ' now. A number shortens to fit, and then the end is cut.';
   note.title = result.error || '';
@@ -2544,7 +2571,7 @@ function demoSave(fields) {
   existing.showWhenText = when ? when.rendered : fields.showWhen;
   existing.whenError = when ? when.error : '';
   var live = fields.custom && fields.custom.badge && isLiveText(fields.custom.badge.text) ? gEditor.badgeResult : null;
-  existing.badgeNow = live && !live.error ? fitBadge(Kit.str(live.fitted), fields.custom.badge) : null;
+  existing.badgeNow = live && !live.error ? fitBadge(badgeReading(live, fields.custom.badge), fields.custom.badge) : null;
   existing.badgeError = live ? live.error : '';
   existing.badgeText = live ? live.rendered : '';
   if (fields.isDefault) gState.defaultLook = id;
@@ -2990,6 +3017,7 @@ function importIcon(icon, pictures, key) {
 // The driver's own rules for a look (Looks:_check), so a look it would refuse is left out before Replace
 // deletes anything. Its name against the button's other looks is the copy's to settle.
 var BADGE_EVERY_CHOICES = [30, 60, 300, 900, 3600];
+var BADGE_ROUNDS = [0.01, 0.1, 1, 10, 100, 1000];
 function isHexColor(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
 function wholeIn(v, low, high) { return typeof v === 'number' && Math.floor(v) === v && v >= low && v <= high; }
 function utf8Bytes(s) { return new TextEncoder().encode(s).length; }
@@ -3026,6 +3054,7 @@ function lookProblem(l, refreshes) {
   if (!live && !badgeFits({ text: text, place: b.place, size: b.size })) return 'its badge text is too wide to fit';
   var every = typeof b.every === 'number' || (typeof b.every === 'string' && b.every.trim() !== '' && !isNaN(Number(b.every))) ? Number(b.every) : BADGE_EVERY;
   if (live && BADGE_EVERY_CHOICES.indexOf(every) < 0) return 'its badge’s update choice isn’t one the driver knows';
+  if (live && b.round != null && BADGE_ROUNDS.indexOf(Number(b.round)) < 0) return 'its badge’s round choice isn’t one the driver knows';
   return null;
 }
 // What runs or reaches out from a look: its Show when, a live badge's text and a refreshing picture's address.
@@ -3346,7 +3375,8 @@ var DEMO_PREVIEWS = {
   'PARAM{9001,1} < 20': { rendered: DEMO_BATTERY + 'LEVEL] < 20', substituted: '62 < 20', result: 'false' },
   'PARAM{9001,2} == "Charging" and PARAM{9001,1} < 100': { result: 'true', substituted: 'Charging == "Charging" and 62 < 100',
     rendered: DEMO_BATTERY + 'STATE] == "Charging" and ' + DEMO_BATTERY + 'LEVEL] < 100' },
-  'PARAM{9001,1}%': { rendered: DEMO_BATTERY + 'LEVEL]%', substituted: '62%', result: '62%', fitted: '62%' }
+  'PARAM{9001,1}%': { rendered: DEMO_BATTERY + 'LEVEL]%', substituted: '62%', result: '62%', fitted: '62%',
+    rounded: { '0.01': '62.00%', '0.1': '62.0%', '1': '62%', '10': '60%', '100': '100%', '1000': '0%' } }
 };
 
 // ============================================================

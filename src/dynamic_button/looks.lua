@@ -47,6 +47,8 @@ local Bank = require("dynamic_button.bank")
 --- @field background string The badge's color, `#RRGGBB`, or `None`.
 --- @field size? integer The badge's size, `Looks.MIN_BADGE_SIZE` to `Looks.MAX_BADGE_SIZE` percent.
 --- @field every? integer For a live badge, the least seconds between pictures, one of `Looks.BADGE_EVERY_SECONDS`.
+--- @field round? number For a live badge, what a number its variables read rounds to, one of `Looks.BADGE_ROUNDS`;
+--- as it reads without the field.
 
 --- @class LookCustom A missing field keeps the picture's own.
 --- @field color? string The picture's color, `#RRGGBB`.
@@ -101,6 +103,9 @@ Looks.MAX_LIVE_BADGE = 200
 --- How often a live badge may draw a new picture, in seconds.
 Looks.BADGE_EVERY_SECONDS = { 30, 60, 300, 900, 3600 }
 Looks.DEFAULT_BADGE_EVERY_SECONDS = 60
+
+--- What a live badge's numbers can round to.
+Looks.BADGE_ROUNDS = { 0.01, 0.1, 1, 10, 100, 1000 }
 
 --- The smallest and largest badge, in percent.
 Looks.MIN_BADGE_SIZE = 50
@@ -335,7 +340,7 @@ local function checkBadge(raw)
     return nil,
       string.format("a badge's size is a whole percent from %d to %d", Looks.MIN_BADGE_SIZE, Looks.MAX_BADGE_SIZE)
   end
-  local every
+  local every, round
   if live then
     every = tonumber(raw.every) or Looks.DEFAULT_BADGE_EVERY_SECONDS
     local known = false
@@ -345,6 +350,16 @@ local function checkBadge(raw)
     if not known then
       return nil, "a badge's update choice isn't one the driver knows"
     end
+    if raw.round ~= nil then
+      round = tonumber(raw.round)
+      known = false
+      for _, step in ipairs(Looks.BADGE_ROUNDS) do
+        known = known or step == round
+      end
+      if not known then
+        return nil, "a badge's round choice isn't one the driver knows"
+      end
+    end
   end
   return {
     text = text,
@@ -353,6 +368,7 @@ local function checkBadge(raw)
     background = background,
     size = raw.size ~= 100 and raw.size or nil,
     every = every ~= Looks.DEFAULT_BADGE_EVERY_SECONDS and every or nil,
+    round = round,
   }
 end
 

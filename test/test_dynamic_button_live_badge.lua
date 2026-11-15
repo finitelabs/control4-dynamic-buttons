@@ -542,6 +542,71 @@ H.tab("_EVAL_EXPRESSION", { id = "b2", expression = "PARAM{100,NOPE}", mode = "s
 T.contains("a missing variable is an error", H.lastUi("EVAL_RESULT").error, "NOPE")
 H.tab("_EVAL_EXPRESSION", { id = "w1", expression = "1 < 2" })
 T.eq("Show when's preview is as it was", H.lastUi("EVAL_RESULT").result, "true")
+setLevel("47.25")
+H.tab("_EVAL_EXPRESSION", { id = "b3", expression = "Zone 2: " .. LEVEL .. "% PARAM{100,1002}", mode = "string" })
+local rounded = H.lastUi("EVAL_RESULT").rounded
+T.eq(
+  "each round choice comes with it, the variables' numbers rounded and the rest as written",
+  { rounded["0.01"], rounded["0.1"], rounded["1"], rounded["10"], rounded["100"], rounded["1000"] },
+  {
+    "Zone 2: 47.25% Idle",
+    "Zone 2: 47.3% Idle",
+    "Zone 2: 47% Idle",
+    "Zone 2: 50% Idle",
+    "Zone 2: 0% Idle",
+    "Zone 2: 0% Idle",
+  }
+)
+
+T.section("Rounding a value")
+T.eq("a half rounds away from zero", { LiveBadges.round("2.5", 1), LiveBadges.round("-2.5", 1) }, { "3", "-3" })
+T.eq("to tens and thousands", { LiveBadges.round("1234", 10), LiveBadges.round("1500", 1000) }, { "1230", "2000" })
+T.eq("decimals keep their places", { LiveBadges.round("7", 0.1), LiveBadges.round(".456", 0.01) }, { "7.0", "0.46" })
+T.eq("a value that rounds to zero loses its sign", LiveBadges.round("-4", 10), "0")
+T.eq("spaces around a number are no matter", LiveBadges.round(" 41.6 ", 1), "42")
+T.eq(
+  "text, a hex number and an exponent stay as they read",
+  { LiveBadges.round("On", 1), LiveBadges.round("0x1F", 1), LiveBadges.round("1e5", 1), LiveBadges.round("4.", 1) },
+  { "On", "0x1F", "1e5", "4." }
+)
+T.eq("a half in the third decimal rounds away from zero, though a double can't hold it", {
+  LiveBadges.round("1.005", 0.01),
+  LiveBadges.round("0.145", 0.01),
+  LiveBadges.round("0.285", 0.01),
+  LiveBadges.round("-1.015", 0.01),
+}, { "1.01", "0.15", "0.29", "-1.02" })
+local wrongHalves = 0
+for hundredths = 0, 9999 do
+  local half = string.format("%d.%02d5", math.floor(hundredths / 100), hundredths % 100)
+  local up = string.format("%d.%02d", math.floor((hundredths + 1) / 100), (hundredths + 1) % 100)
+  if LiveBadges.round(half, 0.01) ~= up then
+    wrongHalves = wrongHalves + 1
+  end
+end
+T.eq("every half from 0.005 to 99.995 rounds up", wrongHalves, 0)
+T.eq(
+  "a value under half a step is zero, and one past it carries",
+  { LiveBadges.round("-0.004", 0.01), LiveBadges.round("4", 1000), LiveBadges.round("999.96", 0.1) },
+  { "0.00", "0", "1000.0" }
+)
+T.eq("a long number rounds on its digits", LiveBadges.round("1234567890123456", 10), "1234567890123460")
+
+T.section("A badge that rounds")
+EC.Show_Look({ Look = "Battery (" .. battery .. ")" })
+saveBadge(battery, "Battery", live(LEVEL .. "%", { round = 10 }))
+clock = clock + 3600
+setLevel("47")
+T.eq("draws its number rounded", stateLook(battery).badgeNow, "50%")
+T.eq("and keeps the choice", stateLook(battery).custom.badge.round, 10)
+H.mark()
+clock = clock + 3600
+setLevel("48")
+T.eq("a change that rounds the same draws nothing", told(), 0)
+clock = clock + 3600
+setLevel("56")
+T.eq("one that rounds to another draws it", { told(), stateLook(battery).badgeNow }, { 1, "60%" })
+saveBadge(battery, "Battery", live(LEVEL .. "%"))
+T.eq("without the choice it reads as it is", stateLook(battery).badgeNow, "56%")
 
 T.section("What the driver takes")
 local function refused(badge)
@@ -563,6 +628,7 @@ T.contains(
   "1 to 20"
 )
 T.contains("an update choice is one of the list", tostring(refused(live(LEVEL, { every = 7 }).badge)), "update choice")
+T.contains("so is a round choice", tostring(refused(live(LEVEL, { round = 5 }).badge)), "round choice")
 
 T.section("Past its budget of picture bank slots")
 local gauge = addLook("Gauge", live(LEVEL .. "%"), { budget = 2 })

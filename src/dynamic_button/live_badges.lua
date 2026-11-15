@@ -61,6 +61,68 @@ local function rounded(value, places)
   return string.format("%." .. places .. "f", value < 0 and magnitude > 0 and -magnitude or magnitude)
 end
 
+--- How many decimals a number rounded to each step keeps: below zero, how many whole digits go.
+--- @type table<number, integer>
+local ROUND_PLACES = { [0.01] = 2, [0.1] = 1, [1] = 0, [10] = -1, [100] = -2, [1000] = -3 }
+
+--- @param digits string
+--- @return string digits One more, carried: "" gives "1", "199" gives "200".
+local function plusOne(digits)
+  local last = #digits
+  while last > 0 and digits:sub(last, last) == "9" do
+    last = last - 1
+  end
+  if last == 0 then
+    return "1" .. string.rep("0", #digits)
+  end
+  return digits:sub(1, last - 1) .. string.char(digits:byte(last) + 1) .. string.rep("0", #digits - last)
+end
+
+--- A variable's value as a live badge rounds it: a number to the nearest step, anything else as it is.
+--- The number rounds on its own digits, a half away from zero, since a double holds few decimal halves.
+--- @param value string
+--- @param step number One of `Looks.BADGE_ROUNDS`.
+--- @return string text
+function LiveBadges.round(value, step)
+  local number = value:match("^%s*(%-?%d*%.?%d+)%s*$")
+  local places = ROUND_PLACES[step]
+  if not (number and places) then
+    return value
+  end
+  local sign, whole, fraction = number:match("^(%-?)(%d*)%.?(%d*)$")
+  local keep = #whole + places
+  if keep < 0 then
+    return "0"
+  end
+  local digits = whole .. fraction .. string.rep("0", keep + 1 - #whole - #fraction)
+  local kept = digits:sub(1, keep)
+  if digits:sub(keep + 1, keep + 1) >= "5" then
+    kept = plusOne(kept)
+  end
+  local text
+  if places > 0 then
+    local point = #kept - places
+    local head = kept:sub(1, point):gsub("^0+", "")
+    text = (head == "" and "0" or head) .. "." .. kept:sub(point + 1)
+  else
+    local head = kept:gsub("^0+", "")
+    text = head == "" and "0" or head .. string.rep("0", -places)
+  end
+  -- A value that rounds to zero loses its sign.
+  return text:match("[1-9]") and sign .. text or text
+end
+
+--- What a live badge's variables read now, each number rounded as the badge asks.
+--- @param text string The badge's text, with its variables.
+--- @param step? number One of `Looks.BADGE_ROUNDS` (optional; as each reads).
+--- @return string text
+--- @return string|nil err Which variable is missing.
+function LiveBadges.substitute(text, step)
+  return Expressions.substitute(text, "string", step and function(value)
+    return LiveBadges.round(value, step)
+  end or nil)
+end
+
 --- The text a live badge reads now, with only the characters the face has, before it is fitted.
 --- @param text string
 --- @return string kept
@@ -107,11 +169,11 @@ end
 --- @return string|nil text Nil when a variable is missing.
 --- @return string|nil err Which one.
 function LiveBadges.read(badge)
-  local evaluation = Expressions.evaluate("string", badge.text)
-  if evaluation.error then
-    return nil, evaluation.error
+  local text, err = LiveBadges.substitute(badge.text, badge.round)
+  if err then
+    return nil, err
   end
-  return LiveBadges.fit(tostring(evaluation.result), badge), nil
+  return LiveBadges.fit(text, badge), nil
 end
 
 --- @param text string|nil
