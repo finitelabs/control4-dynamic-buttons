@@ -40,7 +40,6 @@ the programming you attach to it.
   <!-- #endif -->
   - [Driver Installation](#driver-installation)
   - [Showing the Button in Navigator](#showing-the-button-in-navigator)
-  - [Halo and NEEO Remotes](#halo-and-neeo-remotes)
   - [The Button Tab](#the-button-tab)
     - [Properties](#properties)
     - [Looks](#looks)
@@ -170,34 +169,10 @@ A new button starts hidden in every Navigator menu. To show it:
    with "Show", and select "OK".
 1. Refresh Navigators.
 
-Until the button has a look, it shows the driver's own icon.
-
-## Halo and NEEO Remotes
-
-Halo and NEEO remotes show the button's look as Navigator does. The first time
+Until the button has a look, it shows the driver's own icon. The first time
 Dynamic Buttons start in a project, the driver refreshes Navigators about a
-minute later, and remotes show looks from then.
-
-A remote lists the button by its name, then the shown look's name. A look named
-as the button adds nothing after it, and a look whose name starts with the
-button's adds only the rest.
-
-The Dynamic Buttons in a project share a picture bank of 512 slots, and looks
-with the same picture share one slot. A slot keeps its picture until the
-controller restarts, even after its look is edited or deleted. After a
-controller restart the driver refreshes Navigators once, which frees those slots
-for new pictures.
-
-A look with a live badge or a web picture that refreshes takes a new slot for
-each value it hasn't shown since the controller restarted, up to its `Budget`,
-101 by default. A value it showed before takes none. Past its budget, a look
-with a live badge shows its picture with an empty badge, a dot, until the next
-restart, and a web picture shows in Navigator but not on remotes. Driver Status
-shows how many slots the shown look has used.
-
-While the bank is full, a look with a live badge shows its dot, other new
-pictures show in Navigator but not on remotes, and Driver Status reads
-`Picture bank full until the controller restarts`.
+minute later, and they show looks from then. It refreshes them once more after
+each controller restart.
 
 ## The Button Tab
 
@@ -263,7 +238,8 @@ The Support Code is entered in Composer's "Properties" tab only.
 
 1. **Name** - the look's name in programming: up to 40 characters, without
    commas, and different from the button's other looks. Picking a picture fills
-   it in when it is empty.
+   it in when it is empty. Where a Navigator shows text with the button, it adds
+   this name after the button's, without the part that repeats it.
 1. **Tile shape** - `None`, `Circle`, `Rounded Square` or `Square`. With `None`
    the icon is drawn on its own, larger, and `Tile color` is hidden.
 1. **Icon color** - the color the icon is drawn in.
@@ -274,9 +250,13 @@ The Support Code is entered in Composer's "Properties" tab only.
    it. `After` shows another look once a set time has passed, as
    [Timed Looks](#timed-looks) describes.
 1. **Budget** - shows when the look has a badge with a variable or a web picture
-   that refreshes: the new slots in the [picture bank](#halo-and-neeo-remotes)
-   the look can take between controller restarts, from `1` to `512`, `101` by
-   default. The note says how many it has used since the last restart.
+   that refreshes. The project's Dynamic Buttons share a picture bank of 512
+   slots, and a picture keeps its slot until the controller restarts. The budget
+   is the new slots the look can take between restarts, from `1` to `512`, `101`
+   by default, and a value it showed before takes none. Past its budget, a live
+   badge shows a dot until the next restart, and a web picture's new pictures
+   can show as the driver's icon. The note says how many it has used since the
+   last restart.
 1. **Show while** - shows under `By Link` only: `its link is on` or
    `its link is off`, as [Following a Button Link](#following-a-button-link)
    describes.
@@ -358,7 +338,7 @@ look that has a badge.
 1. **Round** - shows when the text holds a variable: `Off`, the default, or
    `Nearest 0.01`, `0.1`, `1`, `10`, `100` or `1000`. A number a variable reads
    draws rounded, and the rest of the text draws as written. Fewer values take
-   fewer [picture bank](#halo-and-neeo-remotes) slots.
+   fewer [picture bank](#look-editor) slots.
 1. **Size** - the badge's size, from `50%` to `150%`.
 1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
 1. **Text color** - the color of the badge's text.
@@ -769,10 +749,11 @@ and `Prerelease` also installs test builds.
 
 Displays `Ready` once the driver has started. While the shown look has a live
 badge or a web picture that refreshes, it also counts the
-[picture bank](#halo-and-neeo-remotes) slots the look has used against its
-`Budget`, and says when the look has used them all. It reads
+[picture bank](#look-editor) slots the look has used against its `Budget`, and
+says when the look has used them all. It reads
 `Picture bank full until the controller restarts` while the bank has no room for
-a new picture.
+a new picture. While it does, a live badge shows its dot and other new pictures
+can show as the driver's icon.
 
 ##### Driver Version (read-only)
 

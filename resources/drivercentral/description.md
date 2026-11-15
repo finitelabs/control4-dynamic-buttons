@@ -41,5 +41,5 @@ work with no internet connection.
 
 ## Compatibility
 
-On remotes, a button shows the driver's icon for now. Looks on remotes are
-coming soon.
+Looks show in the Control4 app on iOS, Mac and Android, on touchscreens and on
+Halo and NEEO remotes.
