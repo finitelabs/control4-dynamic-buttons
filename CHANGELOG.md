@@ -33,6 +33,8 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 
 - Fixed round in Show when rounding a negative half toward zero instead of away
   from it
+- Fixed the DriverCentral driver stopping during startup since v20261115, which
+  left the button without its looks
 
 ## v20261115 - 2026-11-15
 
