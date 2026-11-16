@@ -47,8 +47,8 @@
   .control { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .control label { margin: 0; }
   .control select { width: auto; min-width: 110px; }
-  .whenlabel { align-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding-top: 9px; }
-  .whenlabel label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin: 0; }
+  .helplabel { align-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding-top: 9px; }
+  .helplabel label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin: 0; }
   .kit-form-ctl.whenbox { align-items: flex-start; }
   .lookrow .sub.bad { color: var(--danger); white-space: normal; }
   /* The on and off colors a look's link's device gives its LEDs. */
@@ -215,7 +215,7 @@
             <div class="kit-form-ctl"><select id="f-while"><option value="on">its link is on</option><option value="off">its link is off</option></select></div>
           </div>
           <div class="kit-form-row" id="fld-when" hidden>
-            <div class="whenlabel">
+            <div class="helplabel">
               <label for="f-when">Show when</label>
               <button type="button" id="when-help-toggle">Syntax help</button>
             </div>
@@ -386,12 +386,19 @@
           <summary>Badge</summary>
           <div class="kit-form" id="badge-form">
             <div class="kit-form-row" id="fld-c-badge">
-              <label for="c-badge">Text</label>
+              <div class="helplabel">
+                <label for="c-badge">Text</label>
+                <button type="button" id="badge-help-toggle">Syntax help</button>
+              </div>
               <div class="kit-form-ctl">
                 <div id="badge-ed"><textarea id="c-badge" rows="1" maxlength="200" placeholder="None" autocomplete="off"></textarea></div>
                 <button class="btn btn-secondary btn-sm" id="badge-insert" type="button">Browse Variables</button>
               </div>
               <div class="kit-form-note" id="c-badge-note"></div>
+            </div>
+            <div class="kit-form-row" id="fld-c-badge-help" hidden>
+              <span></span>
+              <div id="badge-help"></div>
             </div>
             <div class="kit-form-row" id="fld-c-every" hidden>
               <label for="c-every">Update</label>
@@ -2212,6 +2219,7 @@ var badgeEditor = Kit.expressionEditor($('c-badge'), {
   mode: 'string',
   singleLine: true,
   previewWhen: isLiveText,
+  help: { toggle: $('badge-help-toggle'), panel: $('badge-help'), wrap: $('fld-c-badge-help') },
   onInput: function(text) {
     badgeOf(gEditor.look).text = text;
     syncBadgeNote();

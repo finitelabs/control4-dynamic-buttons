@@ -18,6 +18,22 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Removed
 -->
 
+## Unreleased
+
+### Added
+
+- Added syntax help to the badge text
+
+### Changed
+
+- Changed the syntax help for Show when to cover only what an expression there
+  can use
+
+### Fixed
+
+- Fixed round in Show when rounding a negative half toward zero instead of away
+  from it
+
 ## v20261115 - 2026-11-15
 
 ### Added
