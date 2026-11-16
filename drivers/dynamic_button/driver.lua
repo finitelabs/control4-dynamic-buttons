@@ -120,6 +120,18 @@ local function readyStatus()
   return button and button:bankStatus() or "Ready"
 end
 
+--- Get all device IDs for instances of this driver, sorted ascending.
+--- @return integer[]
+local function getDriverIds()
+  local drivers = C4:GetDevicesByC4iName(C4:GetDriverFileName()) or {}
+  local ids = {}
+  for id, _ in pairs(drivers) do
+    table.insert(ids, tointeger(id))
+  end
+  table.sort(ids)
+  return ids
+end
+
 --- @return integer[] ids The project's other Dynamic Buttons, which share the picture bank.
 local function otherButtons()
   local myId = C4:GetDeviceID()
@@ -529,18 +541,6 @@ end
 --------------------------------------------------------------------------------
 
 --#ifndef DRIVERCENTRAL
---- Get all device IDs for instances of this driver, sorted ascending.
---- @return integer[]
-local function getDriverIds()
-  local drivers = C4:GetDevicesByC4iName(C4:GetDriverFileName()) or {}
-  local ids = {}
-  for id, _ in pairs(drivers) do
-    table.insert(ids, tointeger(id))
-  end
-  table.sort(ids)
-  return ids
-end
-
 --- Update the driver from the GitHub repository.
 --- @param forceUpdate? boolean Force the update even if already up to date.
 function UpdateDrivers(forceUpdate)
