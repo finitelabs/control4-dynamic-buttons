@@ -271,7 +271,8 @@ look that has a badge.
    draws rounded, and the rest of the text draws as written. Fewer values take
    fewer [picture bank](#look-editor) slots.
 1. **Size** - the badge's size, from `50%` to `150%`.
-1. **Place** - `Top Right`, `Bottom Right` or `Under` the picture.
+1. **Place** - where the badge sits on the picture: a corner, the middle of a
+   side, the `Center`, or `Under` at the bottom middle.
 1. **Text color** - the color of the badge's text.
 1. **Background** - the badge's color, or `None` for the text alone. A gray
    picture keeps its badge's colors.
@@ -827,6 +828,13 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 ### Removed
 - Removed
 -->
+
+## Unreleased
+
+### Added
+
+- Added a badge's place at any corner, the middle of any side or the center of
+  the picture, picked on a pad of nine spots
 
 ## v20261116 - 2026-11-16
 

@@ -102,6 +102,12 @@
   .lic-list { margin-top: 4px; padding-left: 18px; color: var(--text-muted); font-size: 11px; }
   .lic-copy { margin-top: 8px; font-size: 11px; color: var(--text-muted); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* A badge's place: nine spots on the picture, in its rows and columns. */
+  .place-pad { display: grid; grid-template-columns: repeat(3, 22px); grid-template-rows: repeat(3, 22px); gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .place-pad button { padding: 0; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); cursor: pointer; }
+  .place-pad button:hover { background: var(--surface-hover); }
+  .place-pad button.on { background: var(--accent); border-color: var(--accent); }
+  .place-name { font-size: 12px; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -434,7 +440,7 @@
             </div>
             <div class="kit-form-row" id="fld-c-place">
               <label>Place</label>
-              <div class="kit-form-ctl"><div class="seg" id="c-place"></div></div>
+              <div class="kit-form-ctl"><div class="place-pad" id="c-place" role="group" aria-label="Place"></div><span class="place-name" id="c-place-v"></span></div>
             </div>
             <div class="kit-form-row" id="fld-c-textcolor">
               <label for="c-badge-color">Text color</label>
@@ -872,6 +878,12 @@ function placedBody(body, look, viewSize) {
 // Where a badge's text and pill go: the pill widens with the text to its limit, then the text draws
 // smaller, down to BADGE_MIN_FONT of the picture's width. The driver's BadgeArt lays a live badge out the same.
 var BADGE_MIN_FONT = 0.1, LOOK_PICTURE = 300;
+// Each place's column and row, as the driver's BadgeArt has them. Under, the bottom middle, sits apart.
+var BADGE_SPOTS = {
+  'Top Left': [0, 0], 'Top': [1, 0], 'Top Right': [2, 0],
+  'Left': [0, 1], 'Center': [1, 1], 'Right': [2, 1],
+  'Bottom Left': [0, 2], 'Bottom Right': [2, 2]
+};
 function badgeLayout(ctx, size, b, face) {
   var under = b.place === 'Under', h = Math.round(size * (under ? 0.2 : 0.24) * (b.size || 100) / 100), full = Math.round(h * 0.68);
   var family = (face ? face + ', ' : '') + '"Segoe UI", Roboto, Arial, sans-serif';
@@ -920,8 +932,8 @@ function drawBadge(ctx, size, b, face) {
   ctx.save();
   var at = badgeLayout(ctx, size, b, face), h = at.h, w = at.w, x, y;
   ctx.font = '700 ' + at.font + 'px ' + at.family;
-  if (b.place === 'Top Right') { x = size - w - size * 0.03; y = size * 0.03; }
-  else if (b.place === 'Bottom Right') { x = size - w - size * 0.03; y = size - h - size * 0.03; }
+  var spot = BADGE_SPOTS[b.place], margin = size * 0.03;
+  if (spot) { x = margin + (size - w - 2 * margin) * spot[0] / 2; y = margin + (size - h - 2 * margin) * spot[1] / 2; }
   else { x = (size - w) / 2; y = size - h - size * 0.02; }
   if (b.background !== 'None') {
     ctx.fillStyle = b.background;
@@ -2112,7 +2124,8 @@ $('f-grayscale').addEventListener('change', function() { gEditor.look.grayscale 
 // The look editor: Icon and Badge
 // ============================================================
 var CUSTOM_COLORS = ['color', 'body', 'tile', 'symbol', 'glowColor'];
-var BADGE_PLACES = ['Top Right', 'Bottom Right', 'Under'];
+// In the pad's reading order.
+var BADGE_PLACES = ['Top Left', 'Top', 'Top Right', 'Left', 'Center', 'Right', 'Bottom Left', 'Under', 'Bottom Right'];
 var BADGE_MAX = 20;
 var BADGE_EVERY = 60;
 function isLiveText(text) { return /PARAM\s*\{[^,}]*,[^}]*\}/.test(String(text || '')); }
@@ -2150,7 +2163,11 @@ function syncCustom() {
   $('c-round').value = b.round ? String(b.round) : '';
   $('c-badge-size').value = b.size || 100;
   $('c-badge-size-v').textContent = (b.size || 100) + '%';
-  $('c-place').innerHTML = BADGE_PLACES.map(function(p) { return '<button type="button" data-place="' + p + '"' + (p === b.place ? ' class="on"' : '') + '>' + p + '</button>'; }).join('');
+  $('c-place').innerHTML = BADGE_PLACES.map(function(p) {
+    var on = p === b.place;
+    return '<button type="button" data-place="' + p + '" title="' + p + '" aria-label="' + p + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '></button>';
+  }).join('');
+  $('c-place-v').textContent = b.place;
   $('c-badge-color').value = b.color.toLowerCase();
   $('c-badge-color-v').textContent = b.color.toUpperCase();
   var none = b.background === 'None';

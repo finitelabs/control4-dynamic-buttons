@@ -18,6 +18,13 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Removed
 -->
 
+## Unreleased
+
+### Added
+
+- Added a badge's place at any corner, the middle of any side or the center of
+  the picture, picked on a pad of nine spots
+
 ## v20261116 - 2026-11-16
 
 ### Added

@@ -24,6 +24,19 @@ local function pillHeight(badge, canvas)
   return floor(canvas * share * (badge.size or 100) / 100 + 0.5)
 end
 
+--- Each place's column and row on the picture: 0 at the left or top, 1 in the middle, 2 at the right or bottom.
+--- Under is the bottom middle, a little lower and smaller than the other places.
+local SPOTS = {
+  ["Top Left"] = { 0, 0 },
+  ["Top"] = { 1, 0 },
+  ["Top Right"] = { 2, 0 },
+  ["Left"] = { 0, 1 },
+  ["Center"] = { 1, 1 },
+  ["Right"] = { 2, 1 },
+  ["Bottom Left"] = { 0, 2 },
+  ["Bottom Right"] = { 2, 2 },
+}
+
 --- @param badge LookBadge
 --- @param canvas integer
 --- @param width number The pill's width.
@@ -31,12 +44,12 @@ end
 --- @return number x The pill's left edge.
 --- @return number y The pill's top edge.
 local function pillAt(badge, canvas, width, height)
-  if badge.place == "Top Right" then
-    return canvas - width - canvas * 0.03, canvas * 0.03
-  elseif badge.place == "Bottom Right" then
-    return canvas - width - canvas * 0.03, canvas - height - canvas * 0.03
+  local spot = SPOTS[badge.place]
+  if not spot then
+    return (canvas - width) / 2, canvas - height - canvas * 0.02
   end
-  return (canvas - width) / 2, canvas - height - canvas * 0.02
+  local margin = canvas * 0.03
+  return margin + (canvas - width - 2 * margin) * spot[1] / 2, margin + (canvas - height - 2 * margin) * spot[2] / 2
 end
 
 --- The rows a badge can draw on.

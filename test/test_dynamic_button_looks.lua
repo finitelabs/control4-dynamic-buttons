@@ -372,6 +372,26 @@ T.eq(
   badgeWhy({ text = "a\nb", place = "Under", color = "#FFFFFF", background = "None" }),
   "a badge can't hold control characters"
 )
+for _, place in ipairs({
+  "Top Left",
+  "Top",
+  "Top Right",
+  "Left",
+  "Center",
+  "Right",
+  "Bottom Left",
+  "Under",
+  "Bottom Right",
+}) do
+  T.eq(
+    "a badge can sit " .. place,
+    looks:update(
+      a.id,
+      withDrawn({ custom = { badge = { text = "1", place = place, color = "#FFFFFF", background = "None" } } })
+    ).custom.badge.place,
+    place
+  )
+end
 T.eq(
   "and a place it can't sit",
   badgeWhy({ text = "1", place = "Left", color = "#FFFFFF", background = "None" }),
