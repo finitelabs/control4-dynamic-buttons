@@ -394,7 +394,7 @@ for _, place in ipairs({
 end
 T.eq(
   "and a place it can't sit",
-  badgeWhy({ text = "1", place = "Left", color = "#FFFFFF", background = "None" }),
+  badgeWhy({ text = "1", place = "Middle", color = "#FFFFFF", background = "None" }),
   "unknown badge place"
 )
 T.eq(

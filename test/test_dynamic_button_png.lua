@@ -380,11 +380,11 @@ local columns = {
 for col, places in ipairs(columns) do
   for _, place in ipairs(places) do
     local first, last = paintedColumns((drawnOnClear(placed(place, 100), "62%")))
-    local middle = (first + last + 1) / 2
-    T.truthy(
-      place .. " is in its column",
-      math.abs(middle - CANVAS * (col == 1 and 0.1 or col == 2 and 0.5 or 0.9)) < CANVAS * 0.08
-    )
+    local margin = CANVAS * 0.03
+    local inColumn = col == 1 and math.abs(first - margin) <= 1
+      or col == 3 and math.abs(last + 1 - (CANVAS - margin)) <= 1
+      or col == 2 and math.abs(first + last + 1 - CANVAS) <= 2
+    T.truthy(place .. " is in its column", inColumn)
   end
 end
 local centerWide0, centerWide1 = paintedColumns((drawnOnClear(placed("Center", 150), "Master Bedroom TV On")))
