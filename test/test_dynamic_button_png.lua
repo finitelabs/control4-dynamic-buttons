@@ -247,7 +247,17 @@ local CANVAS = 300
 local function placed(place, size)
   return { text = "x", place = place, color = "#FFFFFF", background = "#DC2626", size = size }
 end
-for _, place in ipairs({ "Top Right", "Bottom Right", "Under" }) do
+for _, place in ipairs({
+  "Top Left",
+  "Top",
+  "Top Right",
+  "Left",
+  "Center",
+  "Right",
+  "Bottom Left",
+  "Under",
+  "Bottom Right",
+}) do
   for _, size in ipairs({ 50, 100, 150 }) do
     local y0, y1 = BadgeArt.rows(placed(place, size), CANVAS)
     T.truthy(string.format("%s at %d%% stays in the picture", place, size), y0 >= 0 and y1 < CANVAS and y0 < y1)
@@ -256,6 +266,24 @@ end
 local small0, small1 = BadgeArt.rows(placed("Top Right", 50), CANVAS)
 local large0, large1 = BadgeArt.rows(placed("Top Right", 150), CANVAS)
 T.truthy("a larger badge covers more rows", large1 - large0 > small1 - small0)
+for _, size in ipairs({ 50, 100, 150 }) do
+  for _, place in ipairs({ "Left", "Center", "Right" }) do
+    local y0, y1 = BadgeArt.rows(placed(place, size), CANVAS)
+    T.truthy(string.format("%s at %d%% is halfway down the picture", place, size), math.abs(y0 + y1 + 1 - CANVAS) <= 1)
+  end
+  local top0 = BadgeArt.rows(placed("Top", size), CANVAS)
+  local _, bottom1 = BadgeArt.rows(placed("Bottom Left", size), CANVAS)
+  T.eq(
+    string.format("Top at %d%% keeps the corners' margin", size),
+    top0,
+    (BadgeArt.rows(placed("Top Left", size), CANVAS))
+  )
+  T.eq(
+    string.format("and Bottom Left the bottom corner's", size),
+    bottom1,
+    select(2, BadgeArt.rows(placed("Bottom Right", size), CANVAS))
+  )
+end
 
 --- @param badge LookBadge
 --- @param text string
@@ -315,6 +343,55 @@ for _, row in ipairs(wideRows) do
   end
 end
 T.truthy("the widest text at the largest size stays inside the picture", leftmost > 0 and rightmost < CANVAS - 1)
+
+--- @param rows integer[][]
+--- @return integer leftmost
+--- @return integer rightmost
+local function paintedColumns(rows)
+  local first, last = CANVAS, -1
+  for _, row in ipairs(rows) do
+    for x = 0, CANVAS - 1 do
+      if row[x * 4 + 4] > 0 then
+        first, last = math.min(first, x), math.max(last, x)
+      end
+    end
+  end
+  return first, last
+end
+for _, size in ipairs({ 50, 100, 150 }) do
+  local centered = placed("Center", size)
+  local first, last = paintedColumns((drawnOnClear(centered, "62%")))
+  T.truthy(
+    string.format("a Center pill at %d%% is centered across the picture", size),
+    math.abs(first + last + 1 - CANVAS) <= 2
+  )
+  centered.background = "None"
+  first, last = paintedColumns((drawnOnClear(centered, "62%")))
+  T.truthy(
+    string.format("and its text alone at %d%% too", size),
+    last > first and math.abs(first + last + 1 - CANVAS) <= 6
+  )
+end
+local columns = {
+  { "Top Left", "Left", "Bottom Left" },
+  { "Top", "Center" },
+  { "Top Right", "Right", "Bottom Right" },
+}
+for col, places in ipairs(columns) do
+  for _, place in ipairs(places) do
+    local first, last = paintedColumns((drawnOnClear(placed(place, 100), "62%")))
+    local margin = CANVAS * 0.03
+    local inColumn = col == 1 and math.abs(first - margin) <= 1
+      or col == 3 and math.abs(last + 1 - (CANVAS - margin)) <= 1
+      or col == 2 and math.abs(first + last + 1 - CANVAS) <= 2
+    T.truthy(place .. " is in its column", inColumn)
+  end
+end
+local centerWide0, centerWide1 = paintedColumns((drawnOnClear(placed("Center", 150), "Master Bedroom TV On")))
+T.truthy(
+  "long text at Center and 150% shrinks to stay inside the picture",
+  centerWide0 > 0 and centerWide1 < CANVAS - 1
+)
 
 T.section("On a real redraw")
 local big = testPng(CANVAS)

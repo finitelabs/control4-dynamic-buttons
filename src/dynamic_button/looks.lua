@@ -112,7 +112,8 @@ Looks.MIN_BADGE_SIZE = 50
 Looks.MAX_BADGE_SIZE = 150
 
 --- Where a badge can sit.
-Looks.BADGE_PLACES = { "Top Right", "Bottom Right", "Under" }
+Looks.BADGE_PLACES =
+  { "Top Left", "Top", "Top Right", "Left", "Center", "Right", "Bottom Left", "Under", "Bottom Right" }
 
 --- The colors a look's customization can set, in the order they are compared.
 local CUSTOM_COLORS = { "color", "body", "tile", "symbol", "glowColor" }
