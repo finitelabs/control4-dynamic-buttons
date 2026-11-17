@@ -829,7 +829,7 @@ Template for a new release entry (copy below the heading, fill in, uncomment):
 - Removed
 -->
 
-## Unreleased
+## v20261117 - 2026-11-17
 
 ### Added
 
